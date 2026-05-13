@@ -130,7 +130,10 @@ export default function Settings() {
               </div>
               <Switch
                 checked={theme === 'dark'}
-                onCheckedChange={checked => setValue('theme', checked ? 'dark' : 'light')}
+                onCheckedChange={checked => {
+                  setValue('theme', checked ? 'dark' : 'light')
+                  document.documentElement.classList.toggle('dark', checked)
+                }}
               />
             </div>
           </CardContent>
