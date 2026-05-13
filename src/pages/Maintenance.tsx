@@ -26,7 +26,7 @@ import type { MaintenanceEntry } from '@/types'
 
 const schema = z.object({
   date: z.string().min(1),
-  odometer: z.coerce.number().positive(),
+  odometer: z.coerce.number().positive('Odometer must be greater than 0'),
   category: z.string().min(1),
   description: z.string().min(1, 'Description is required'),
   cost: z.coerce.number().min(0),
