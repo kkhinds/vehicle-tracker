@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
@@ -231,6 +231,7 @@ export default function ServiceSchedule() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editTarget ? 'Edit Interval' : 'Add Custom Interval'}</DialogTitle>
+            <DialogDescription>Configure a custom service interval to track on your dashboard.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleI(onIntervalSubmit)} className="space-y-4">
             <div className="space-y-1.5">
@@ -270,6 +271,7 @@ export default function ServiceSchedule() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Complete: {completeTarget?.name}</DialogTitle>
+            <DialogDescription>Record that this service has been performed at the current odometer.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleC(onCompleteSubmit)} className="space-y-4">
             <div className="space-y-1.5">
