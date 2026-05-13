@@ -1,0 +1,328 @@
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Plus, Pencil, Trash2, Fuel } from 'lucide-react'
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend
+} from 'recharts'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import PhotoUpload from '@/components/shared/PhotoUpload'
+import EmptyState from '@/components/shared/EmptyState'
+import { useSettings } from '@/hooks/useSettings'
+import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
+import type { FuelEntry } from '@/types'
+import { format } from 'date-fns'
+
+const schema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  odometer: z.coerce.number().positive('Must be positive'),
+  litres: z.coerce.number().positive('Must be positive'),
+  cost_per_litre: z.coerce.number().positive('Must be positive'),
+  total_cost: z.coerce.number().positive('Must be positive'),
+  fuel_station: z.string().optional(),
+  full_tank: z.boolean(),
+  notes: z.string().optional(),
+})
+type FormData = z.infer<typeof schema>
+
+export default function FuelLog() {
+  const [entries, setEntries] = useState<FuelEntry[]>([])
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<FuelEntry | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [photos, setPhotos] = useState<string[]>([])
+  const { settings } = useSettings()
+  const currency = settings.currency
+  const unit = settings.distance_unit
+
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { date: todayISO(), full_tank: true },
+  })
+
+  const litres = watch('litres')
+  const costPerLitre = watch('cost_per_litre')
+
+  useEffect(() => {
+    if (litres && costPerLitre) {
+      setValue('total_cost', Math.round(litres * costPerLitre * 100) / 100)
+    }
+  }, [litres, costPerLitre, setValue])
+
+  async function load() {
+    const data = await window.api.fuel.getAll()
+    setEntries(data)
+  }
+
+  useEffect(() => { load() }, [])
+
+  function openAdd() {
+    setEditing(null)
+    setPhotos([])
+    reset({ date: todayISO(), full_tank: true })
+    setOpen(true)
+  }
+
+  function openEdit(entry: FuelEntry) {
+    setEditing(entry)
+    setPhotos(entry.receipt_photo ? [entry.receipt_photo] : [])
+    reset({
+      date: entry.date,
+      odometer: entry.odometer,
+      litres: entry.litres,
+      cost_per_litre: entry.cost_per_litre,
+      total_cost: entry.total_cost,
+      fuel_station: entry.fuel_station ?? '',
+      full_tank: entry.full_tank,
+      notes: entry.notes ?? '',
+    })
+    setOpen(true)
+  }
+
+  async function onSubmit(data: FormData) {
+    const payload = {
+      ...data,
+      receipt_photo: photos[0] ?? null,
+      fuel_station: data.fuel_station || null,
+      notes: data.notes || null,
+      consumption: null,
+    }
+    if (editing) {
+      await window.api.fuel.update(editing.id, payload)
+      toast.success('Fill-up updated')
+    } else {
+      await window.api.fuel.add(payload)
+      toast.success('Fill-up added')
+    }
+    setOpen(false)
+    load()
+  }
+
+  async function handleDelete() {
+    if (deleteId === null) return
+    await window.api.fuel.delete(deleteId)
+    toast.success('Entry deleted')
+    setDeleteId(null)
+    load()
+  }
+
+  // Chart data
+  const chartEntries = [...entries].reverse()
+  const efficiencyData = chartEntries
+    .filter(e => e.consumption !== null)
+    .map(e => ({ label: formatDate(e.date), consumption: e.consumption }))
+
+  const monthlyMap: Record<string, number> = {}
+  for (const e of entries) {
+    const month = format(new Date(e.date), 'MMM yy')
+    monthlyMap[month] = (monthlyMap[month] ?? 0) + e.total_cost
+  }
+  const monthlyData = Object.entries(monthlyMap).map(([month, cost]) => ({ month, cost })).reverse().slice(0, 12)
+
+  const totalSpent = entries.reduce((s, e) => s + e.total_cost, 0)
+  const avgConsumption = entries.filter(e => e.consumption).reduce((s, e, _, a) => s + (e.consumption ?? 0) / a.length, 0)
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Fuel Log</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {entries.length} entries · Total {formatCurrency(totalSpent, currency)}
+            {avgConsumption > 0 && ` · Avg ${avgConsumption.toFixed(2)} ${unit}/L`}
+          </p>
+        </div>
+        <Button onClick={openAdd}>
+          <Plus className="h-4 w-4 mr-2" /> Add Fill-up
+        </Button>
+      </div>
+
+      <Tabs defaultValue="log">
+        <TabsList>
+          <TabsTrigger value="log">Log</TabsTrigger>
+          <TabsTrigger value="charts">Charts</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="log">
+          {entries.length === 0 ? (
+            <EmptyState
+              icon={Fuel}
+              title="No fuel entries yet"
+              description="Start logging your fill-ups to track consumption and costs."
+              action={<Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add First Fill-up</Button>}
+            />
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Odometer</TableHead>
+                    <TableHead>Litres</TableHead>
+                    <TableHead>Cost/L</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Station</TableHead>
+                    <TableHead>{unit}/L</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map(entry => (
+                    <TableRow key={entry.id}>
+                      <TableCell>{formatDate(entry.date)}</TableCell>
+                      <TableCell>{entry.odometer.toLocaleString()} {unit}</TableCell>
+                      <TableCell>{entry.litres.toFixed(2)} L</TableCell>
+                      <TableCell>{formatCurrency(entry.cost_per_litre, currency)}</TableCell>
+                      <TableCell className="font-medium">{formatCurrency(entry.total_cost, currency)}</TableCell>
+                      <TableCell className="text-muted-foreground">{entry.fuel_station ?? '—'}</TableCell>
+                      <TableCell>
+                        {entry.consumption
+                          ? <span className="text-green-400">{entry.consumption.toFixed(2)}</span>
+                          : <span className="text-muted-foreground">—</span>
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(entry.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="charts" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Fuel Efficiency Over Time ({unit}/L)</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={efficiencyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
+                  <Line type="monotone" dataKey="consumption" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name={`${unit}/L`} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Monthly Fuel Cost</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }}
+                    formatter={(v: number) => [formatCurrency(v, currency), 'Cost']}
+                  />
+                  <Bar dataKey="cost" fill="#3b82f6" radius={[2, 2, 0, 0]} name="Cost" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Fill-up' : 'Add Fill-up'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Date *</Label>
+                <Input type="date" {...register('date')} />
+                {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Odometer ({unit}) *</Label>
+                <Input type="number" step="0.1" {...register('odometer')} />
+                {errors.odometer && <p className="text-xs text-destructive">{errors.odometer.message}</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label>Litres *</Label>
+                <Input type="number" step="0.01" {...register('litres')} />
+                {errors.litres && <p className="text-xs text-destructive">{errors.litres.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cost/Litre *</Label>
+                <Input type="number" step="0.001" {...register('cost_per_litre')} />
+                {errors.cost_per_litre && <p className="text-xs text-destructive">{errors.cost_per_litre.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Total Cost *</Label>
+                <Input type="number" step="0.01" {...register('total_cost')} />
+                {errors.total_cost && <p className="text-xs text-destructive">{errors.total_cost.message}</p>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fuel Station</Label>
+              <Input placeholder="e.g. Shell Warrens" {...register('fuel_station')} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="full_tank"
+                checked={watch('full_tank')}
+                onCheckedChange={v => setValue('full_tank', !!v)}
+              />
+              <Label htmlFor="full_tank">Full tank fill-up (used for consumption calculation)</Label>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea placeholder="Any notes..." rows={2} {...register('notes')} />
+            </div>
+            <PhotoUpload
+              value={photos}
+              onChange={setPhotos}
+              category="fuel"
+              label="Receipt Photo"
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">{editing ? 'Save Changes' : 'Add Fill-up'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={v => !v && setDeleteId(null)}
+        title="Delete entry?"
+        description="This will permanently delete this fuel entry."
+        onConfirm={handleDelete}
+      />
+    </div>
+  )
+}

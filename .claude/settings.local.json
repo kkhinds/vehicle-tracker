@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm info *)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(py --version)",
+      "Bash(node -e \"const e = require\\('./node_modules/electron/package.json'\\); console.log\\('Electron:', e.version\\)\")",
+      "Bash(node -e ' *)",
+      "Read(//c/Program Files/Microsoft Visual Studio/**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio/**)",
+      "Bash(reg query *)",
+      "Bash(where msbuild *)",
+      "Bash(where cl *)",
+      "Bash(cmd /c \"\\\\\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\\\\\" && npm run rebuild\")",
+      "Bash(VSINSTALLDIR='C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community' PATH='C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\Hostx64\\\\x64:__TRACKED_VAR__' npm run rebuild)",
+      "Bash(npm config *)",
+      "Bash(npm run *)",
+      "Bash(node node_modules/@electron/rebuild/lib/cli.js -f -w better-sqlite3 --msvsVersion=2022)",
+      "PowerShell(Install-Module VSSetup -Scope CurrentUser -Force -AllowClobber 2>&1)",
+      "PowerShell(Install-PackageProvider *)",
+      "PowerShell(Get-VSSetupInstance *)",
+      "Bash(node_modules/.bin/prebuild-install --runtime electron --target 31.7.7 --arch x64 --platform win32 --download --verbose)",
+      "Bash(\"../../.bin/prebuild-install\" --runtime electron --target 31.7.7 --arch x64 --platform win32 --verbose)",
+      "Bash(cmd.exe /c '\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && cd \"E:\\\\AI Projects\\\\Vehicle-App-V2\" && npm run rebuild')",
+      "Bash(cmd.exe /c \"\\\\\"C:\\\\\\\\Program Files\\\\\\\\Microsoft Visual Studio\\\\\\\\2022\\\\\\\\Community\\\\\\\\VC\\\\\\\\Auxiliary\\\\\\\\Build\\\\\\\\vcvars64.bat\\\\\" && cd \\\\\"E:\\\\\\\\AI Projects\\\\\\\\Vehicle-App-V2\\\\\" && npm run rebuild 2>&1\")",
+      "Bash(cmd.exe /c \"E:\\\\\\\\AI Projects\\\\\\\\Vehicle-App-V2\\\\\\\\rebuild.bat\")",
+      "Bash(cmd.exe /c '\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\VC\\\\Auxiliary\\\\Build\\\\vcvars64.bat\" && set 2>&1')",
+      "PowerShell(& cmd.exe /c \"E:\\\\AI Projects\\\\Vehicle-App-V2\\\\getenv.bat\")",
+      "PowerShell(& cmd.exe /c \"E:\\\\AI Projects\\\\Vehicle-App-V2\\\\getenv2.bat\" 2>&1)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(cd \"E:\\\\AI Projects\\\\Vehicle-App-V2\"; $proc = Start-Process -FilePath \"node_modules\\\\electron\\\\dist\\\\electron.exe\" -ArgumentList \"out/main/index.js\" -WorkingDirectory \"E:\\\\AI Projects\\\\Vehicle-App-V2\" -PassThru -RedirectStandardError \"electron-err.log\" -WindowStyle Normal; Start-Sleep -Seconds 5; if \\($proc.HasExited\\) { \"Exited with code: $\\($proc.ExitCode\\)\"; Get-Content \"electron-err.log\" -ErrorAction SilentlyContinue } else { \"Still running\"; $proc.Kill\\(\\) })",
+      "PowerShell(Join-Path *)",
+      "Bash(Get-ChildItem -Recurse -Depth 2)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}
