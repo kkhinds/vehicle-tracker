@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency } from '@/lib/utils'
 import type { ExpenseSummary } from '@/types'
 
@@ -18,6 +19,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const { settings } = useSettings()
+  const { currentVehicleId } = useVehicles()
   const currency = settings.currency
 
   async function load() {
@@ -27,7 +29,7 @@ export default function Expenses() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   async function handleExport() {
     try {

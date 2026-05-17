@@ -6,6 +6,10 @@ interface SettingRow {
   value: string
 }
 
+interface VehicleOdometerRow {
+  current_odometer: number
+}
+
 export function registerSettingsHandlers(): void {
   const db = getDb()
 
@@ -13,11 +17,20 @@ export function registerSettingsHandlers(): void {
     const rows = db.prepare('SELECT key, value FROM settings').all() as SettingRow[]
     const map: Record<string, string> = {}
     for (const row of rows) map[row.key] = row.value
+
+    // current_odometer is computed from the active vehicle, not stored.
+    const currentVehicleId = parseInt(map['current_vehicle_id'] ?? '1', 10) || 1
+    const vehicle = db.prepare(
+      'SELECT current_odometer FROM vehicles WHERE id = ?'
+    ).get(currentVehicleId) as VehicleOdometerRow | undefined
+
     return {
-      current_odometer: parseFloat(map['current_odometer'] ?? '0'),
+      current_odometer: vehicle?.current_odometer ?? parseFloat(map['current_odometer'] ?? '0'),
+      current_vehicle_id: currentVehicleId,
       distance_unit: map['distance_unit'] ?? 'km',
       currency: map['currency'] ?? 'BBD',
       theme: map['theme'] ?? 'dark',
+      notifications_enabled: (map['notifications_enabled'] ?? 'true') === 'true',
     }
   })
 
@@ -25,6 +38,17 @@ export function registerSettingsHandlers(): void {
     const update = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
     const run = db.transaction((data: Record<string, unknown>) => {
       for (const [key, value] of Object.entries(data)) {
+        // current_odometer writes through to the active vehicle's record.
+        if (key === 'current_odometer') {
+          const cvRow = db.prepare(
+            "SELECT value FROM settings WHERE key = 'current_vehicle_id'"
+          ).get() as { value: string } | undefined
+          const vehicleId = cvRow ? parseInt(cvRow.value, 10) || 1 : 1
+          db.prepare(
+            'UPDATE vehicles SET current_odometer = ? WHERE id = ?'
+          ).run(Number(value), vehicleId)
+          continue
+        }
         update.run(key, String(value))
       }
     })

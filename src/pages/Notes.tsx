@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
 import type { Note } from '@/types'
 
@@ -33,6 +34,7 @@ export default function Notes() {
   const [attachments, setAttachments] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [searching, setSearching] = useState(false)
+  const { currentVehicleId } = useVehicles()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -44,7 +46,7 @@ export default function Notes() {
     setNotes(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   useEffect(() => {
     if (!search.trim()) {

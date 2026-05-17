@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Save, Sun, Moon } from 'lucide-react'
+import { Save, Sun, Moon, Bell, BellRing } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,17 +14,21 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
+import { DRIVETRAIN_LABELS } from '@/types'
 
 const schema = z.object({
   current_odometer: z.coerce.number().min(0),
   distance_unit: z.enum(['km', 'miles']),
   currency: z.string().min(1),
   theme: z.enum(['dark', 'light']),
+  notifications_enabled: z.boolean(),
 })
 type FormData = z.infer<typeof schema>
 
 export default function Settings() {
   const { settings, refreshSettings } = useSettings()
+  const { currentVehicle } = useVehicles()
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -37,6 +41,7 @@ export default function Settings() {
 
   const theme = watch('theme')
   const distanceUnit = watch('distance_unit')
+  const notificationsEnabled = watch('notifications_enabled')
 
   async function onSubmit(data: FormData) {
     await window.api.settings.update(data)
@@ -45,19 +50,29 @@ export default function Settings() {
     toast.success('Settings saved')
   }
 
+  async function testNotification() {
+    const ok = await window.api.notifications.test()
+    if (ok) toast.success('Test notification sent — check your system notifications')
+  }
+
+  async function runCheck() {
+    const r = await window.api.notifications.check()
+    toast.success(`Checked ${r.checked} items, fired ${r.fired} notification(s)`)
+  }
+
   return (
     <div className="p-6 max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Configure your D-Max Tracker preferences</p>
+        <p className="text-sm text-muted-foreground mt-1">App-wide preferences</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Vehicle */}
+        {/* Current vehicle */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Vehicle</CardTitle>
-            <CardDescription>Current odometer and distance units</CardDescription>
+            <CardTitle className="text-base">Active Vehicle</CardTitle>
+            <CardDescription>Odometer and units apply to whichever vehicle is currently active. Use the picker in the sidebar to switch.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -67,6 +82,9 @@ export default function Settings() {
                   <Input type="number" step="0.1" {...register('current_odometer')} />
                   <span className="text-sm text-muted-foreground shrink-0">{distanceUnit}</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  For <span className="text-foreground">{currentVehicle?.nickname ?? '—'}</span>. Switching vehicles updates this field.
+                </p>
                 {errors.current_odometer && (
                   <p className="text-xs text-destructive">{errors.current_odometer.message}</p>
                 )}
@@ -83,6 +101,42 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Notifications</CardTitle>
+            <CardDescription>
+              System-level reminders for upcoming services, insurance renewals, and document expiries — even when the app is closed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {notificationsEnabled ? <BellRing className="h-5 w-5 text-emerald-400" /> : <Bell className="h-5 w-5 text-muted-foreground" />}
+                <div>
+                  <p className="text-sm font-medium">Enable native notifications</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tiered alerts at 60/30/7 days for date-based items, 1000/500/0 km for service intervals.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={v => setValue('notifications_enabled', v)}
+              />
+            </div>
+            <Separator />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={testNotification}>
+                Send Test Notification
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={runCheck}>
+                Run Check Now
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -139,36 +193,40 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Vehicle Info (read-only) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Vehicle Information</CardTitle>
-            <CardDescription>Your tracked vehicle</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Make</span>
-                <span className="font-medium">Isuzu</span>
+        {/* Vehicle Info (read-only summary of current vehicle) */}
+        {currentVehicle && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Active Vehicle Details</CardTitle>
+              <CardDescription>To edit, manage vehicles in “My Vehicles”.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nickname</span>
+                  <span className="font-medium">{currentVehicle.nickname}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Make / Model</span>
+                  <span className="font-medium">{currentVehicle.year} {currentVehicle.make} {currentVehicle.model}{currentVehicle.trim ? ` ${currentVehicle.trim}` : ''}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Drivetrain</span>
+                  <span className="font-medium">{DRIVETRAIN_LABELS[currentVehicle.drivetrain]}</span>
+                </div>
+                {currentVehicle.license_plate && <>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">License Plate</span>
+                    <span className="font-medium">{currentVehicle.license_plate}</span>
+                  </div>
+                </>}
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Model</span>
-                <span className="font-medium">D-Max 3.0TD Double Cab V-Cross</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Year</span>
-                <span className="font-medium">2022</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Engine</span>
-                <span className="font-medium">3.0L Turbodiesel</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-end">
           <Button type="submit" size="lg">

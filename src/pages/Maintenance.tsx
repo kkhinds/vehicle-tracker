@@ -20,6 +20,7 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 import { MAINTENANCE_CATEGORIES } from '@/types'
 import type { MaintenanceEntry } from '@/types'
@@ -58,7 +59,9 @@ export default function Maintenance() {
   const [photos, setPhotos] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [linkPrompt, setLinkPrompt] = useState<{ intervalId: number; intervalName: string; odometer: number; date: string } | null>(null)
   const { settings } = useSettings()
+  const { currentVehicleId } = useVehicles()
   const currency = settings.currency
   const unit = settings.distance_unit
 
@@ -72,7 +75,7 @@ export default function Maintenance() {
     setEntries(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   useEffect(() => {
     let result = entries
@@ -124,12 +127,34 @@ export default function Maintenance() {
     if (editing) {
       await window.api.maintenance.update(editing.id, payload)
       toast.success('Entry updated')
-    } else {
-      await window.api.maintenance.add(payload)
-      toast.success('Entry added')
+      setOpen(false)
+      load()
+      return
     }
+
+    await window.api.maintenance.add(payload)
+    toast.success('Entry added')
     setOpen(false)
     load()
+
+    // Offer to mark a matching service interval as done (auto-link).
+    // Skips silently if nothing matches.
+    const match = await window.api.maintenance.findMatchingInterval(data.category, data.description)
+    if (match) {
+      setLinkPrompt({
+        intervalId: match.id,
+        intervalName: match.name,
+        odometer: data.odometer,
+        date: data.date,
+      })
+    }
+  }
+
+  async function confirmAutoLink() {
+    if (!linkPrompt) return
+    await window.api.schedule.markDone(linkPrompt.intervalId, linkPrompt.odometer, linkPrompt.date)
+    toast.success(`${linkPrompt.intervalName} marked as done`)
+    setLinkPrompt(null)
   }
 
   async function handleDelete() {
@@ -313,6 +338,16 @@ export default function Maintenance() {
         title="Delete entry?"
         description="This will permanently delete this maintenance record."
         onConfirm={handleDelete}
+      />
+
+      <ConfirmDialog
+        open={linkPrompt !== null}
+        onOpenChange={v => !v && setLinkPrompt(null)}
+        title={`Mark "${linkPrompt?.intervalName}" as done?`}
+        description={`This looks like it matches a scheduled service. Mark it complete at ${linkPrompt?.odometer.toLocaleString()} ${unit} on ${linkPrompt ? formatDate(linkPrompt.date) : ''}?`}
+        confirmLabel="Yes, mark done"
+        variant="default"
+        onConfirm={confirmAutoLink}
       />
     </div>
   )

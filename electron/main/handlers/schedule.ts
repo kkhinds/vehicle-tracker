@@ -1,28 +1,37 @@
 import { ipcMain } from 'electron'
-import { getDb } from '../db'
+import { getDb, getCurrentVehicleId } from '../db'
 
 interface IntervalRow {
   id: number
+  vehicle_id: number
   name: string
+  category_key: string | null
   interval_km: number
   last_done_km: number | null
   last_done_date: string | null
   is_custom: number
+  consequence_of_skipping: string | null
   notes: string | null
 }
 
-interface SettingRow {
-  value: string
+interface VehicleOdometerRow { current_odometer: number }
+
+function getVehicleOdometer(db: ReturnType<typeof import('../db').getDb>, vehicleId: number): number {
+  const row = db.prepare(
+    'SELECT current_odometer FROM vehicles WHERE id = ?'
+  ).get(vehicleId) as VehicleOdometerRow | undefined
+  return row?.current_odometer ?? 0
 }
 
 export function registerScheduleHandlers(): void {
   const db = getDb()
 
   ipcMain.handle('schedule:getAll', () => {
-    const rows = db.prepare('SELECT * FROM service_intervals ORDER BY interval_km ASC').all() as IntervalRow[]
-    const odometer = parseFloat(
-      (db.prepare("SELECT value FROM settings WHERE key = 'current_odometer'").get() as SettingRow)?.value ?? '0'
-    )
+    const vehicleId = getCurrentVehicleId()
+    const rows = db.prepare(
+      'SELECT * FROM service_intervals WHERE vehicle_id = ? ORDER BY interval_km ASC'
+    ).all(vehicleId) as IntervalRow[]
+    const odometer = getVehicleOdometer(db, vehicleId)
 
     return rows.map(row => {
       const nextDueKm = (row.last_done_km ?? 0) + row.interval_km
@@ -41,15 +50,19 @@ export function registerScheduleHandlers(): void {
     })
   })
 
-  ipcMain.handle('schedule:add', (_, interval: Omit<IntervalRow, 'id'>) => {
+  ipcMain.handle('schedule:add', (_, interval: Omit<IntervalRow, 'id' | 'vehicle_id'>) => {
+    const vehicleId = getCurrentVehicleId()
     const result = db.prepare(`
-      INSERT INTO service_intervals (name, interval_km, last_done_km, last_done_date, is_custom, notes)
-      VALUES (@name, @interval_km, @last_done_km, @last_done_date, @is_custom, @notes)
+      INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, last_done_km, last_done_date, is_custom, consequence_of_skipping, notes)
+      VALUES (@vehicle_id, @name, @category_key, @interval_km, @last_done_km, @last_done_date, @is_custom, @consequence_of_skipping, @notes)
     `).run({
       ...interval,
+      vehicle_id: vehicleId,
       is_custom: 1,
+      category_key: interval.category_key ?? null,
       last_done_km: interval.last_done_km ?? null,
       last_done_date: interval.last_done_date ?? null,
+      consequence_of_skipping: interval.consequence_of_skipping ?? null,
       notes: interval.notes ?? null,
     })
     return db.prepare('SELECT * FROM service_intervals WHERE id = ?').get(result.lastInsertRowid)
@@ -60,8 +73,9 @@ export function registerScheduleHandlers(): void {
     if (!current) return
     const merged = { ...current, ...data, is_custom: data.is_custom !== undefined ? (data.is_custom ? 1 : 0) : current.is_custom }
     db.prepare(`
-      UPDATE service_intervals SET name=@name, interval_km=@interval_km, last_done_km=@last_done_km,
-      last_done_date=@last_done_date, is_custom=@is_custom, notes=@notes WHERE id=@id
+      UPDATE service_intervals SET name=@name, category_key=@category_key, interval_km=@interval_km,
+        last_done_km=@last_done_km, last_done_date=@last_done_date, is_custom=@is_custom,
+        consequence_of_skipping=@consequence_of_skipping, notes=@notes WHERE id=@id
     `).run({ ...merged, id })
   })
 
@@ -73,23 +87,37 @@ export function registerScheduleHandlers(): void {
     const interval = db.prepare('SELECT * FROM service_intervals WHERE id = ?').get(id) as IntervalRow
     if (!interval) return
 
-    // Update the service interval's last done values
     db.prepare(
       'UPDATE service_intervals SET last_done_km = ?, last_done_date = ? WHERE id = ?'
     ).run(odometer, date, id)
 
-    // Also update global odometer if this reading is higher
-    const currentOdometer = parseFloat(
-      (db.prepare("SELECT value FROM settings WHERE key = 'current_odometer'").get() as SettingRow)?.value ?? '0'
-    )
-    if (odometer > currentOdometer) {
-      db.prepare("UPDATE settings SET value = ? WHERE key = 'current_odometer'").run(String(odometer))
-    }
+    // Bump the vehicle's current_odometer if this reading is higher.
+    db.prepare(
+      'UPDATE vehicles SET current_odometer = MAX(current_odometer, ?) WHERE id = ?'
+    ).run(odometer, interval.vehicle_id)
 
-    // Auto-create a maintenance log entry
+    // Auto-create a maintenance log entry for the vehicle this interval belongs to.
     db.prepare(`
-      INSERT INTO maintenance_log (date, odometer, category, description, cost)
-      VALUES (?, ?, 'Other', ?, 0)
-    `).run(date, odometer, interval.name)
+      INSERT INTO maintenance_log (vehicle_id, date, odometer, category, description, cost)
+      VALUES (?, ?, ?, 'Other', ?, 0)
+    `).run(interval.vehicle_id, date, odometer, interval.name)
+  })
+
+  /**
+   * Mark a service interval as done WITHOUT also creating a maintenance log entry.
+   * Used when the user logs a maintenance record first, then we offer to update
+   * the matching interval. We don't want to create a duplicate maintenance row.
+   */
+  ipcMain.handle('schedule:markDone', (_, id: number, odometer: number, date: string) => {
+    const interval = db.prepare('SELECT * FROM service_intervals WHERE id = ?').get(id) as IntervalRow
+    if (!interval) return
+
+    db.prepare(
+      'UPDATE service_intervals SET last_done_km = ?, last_done_date = ? WHERE id = ?'
+    ).run(odometer, date, id)
+
+    db.prepare(
+      'UPDATE vehicles SET current_odometer = MAX(current_odometer, ?) WHERE id = ?'
+    ).run(odometer, interval.vehicle_id)
   })
 }

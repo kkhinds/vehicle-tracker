@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron'
-import { getDb } from '../db'
+import { getDb, getCurrentVehicleId } from '../db'
 
 interface PolicyRow {
   id: number
+  vehicle_id: number
   provider: string
   policy_number: string
   coverage_type: string
@@ -30,19 +31,24 @@ export function registerInsuranceHandlers(): void {
   const db = getDb()
 
   ipcMain.handle('insurance:getAll', () => {
-    const rows = db.prepare('SELECT * FROM insurance_policies ORDER BY is_active DESC, renewal_date ASC').all() as PolicyRow[]
+    const vehicleId = getCurrentVehicleId()
+    const rows = db.prepare(
+      'SELECT * FROM insurance_policies WHERE vehicle_id = ? ORDER BY is_active DESC, renewal_date ASC'
+    ).all(vehicleId) as PolicyRow[]
     return rows.map(row => ({ ...row, is_active: row.is_active === 1, photos: getPhotos(db, row.id) }))
   })
 
-  ipcMain.handle('insurance:add', (_, policy: Omit<PolicyRow, 'id' | 'created_at'> & { photos: string[]; is_active: boolean }) => {
+  ipcMain.handle('insurance:add', (_, policy: Omit<PolicyRow, 'id' | 'created_at' | 'vehicle_id'> & { photos: string[]; is_active: boolean }) => {
+    const vehicleId = getCurrentVehicleId()
     const { photos, ...data } = policy
     const result = db.prepare(`
-      INSERT INTO insurance_policies (provider, policy_number, coverage_type, premium_amount, payment_frequency,
+      INSERT INTO insurance_policies (vehicle_id, provider, policy_number, coverage_type, premium_amount, payment_frequency,
         start_date, renewal_date, agent_name, agent_contact, notes, is_active)
-      VALUES (@provider, @policy_number, @coverage_type, @premium_amount, @payment_frequency,
+      VALUES (@vehicle_id, @provider, @policy_number, @coverage_type, @premium_amount, @payment_frequency,
         @start_date, @renewal_date, @agent_name, @agent_contact, @notes, @is_active)
     `).run({
       ...data,
+      vehicle_id: vehicleId,
       is_active: data.is_active !== false ? 1 : 0,
       agent_name: data.agent_name ?? null,
       agent_contact: data.agent_contact ?? null,

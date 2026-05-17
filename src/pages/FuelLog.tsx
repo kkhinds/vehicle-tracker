@@ -25,6 +25,7 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 import type { FuelEntry } from '@/types'
 import { format } from 'date-fns'
@@ -48,6 +49,7 @@ export default function FuelLog() {
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [photos, setPhotos] = useState<string[]>([])
   const { settings } = useSettings()
+  const { currentVehicleId } = useVehicles()
   const currency = settings.currency
   const unit = settings.distance_unit
 
@@ -70,7 +72,7 @@ export default function FuelLog() {
     setEntries(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   function openAdd() {
     setEditing(null)

@@ -11,12 +11,13 @@ interface ConfirmDialogProps {
   description: string
   onConfirm: () => void
   confirmLabel?: string
+  variant?: 'destructive' | 'default'
   loading?: boolean
 }
 
 export default function ConfirmDialog({
   open, onOpenChange, title, description, onConfirm,
-  confirmLabel = 'Delete', loading = false
+  confirmLabel = 'Delete', variant = 'destructive', loading = false,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -29,8 +30,8 @@ export default function ConfirmDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Deleting...' : confirmLabel}
+          <Button variant={variant} onClick={onConfirm} disabled={loading}>
+            {loading ? 'Working...' : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

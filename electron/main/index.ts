@@ -11,6 +11,10 @@ import { registerSettingsHandlers } from './handlers/settings'
 import { registerFilesHandlers } from './handlers/files'
 import { registerDashboardHandlers } from './handlers/dashboard'
 import { registerExpensesHandlers } from './handlers/expenses'
+import { registerVehicleHandlers } from './handlers/vehicles'
+import { registerTireHandlers } from './handlers/tires'
+import { registerDocumentHandlers } from './handlers/documents'
+import { registerNotificationHandlers, startNotificationScheduler } from './notifications'
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
@@ -49,7 +53,6 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  // Serve local files via custom protocol
   protocol.handle('localfile', (request) => {
     const filePath = decodeURIComponent(request.url.replace('localfile://', ''))
     return new Response(fs.readFileSync(filePath), {
@@ -59,6 +62,7 @@ app.whenReady().then(async () => {
 
   await initDb()
 
+  registerVehicleHandlers()
   registerFuelHandlers()
   registerMaintenanceHandlers()
   registerScheduleHandlers()
@@ -68,8 +72,12 @@ app.whenReady().then(async () => {
   registerFilesHandlers()
   registerDashboardHandlers()
   registerExpensesHandlers()
+  registerTireHandlers()
+  registerDocumentHandlers()
+  registerNotificationHandlers()
 
   createWindow()
+  startNotificationScheduler()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

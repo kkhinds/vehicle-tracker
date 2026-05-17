@@ -7,7 +7,14 @@ export interface SettingsContextValue {
 }
 
 export const SettingsContext = createContext<SettingsContextValue>({
-  settings: { current_odometer: 0, distance_unit: 'km', currency: 'BBD', theme: 'dark' },
+  settings: {
+    current_odometer: 0,
+    current_vehicle_id: 1,
+    distance_unit: 'km',
+    currency: 'BBD',
+    theme: 'dark',
+    notifications_enabled: true,
+  },
   refreshSettings: async () => {},
 })
 

@@ -22,6 +22,7 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 import type { InsurancePolicy } from '@/types'
 
@@ -54,6 +55,7 @@ export default function Insurance() {
   const [deactivateId, setDeactivateId] = useState<number | null>(null)
   const [photos, setPhotos] = useState<string[]>([])
   const { settings } = useSettings()
+  const { currentVehicleId } = useVehicles()
   const currency = settings.currency
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
@@ -72,7 +74,7 @@ export default function Insurance() {
     setPolicies(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   function openAdd() {
     setEditing(null)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Fuel, Wrench, Calendar, Shield, DollarSign,
-  TrendingUp, Activity, AlertCircle
+  TrendingUp, Activity, AlertCircle, FileBadge2, CircleDot
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import StatCard from '@/components/shared/StatCard'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { DashboardSummary, ActivityEntry } from '@/types'
 
@@ -33,14 +34,16 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const { settings } = useSettings()
+  const { currentVehicleId, currentVehicle } = useVehicles()
   const navigate = useNavigate()
 
   useEffect(() => {
+    setLoading(true)
     window.api.dashboard.getSummary().then(s => {
       setSummary(s)
       setLoading(false)
     })
-  }, [])
+  }, [currentVehicleId])
 
   if (loading) {
     return (
@@ -68,9 +71,13 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-foreground">
+          {currentVehicle?.nickname ?? 'Dashboard'}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {currentVehicle
+            ? `${currentVehicle.year} ${currentVehicle.make} ${currentVehicle.model} · ${currentVehicle.current_odometer.toLocaleString()} ${unit}`
+            : new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
@@ -195,31 +202,81 @@ export default function Dashboard() {
       </div>
 
       {/* Alerts */}
-      {(summary?.nextService?.kmRemaining !== undefined && summary.nextService.kmRemaining <= 500) && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-400 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {summary.nextService.kmRemaining <= 0
-                  ? `Service overdue: ${summary.nextService.name}`
-                  : `Service due soon: ${summary.nextService.name}`}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {summary.nextService.kmRemaining <= 0
-                  ? `Overdue by ${Math.abs(summary.nextService.kmRemaining)} ${unit}`
-                  : `Due in ${summary.nextService.kmRemaining} ${unit}`}
-              </p>
-            </div>
-            <Badge
-              variant={summary.nextService.kmRemaining <= 0 ? 'danger' : 'warning'}
-              className="ml-auto"
-            >
-              {summary.nextService.kmRemaining <= 0 ? 'Overdue' : 'Due Soon'}
-            </Badge>
-          </CardContent>
-        </Card>
-      )}
+      <div className="space-y-3">
+        {(summary?.nextService?.kmRemaining !== undefined && summary.nextService.kmRemaining <= 500) && (
+          <Card
+            className="border-amber-500/30 bg-amber-500/5 cursor-pointer"
+            onClick={() => navigate('/schedule')}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {summary.nextService.kmRemaining <= 0
+                    ? `Service overdue: ${summary.nextService.name}`
+                    : `Service due soon: ${summary.nextService.name}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.nextService.kmRemaining <= 0
+                    ? `Overdue by ${Math.abs(summary.nextService.kmRemaining)} ${unit}`
+                    : `Due in ${summary.nextService.kmRemaining} ${unit}`}
+                </p>
+              </div>
+              <Badge
+                variant={summary.nextService.kmRemaining <= 0 ? 'danger' : 'warning'}
+                className="ml-auto"
+              >
+                {summary.nextService.kmRemaining <= 0 ? 'Overdue' : 'Due Soon'}
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {summary?.upcomingDocument && summary.upcomingDocument.daysRemaining <= 30 && (
+          <Card
+            className="border-amber-500/30 bg-amber-500/5 cursor-pointer"
+            onClick={() => navigate('/documents')}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <FileBadge2 className="h-5 w-5 text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {summary.upcomingDocument.daysRemaining <= 0
+                    ? `${summary.upcomingDocument.title} expired`
+                    : `${summary.upcomingDocument.title} expires soon`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.upcomingDocument.daysRemaining <= 0
+                    ? `Expired ${Math.abs(summary.upcomingDocument.daysRemaining)} day(s) ago`
+                    : `In ${summary.upcomingDocument.daysRemaining} day(s)`}
+                </p>
+              </div>
+              <Badge
+                variant={summary.upcomingDocument.daysRemaining <= 0 ? 'danger' : 'warning'}
+                className="ml-auto"
+              >
+                {summary.upcomingDocument.daysRemaining <= 0 ? 'Expired' : 'Soon'}
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {summary?.tireWarning && (
+          <Card
+            className="border-red-500/30 bg-red-500/5 cursor-pointer"
+            onClick={() => navigate('/tires')}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <CircleDot className="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Tire warning</p>
+                <p className="text-xs text-muted-foreground">{summary.tireWarning.reason}</p>
+              </div>
+              <Badge variant="danger" className="ml-auto">Action needed</Badge>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

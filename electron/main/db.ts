@@ -3,6 +3,7 @@ import type { Database as SqlJsDb } from 'sql.js'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { getPresetsForDrivetrain } from './presets/serviceIntervals'
 
 const DB_PATH = path.join(app.getPath('userData'), 'dmax-tracker.db')
 
@@ -122,6 +123,7 @@ export async function initDb(): Promise<void> {
 
   dbInstance = new Db(sqlDb)
   initSchema(dbInstance)
+  migrate(dbInstance)
   seedDefaultData(dbInstance)
   persist()
 }
@@ -131,6 +133,13 @@ export function getDb(): Db {
   return dbInstance
 }
 
+// Helper used by handlers — returns the user's currently-selected vehicle id.
+// Falls back to 1 (the seeded default) if the setting is missing.
+export function getCurrentVehicleId(): number {
+  const row = getDb().prepare("SELECT value FROM settings WHERE key = 'current_vehicle_id'").get() as { value: string } | undefined
+  return row ? parseInt(row.value, 10) || 1 : 1
+}
+
 function initSchema(db: Db): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -138,8 +147,28 @@ function initSchema(db: Db): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nickname TEXT NOT NULL,
+      make TEXT NOT NULL,
+      model TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      trim TEXT,
+      drivetrain TEXT NOT NULL DEFAULT 'petrol-na',
+      vin TEXT,
+      license_plate TEXT,
+      color TEXT,
+      photo TEXT,
+      purchase_date TEXT,
+      purchase_odometer REAL,
+      current_odometer REAL NOT NULL DEFAULT 0,
+      is_archived INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS fuel_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL DEFAULT 1 REFERENCES vehicles(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       odometer REAL NOT NULL,
       litres REAL NOT NULL,
@@ -155,6 +184,7 @@ function initSchema(db: Db): void {
 
     CREATE TABLE IF NOT EXISTS maintenance_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL DEFAULT 1 REFERENCES vehicles(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       odometer REAL NOT NULL,
       category TEXT NOT NULL,
@@ -174,16 +204,20 @@ function initSchema(db: Db): void {
 
     CREATE TABLE IF NOT EXISTS service_intervals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL DEFAULT 1 REFERENCES vehicles(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
+      category_key TEXT,
       interval_km REAL NOT NULL,
       last_done_km REAL,
       last_done_date TEXT,
       is_custom INTEGER NOT NULL DEFAULT 0,
+      consequence_of_skipping TEXT,
       notes TEXT
     );
 
     CREATE TABLE IF NOT EXISTS insurance_policies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL DEFAULT 1 REFERENCES vehicles(id) ON DELETE CASCADE,
       provider TEXT NOT NULL,
       policy_number TEXT NOT NULL,
       coverage_type TEXT NOT NULL,
@@ -206,6 +240,7 @@ function initSchema(db: Db): void {
 
     CREATE TABLE IF NOT EXISTS notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE CASCADE,
       title TEXT NOT NULL,
       body TEXT,
       date TEXT NOT NULL,
@@ -218,50 +253,212 @@ function initSchema(db: Db): void {
       note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
       file_path TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS vehicle_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      doc_type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      reference_number TEXT,
+      issuer TEXT,
+      issued_date TEXT,
+      expiry_date TEXT NOT NULL,
+      cost REAL,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS vehicle_document_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL REFERENCES vehicle_documents(id) ON DELETE CASCADE,
+      photo_path TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS tire_sets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      brand TEXT NOT NULL,
+      model TEXT NOT NULL,
+      size TEXT NOT NULL,
+      dot_date TEXT,
+      install_date TEXT NOT NULL,
+      install_odometer REAL NOT NULL,
+      retired_date TEXT,
+      retired_odometer REAL,
+      recommended_psi_front REAL,
+      recommended_psi_rear REAL,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS tire_inspections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tire_set_id INTEGER NOT NULL REFERENCES tire_sets(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      odometer REAL NOT NULL,
+      tread_fl REAL,
+      tread_fr REAL,
+      tread_rl REAL,
+      tread_rr REAL,
+      pressure_fl REAL,
+      pressure_fr REAL,
+      pressure_rl REAL,
+      pressure_rr REAL,
+      notes TEXT,
+      photo TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS tire_rotations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tire_set_id INTEGER NOT NULL REFERENCES tire_sets(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      odometer REAL NOT NULL,
+      pattern TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `)
 }
 
+interface ColumnInfo { name: string }
+
+function tableHasColumn(db: Db, table: string, column: string): boolean {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as ColumnInfo[]
+  return cols.some(c => c.name === column)
+}
+
+function tableExists(db: Db, table: string): boolean {
+  const row = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name = ?"
+  ).get(table)
+  return !!row
+}
+
+/**
+ * Migrate existing databases (pre-multi-vehicle) to the new schema.
+ *
+ * Strategy: detect missing columns via PRAGMA table_info and ALTER TABLE ADD COLUMN
+ * with sensible defaults (vehicle_id = 1, the seeded default vehicle).
+ *
+ * Safe to run repeatedly — every step checks before applying.
+ */
+function migrate(db: Db): void {
+  const tablesNeedingVehicleId = [
+    'fuel_log', 'maintenance_log', 'service_intervals', 'insurance_policies'
+  ]
+  for (const table of tablesNeedingVehicleId) {
+    if (tableExists(db, table) && !tableHasColumn(db, table, 'vehicle_id')) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN vehicle_id INTEGER NOT NULL DEFAULT 1`)
+    }
+  }
+
+  // notes.vehicle_id is nullable (notes can be global)
+  if (tableExists(db, 'notes') && !tableHasColumn(db, 'notes', 'vehicle_id')) {
+    db.exec(`ALTER TABLE notes ADD COLUMN vehicle_id INTEGER`)
+  }
+
+  // service_intervals new columns
+  if (tableExists(db, 'service_intervals')) {
+    if (!tableHasColumn(db, 'service_intervals', 'category_key')) {
+      db.exec(`ALTER TABLE service_intervals ADD COLUMN category_key TEXT`)
+    }
+    if (!tableHasColumn(db, 'service_intervals', 'consequence_of_skipping')) {
+      db.exec(`ALTER TABLE service_intervals ADD COLUMN consequence_of_skipping TEXT`)
+    }
+  }
+}
+
 function seedDefaultData(db: Db): void {
+  // ─── Global settings ───────────────────────────────────────────────────────
   const settingStmt = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
   settingStmt.run('current_odometer', '0')
+  settingStmt.run('current_vehicle_id', '1')
   settingStmt.run('distance_unit', 'km')
   settingStmt.run('currency', 'BBD')
   settingStmt.run('theme', 'dark')
+  settingStmt.run('notifications_enabled', 'true')
 
-  // Detect stale seed (old schema had wrong diesel entries like Spark Plugs/Timing Belt)
-  const staleEntries = ['Spark Plugs', 'Timing Belt']
-  const hasStale = staleEntries.some(
-    name => (db.prepare('SELECT 1 as ok FROM service_intervals WHERE name = ? AND is_custom = 0').get(name) as { ok: number } | undefined)?.ok === 1
-  )
-  if (hasStale) {
-    db.exec('DELETE FROM service_intervals WHERE is_custom = 0')
-  }
-
-  const { count } = db.prepare(
-    'SELECT COUNT(*) as count FROM service_intervals WHERE is_custom = 0'
+  // ─── Seed default vehicle (the original D-Max) ────────────────────────────
+  const { count: vehicleCount } = db.prepare(
+    'SELECT COUNT(*) as count FROM vehicles'
   ).get() as { count: number }
 
-  if (count === 0) {
-    const insert = db.prepare(
-      'INSERT INTO service_intervals (name, interval_km, is_custom) VALUES (?, ?, 0)'
+  if (vehicleCount === 0) {
+    const odometer = parseFloat(
+      (db.prepare("SELECT value FROM settings WHERE key = 'current_odometer'").get() as { value: string } | undefined)?.value ?? '0'
     )
-    // Service intervals sourced from Isuzu 4JJ3-TCX 3.0TD official schedule
-    const seed = db.transaction(() => {
-      insert.run('Oil and Filter Change', 10000)           // Every 10,000 km / 6 months
-      insert.run('Fuel Filter Water Separator Drain', 10000) // Drain every 10,000 km (diesel)
-      insert.run('Air Filter Inspection / Replace', 30000)  // 30,000 km (halve in dusty conditions)
-      insert.run('Valve Clearance (Tappet) Check', 40000)   // 4JJ3 spec
-      insert.run('Fuel Filter Replacement', 40000)
-      insert.run('Brake Fluid', 40000)                     // Or every 2 years
-      insert.run('Transfer Case Oil', 40000)               // 4WD V-Cross
-      insert.run('Differential Oil (Front & Rear)', 40000) // 4WD V-Cross
-      insert.run('Glow Plugs', 60000)                      // Diesel equivalent of spark plugs
-      insert.run('Automatic Transmission Fluid', 60000)    // Or every 2 years
-      insert.run('Drive Belt (Auxiliary / Serpentine)', 80000)
-      insert.run('Coolant Flush', 80000)                   // Or every 2 years
-      insert.run('DPF (Diesel Particulate Filter) Inspect', 80000) // 2022 model has DPF
-      insert.run('Timing Chain & Tensioner Inspection', 150000)    // Chain, not belt — no replacement needed
-    })
-    seed()
+    db.prepare(`
+      INSERT INTO vehicles (id, nickname, make, model, year, drivetrain, current_odometer)
+      VALUES (1, 'D-Max', 'Isuzu', 'D-Max', 2022, 'diesel', ?)
+    `).run(odometer)
   }
+
+  // ─── Heal stale diesel seed (pre-existing rows from old schema) ───────────
+  const staleEntries = ['Spark Plugs', 'Timing Belt']
+  const hasStale = staleEntries.some(name => {
+    const row = db.prepare(
+      'SELECT 1 as ok FROM service_intervals WHERE name = ? AND is_custom = 0 AND vehicle_id = 1'
+    ).get(name) as { ok: number } | undefined
+    return row?.ok === 1
+  })
+  if (hasStale) {
+    db.exec('DELETE FROM service_intervals WHERE is_custom = 0 AND vehicle_id = 1')
+  }
+
+  // ─── Seed service intervals for vehicle 1 if empty ────────────────────────
+  const { count: intervalCount } = db.prepare(
+    'SELECT COUNT(*) as count FROM service_intervals WHERE vehicle_id = 1 AND is_custom = 0'
+  ).get() as { count: number }
+
+  if (intervalCount === 0) {
+    seedIntervalsForVehicle(db, 1, 'diesel')
+  } else {
+    // Backfill consequence_of_skipping + category_key on existing seeded rows
+    // by matching name → preset.
+    backfillIntervalMetadata(db, 1, 'diesel')
+  }
+}
+
+export function seedIntervalsForVehicle(db: Db, vehicleId: number, drivetrain: string): void {
+  const presets = getPresetsForDrivetrain(drivetrain)
+  const insert = db.prepare(`
+    INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, is_custom, consequence_of_skipping)
+    VALUES (@vehicle_id, @name, @category_key, @interval_km, 0, @consequence_of_skipping)
+  `)
+  const seed = db.transaction(() => {
+    for (const p of presets) {
+      insert.run({
+        vehicle_id: vehicleId,
+        name: p.name,
+        category_key: p.category_key,
+        interval_km: p.interval_km,
+        consequence_of_skipping: p.consequence_of_skipping,
+      })
+    }
+  })
+  seed()
+}
+
+function backfillIntervalMetadata(db: Db, vehicleId: number, drivetrain: string): void {
+  const presets = getPresetsForDrivetrain(drivetrain)
+  const update = db.prepare(`
+    UPDATE service_intervals
+       SET category_key = @category_key,
+           consequence_of_skipping = COALESCE(consequence_of_skipping, @consequence_of_skipping)
+     WHERE vehicle_id = @vehicle_id
+       AND is_custom = 0
+       AND name = @name
+  `)
+  const run = db.transaction(() => {
+    for (const p of presets) {
+      update.run({
+        vehicle_id: vehicleId,
+        name: p.name,
+        category_key: p.category_key,
+        consequence_of_skipping: p.consequence_of_skipping,
+      })
+    }
+  })
+  run()
 }

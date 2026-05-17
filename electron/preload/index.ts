@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('api', {
+  vehicles: {
+    getAll: () => ipcRenderer.invoke('vehicles:getAll'),
+    get: (id: number) => ipcRenderer.invoke('vehicles:get', id),
+    add: (vehicle: unknown) => ipcRenderer.invoke('vehicles:add', vehicle),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('vehicles:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('vehicles:delete', id),
+    setCurrent: (id: number) => ipcRenderer.invoke('vehicles:setCurrent', id),
+  },
   fuel: {
     getAll: () => ipcRenderer.invoke('fuel:getAll'),
     add: (entry: unknown) => ipcRenderer.invoke('fuel:add', entry),
@@ -12,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
     add: (entry: unknown) => ipcRenderer.invoke('maintenance:add', entry),
     update: (id: number, entry: unknown) => ipcRenderer.invoke('maintenance:update', id, entry),
     delete: (id: number) => ipcRenderer.invoke('maintenance:delete', id),
+    findMatchingInterval: (category: string, description: string) =>
+      ipcRenderer.invoke('maintenance:findMatchingInterval', category, description),
   },
   schedule: {
     getAll: () => ipcRenderer.invoke('schedule:getAll'),
@@ -20,6 +30,8 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: number) => ipcRenderer.invoke('schedule:delete', id),
     complete: (id: number, odometer: number, date: string) =>
       ipcRenderer.invoke('schedule:complete', id, odometer, date),
+    markDone: (id: number, odometer: number, date: string) =>
+      ipcRenderer.invoke('schedule:markDone', id, odometer, date),
   },
   insurance: {
     getAll: () => ipcRenderer.invoke('insurance:getAll'),
@@ -56,5 +68,29 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('expenses:getSummary', startDate, endDate),
     exportCsv: (startDate?: string, endDate?: string, category?: string) =>
       ipcRenderer.invoke('expenses:exportCsv', startDate, endDate, category),
+  },
+  tires: {
+    getSets: () => ipcRenderer.invoke('tires:getSets'),
+    addSet: (set: unknown) => ipcRenderer.invoke('tires:addSet', set),
+    updateSet: (id: number, data: unknown) => ipcRenderer.invoke('tires:updateSet', id, data),
+    deleteSet: (id: number) => ipcRenderer.invoke('tires:deleteSet', id),
+    retireSet: (id: number, date: string, odometer: number) =>
+      ipcRenderer.invoke('tires:retireSet', id, date, odometer),
+    getInspections: (tireSetId: number) => ipcRenderer.invoke('tires:getInspections', tireSetId),
+    addInspection: (inspection: unknown) => ipcRenderer.invoke('tires:addInspection', inspection),
+    deleteInspection: (id: number) => ipcRenderer.invoke('tires:deleteInspection', id),
+    getRotations: (tireSetId: number) => ipcRenderer.invoke('tires:getRotations', tireSetId),
+    addRotation: (rotation: unknown) => ipcRenderer.invoke('tires:addRotation', rotation),
+    deleteRotation: (id: number) => ipcRenderer.invoke('tires:deleteRotation', id),
+  },
+  documents: {
+    getAll: () => ipcRenderer.invoke('documents:getAll'),
+    add: (doc: unknown) => ipcRenderer.invoke('documents:add', doc),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('documents:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('documents:delete', id),
+  },
+  notifications: {
+    check: () => ipcRenderer.invoke('notifications:check'),
+    test: () => ipcRenderer.invoke('notifications:test'),
   },
 })

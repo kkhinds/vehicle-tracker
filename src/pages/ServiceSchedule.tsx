@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, CheckCircle, Calendar, AlertTriangle, Trash2, Pencil } from 'lucide-react'
+import { Plus, CheckCircle, Calendar, AlertTriangle, Trash2, Pencil, Info, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { useSettings } from '@/hooks/useSettings'
+import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
 import type { ServiceInterval } from '@/types'
 
@@ -41,6 +42,8 @@ export default function ServiceSchedule() {
   const [completeTarget, setCompleteTarget] = useState<ServiceInterval | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const { settings } = useSettings()
+  const { currentVehicleId } = useVehicles()
+  const [expandedId, setExpandedId] = useState<number | null>(null)
   const unit = settings.distance_unit
 
   const {
@@ -59,7 +62,7 @@ export default function ServiceSchedule() {
     setIntervals(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [currentVehicleId])
 
   function openAddCustom() {
     setEditTarget(null)
@@ -86,6 +89,8 @@ export default function ServiceSchedule() {
       last_done_date: data.last_done_date || null,
       notes: data.notes || null,
       is_custom: editTarget ? editTarget.is_custom : true,
+      category_key: editTarget?.category_key ?? null,
+      consequence_of_skipping: editTarget?.consequence_of_skipping ?? null,
     }
     if (editTarget) {
       await window.api.schedule.update(editTarget.id, payload)
@@ -133,6 +138,8 @@ export default function ServiceSchedule() {
     const pct = interval.last_done_km && interval.next_due_km
       ? Math.max(0, Math.min(100, ((settings.current_odometer - interval.last_done_km) / interval.interval_km) * 100))
       : 0
+    const expanded = expandedId === interval.id
+    const hasWhy = !!interval.consequence_of_skipping
 
     return (
       <Card className={interval.status === 'overdue' ? 'border-red-500/30' : interval.status === 'due-soon' ? 'border-amber-500/30' : ''}>
@@ -165,6 +172,25 @@ export default function ServiceSchedule() {
                   style={{ width: `${Math.min(100, pct)}%` }}
                 />
               </div>
+
+              {hasWhy && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expanded ? null : interval.id)}
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <Info className="h-3 w-3" />
+                    Why this matters
+                    {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                  {expanded && (
+                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed bg-muted/50 rounded p-2.5">
+                      {interval.consequence_of_skipping}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
             <div className="flex gap-1 shrink-0">
               <Button variant="ghost" size="icon" className="h-8 w-8 text-green-400" title="Mark complete" onClick={() => openComplete(interval)}>
