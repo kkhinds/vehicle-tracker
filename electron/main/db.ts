@@ -3,9 +3,29 @@ import type { Database as SqlJsDb } from 'sql.js'
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { createRequire } from 'module'
 import { getPresetsForDrivetrain } from './presets/serviceIntervals'
 
 const DB_PATH = path.join(app.getPath('userData'), 'dmax-tracker.db')
+
+// Resolve sql.js's actual install location (could be in a parent node_modules
+// when running from a git worktree without its own deps installed).
+const requireFromHere = createRequire(import.meta.url)
+function locateSqlJsFile(file: string): string {
+  // Prefer the app's bundled location for production builds.
+  const bundled = path.join(app.getAppPath(), 'node_modules', 'sql.js', 'dist', file)
+  if (fs.existsSync(bundled)) return bundled
+  // Fall back to wherever Node actually resolves sql.js — handles worktrees,
+  // hoisted monorepos, and any other non-flat install layout. sql.js uses
+  // package `exports` that block resolving `./package.json` directly, so we
+  // resolve the main entry (which lives in `dist/`) and use its directory.
+  try {
+    const mainEntry = requireFromHere.resolve('sql.js')
+    return path.join(path.dirname(mainEntry), file)
+  } catch {
+    return bundled
+  }
+}
 
 let sqlDb: SqlJsDb | null = null
 let inTx = false
@@ -112,10 +132,7 @@ class Db {
 let dbInstance: Db | null = null
 
 export async function initDb(): Promise<void> {
-  const SQL = await initSqlJs({
-    locateFile: (file: string) =>
-      path.join(app.getAppPath(), 'node_modules', 'sql.js', 'dist', file)
-  })
+  const SQL = await initSqlJs({ locateFile: locateSqlJsFile })
 
   const buffer = fs.existsSync(DB_PATH) ? fs.readFileSync(DB_PATH) : null
   sqlDb = buffer ? new SQL.Database(buffer) : new SQL.Database()
