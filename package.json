@@ -1,7 +1,7 @@
 {
-  "name": "dmax-tracker",
-  "version": "1.0.0",
-  "description": "D-Max Tracker - Vehicle Management App for 2022 Isuzu D-Max 3.0TD",
+  "name": "vehicle-tracker",
+  "version": "2.0.0",
+  "description": "Vehicle Tracker by Kemar Hinds — household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
   "main": "out/main/index.js",
   "author": "Kemar Hinds",
   "license": "MIT",
@@ -56,8 +56,8 @@
     "typescript": "^5.4.5"
   },
   "build": {
-    "appId": "com.dmax.tracker",
-    "productName": "D-Max Tracker",
+    "appId": "com.kemarhinds.vehicletracker",
+    "productName": "Vehicle Tracker",
     "directories": {
       "output": "dist"
     },
