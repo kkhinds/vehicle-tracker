@@ -21,7 +21,17 @@ function Calendar({
         months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
         month: 'space-y-4',
         caption: 'flex justify-center pt-1 relative items-center',
-        caption_label: 'text-sm font-medium',
+        // Hide the redundant "May 2026" label when month+year dropdowns are shown.
+        caption_label: 'text-sm font-medium hidden',
+        caption_dropdowns: 'flex justify-center gap-1',
+        // Native <select> needs explicit dark-theme styling — otherwise it inherits
+        // the OS default which renders white-on-white in dark mode on Windows.
+        dropdown: 'inline-flex h-7 items-center rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring',
+        dropdown_month: '',
+        dropdown_year: '',
+        // react-day-picker emits hidden "Month:" / "Year:" labels for screen
+        // readers; they show by default if vhidden isn't styled to actually hide.
+        vhidden: 'sr-only',
         nav: 'space-x-1 flex items-center',
         nav_button: cn(
           buttonVariants({ variant: 'outline' }),

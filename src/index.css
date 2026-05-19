@@ -57,6 +57,15 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  /* Tell the browser to render native form controls (incl. <select> dropdown
+     popups) using the dark color scheme — otherwise Chromium falls back to
+     OS defaults and produces white-on-white text in the month/year pickers. */
+  html.dark {
+    color-scheme: dark;
+  }
+  html:not(.dark) {
+    color-scheme: light;
+  }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
