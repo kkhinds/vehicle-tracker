@@ -58,14 +58,27 @@ export default function FuelLog() {
     defaultValues: { date: todayISO(), full_tank: true },
   })
 
+  // Track which of the two price fields the user last edited so we can derive
+  // the other one. Most people in BB look at the pump's "TOTAL" rather than
+  // the per-litre price, so default to deriving cost_per_litre from total.
+  const [lastEditedPrice, setLastEditedPrice] = useState<'per_litre' | 'total'>('total')
   const litres = watch('litres')
   const costPerLitre = watch('cost_per_litre')
+  const totalCost = watch('total_cost')
 
   useEffect(() => {
-    if (litres && costPerLitre) {
-      setValue('total_cost', Math.round(litres * costPerLitre * 100) / 100)
+    const l = Number(litres)
+    if (!l || l <= 0) return
+    if (lastEditedPrice === 'per_litre') {
+      const cpl = Number(costPerLitre)
+      if (!cpl || cpl <= 0) return
+      setValue('total_cost', Math.round(l * cpl * 100) / 100, { shouldValidate: false })
+    } else {
+      const tc = Number(totalCost)
+      if (!tc || tc <= 0) return
+      setValue('cost_per_litre', Math.round((tc / l) * 1000) / 1000, { shouldValidate: false })
     }
-  }, [litres, costPerLitre, setValue])
+  }, [litres, costPerLitre, totalCost, lastEditedPrice, setValue])
 
   async function load() {
     const data = await window.api.fuel.getAll()
@@ -279,13 +292,31 @@ export default function FuelLog() {
                 {errors.litres && <p className="text-xs text-destructive">{errors.litres.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Cost/Litre *</Label>
-                <Input type="number" step="0.001" {...register('cost_per_litre')} />
+                <Label>
+                  Cost/Litre *
+                  {lastEditedPrice === 'total' && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">auto</span>}
+                </Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  {...register('cost_per_litre', {
+                    onChange: () => setLastEditedPrice('per_litre'),
+                  })}
+                />
                 {errors.cost_per_litre && <p className="text-xs text-destructive">{errors.cost_per_litre.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Total Cost *</Label>
-                <Input type="number" step="0.01" {...register('total_cost')} />
+                <Label>
+                  Total Cost *
+                  {lastEditedPrice === 'per_litre' && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">auto</span>}
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...register('total_cost', {
+                    onChange: () => setLastEditedPrice('total'),
+                  })}
+                />
                 {errors.total_cost && <p className="text-xs text-destructive">{errors.total_cost.message}</p>}
               </div>
             </div>
