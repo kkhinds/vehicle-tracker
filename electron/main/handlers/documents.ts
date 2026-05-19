@@ -9,7 +9,7 @@ interface DocumentRow {
   reference_number: string | null
   issuer: string | null
   issued_date: string | null
-  expiry_date: string
+  expiry_date: string | null
   cost: number | null
   notes: string | null
   created_at: string
@@ -23,6 +23,9 @@ function getPhotos(db: ReturnType<typeof import('../db').getDb>, documentId: num
 }
 
 function computeStatus(row: DocumentRow) {
+  if (!row.expiry_date) {
+    return { days_remaining: null, status: 'no-expiry' as const }
+  }
   const now = new Date()
   const expiry = new Date(row.expiry_date)
   const daysRemaining = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
@@ -37,8 +40,10 @@ export function registerDocumentHandlers(): void {
 
   ipcMain.handle('documents:getAll', () => {
     const vehicleId = getCurrentVehicleId()
+    // ORDER BY expiry_date IS NULL puts non-expiring docs at the bottom,
+    // then ascending by expiry_date so soonest-to-expire is on top.
     const rows = db.prepare(
-      'SELECT * FROM vehicle_documents WHERE vehicle_id = ? ORDER BY expiry_date ASC'
+      'SELECT * FROM vehicle_documents WHERE vehicle_id = ? ORDER BY expiry_date IS NULL, expiry_date ASC'
     ).all(vehicleId) as DocumentRow[]
     return rows.map(row => ({ ...row, ...computeStatus(row), photos: getPhotos(db, row.id) }))
   })

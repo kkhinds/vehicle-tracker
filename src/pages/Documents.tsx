@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, FileBadge2, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileBadge2, AlertTriangle, Infinity as InfinityIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
@@ -31,10 +32,17 @@ const schema = z.object({
   reference_number: z.string().optional(),
   issuer: z.string().optional(),
   issued_date: z.string().optional(),
-  expiry_date: z.string().min(1, 'Expiry date is required — this is what gets you reminded'),
+  no_expiry: z.boolean().default(false),
+  expiry_date: z.string().optional(),
   cost: z.coerce.number().min(0).optional(),
   notes: z.string().optional(),
-})
+}).refine(
+  (data) => data.no_expiry || (data.expiry_date && data.expiry_date.length > 0),
+  {
+    message: "Set an expiry date or tick \"Doesn't expire\"",
+    path: ['expiry_date'],
+  }
+)
 type FormData = z.infer<typeof schema>
 
 const DEFAULT_TITLE_FOR_TYPE: Record<DocumentType, string> = {
@@ -59,7 +67,7 @@ export default function Documents() {
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { doc_type: 'registration', expiry_date: '' },
+    defaultValues: { doc_type: 'registration', expiry_date: '', no_expiry: false },
   })
 
   async function load() {
@@ -78,6 +86,7 @@ export default function Documents() {
       reference_number: '',
       issuer: '',
       issued_date: '',
+      no_expiry: false,
       expiry_date: '',
       cost: undefined,
       notes: '',
@@ -94,7 +103,8 @@ export default function Documents() {
       reference_number: doc.reference_number ?? '',
       issuer: doc.issuer ?? '',
       issued_date: doc.issued_date ?? '',
-      expiry_date: doc.expiry_date,
+      no_expiry: doc.expiry_date === null,
+      expiry_date: doc.expiry_date ?? '',
       cost: doc.cost ?? undefined,
       notes: doc.notes ?? '',
     })
@@ -102,13 +112,15 @@ export default function Documents() {
   }
 
   async function onSubmit(data: FormData) {
+    const { no_expiry, ...rest } = data
     const payload = {
-      ...data,
-      reference_number: data.reference_number || null,
-      issuer: data.issuer || null,
-      issued_date: data.issued_date || null,
-      cost: data.cost ?? null,
-      notes: data.notes || null,
+      ...rest,
+      reference_number: rest.reference_number || null,
+      issuer: rest.issuer || null,
+      issued_date: rest.issued_date || null,
+      expiry_date: no_expiry ? null : (rest.expiry_date || null),
+      cost: rest.cost ?? null,
+      notes: rest.notes || null,
       photos,
     }
     if (editing) {
@@ -144,10 +156,12 @@ export default function Documents() {
   const overdue = documents.filter(d => d.status === 'overdue')
   const dueSoon = documents.filter(d => d.status === 'due-soon')
   const ok = documents.filter(d => d.status === 'ok')
+  const noExpiry = documents.filter(d => d.status === 'no-expiry')
 
   function getStatusBadge(d: VehicleDocument) {
     if (d.status === 'overdue') return <Badge variant="danger">Expired</Badge>
     if (d.status === 'due-soon') return <Badge variant="warning">Expires soon</Badge>
+    if (d.status === 'no-expiry') return <Badge variant="secondary">No expiry</Badge>
     return <Badge variant="success">Active</Badge>
   }
 
@@ -166,11 +180,17 @@ export default function Documents() {
                 {getStatusBadge(doc)}
               </div>
               <p className="text-sm">
-                {doc.status === 'overdue'
-                  ? <span className="text-red-400">Expired {Math.abs(doc.days_remaining ?? 0)} day(s) ago</span>
-                  : <span className="text-muted-foreground">
-                      Expires {formatDate(doc.expiry_date)} · {doc.days_remaining} day(s) remaining
-                    </span>}
+                {doc.status === 'no-expiry' ? (
+                  <span className="text-muted-foreground inline-flex items-center gap-1">
+                    <InfinityIcon className="h-3.5 w-3.5" /> Doesn't expire
+                  </span>
+                ) : doc.status === 'overdue' ? (
+                  <span className="text-red-400">Expired {Math.abs(doc.days_remaining ?? 0)} day(s) ago</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Expires {doc.expiry_date ? formatDate(doc.expiry_date) : '—'} · {doc.days_remaining} day(s) remaining
+                  </span>
+                )}
               </p>
               {doc.reference_number && (
                 <p className="text-xs text-muted-foreground mt-1">Ref: {doc.reference_number}</p>
@@ -253,6 +273,14 @@ export default function Documents() {
               {ok.map(d => <DocumentCard key={d.id} doc={d} />)}
             </div>
           )}
+          {noExpiry.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                <InfinityIcon className="h-4 w-4" /> No Expiry ({noExpiry.length})
+              </h2>
+              {noExpiry.map(d => <DocumentCard key={d.id} doc={d} />)}
+            </div>
+          )}
         </div>
       )}
 
@@ -287,10 +315,29 @@ export default function Documents() {
                 <Input type="date" {...register('issued_date')} max={todayISO()} />
               </div>
               <div className="space-y-1.5">
-                <Label>Expiry Date *</Label>
-                <Input type="date" {...register('expiry_date')} />
+                <Label className={watch('no_expiry') ? 'text-muted-foreground' : ''}>
+                  Expiry Date {!watch('no_expiry') && '*'}
+                </Label>
+                <Input
+                  type="date"
+                  {...register('expiry_date')}
+                  disabled={watch('no_expiry')}
+                />
                 {errors.expiry_date && <p className="text-xs text-destructive">{errors.expiry_date.message}</p>}
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="no_expiry"
+                checked={watch('no_expiry')}
+                onCheckedChange={checked => {
+                  setValue('no_expiry', checked === true)
+                  if (checked === true) setValue('expiry_date', '')
+                }}
+              />
+              <Label htmlFor="no_expiry" className="cursor-pointer text-sm font-normal">
+                Doesn't expire <span className="text-muted-foreground">(e.g., lifetime warranty, no renewal needed)</span>
+              </Label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

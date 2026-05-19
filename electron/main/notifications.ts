@@ -118,9 +118,9 @@ export function runNotificationCheck(): { fired: number; checked: number } {
       fired++
     }
 
-    // ── Documents (day-based)
+    // ── Documents (day-based). Skip non-expiring docs (NULL expiry).
     const documents = db.prepare(
-      'SELECT id, title, expiry_date, doc_type FROM vehicle_documents WHERE vehicle_id = ?'
+      'SELECT id, title, expiry_date, doc_type FROM vehicle_documents WHERE vehicle_id = ? AND expiry_date IS NOT NULL'
     ).all(v.id) as DocumentRow[]
 
     for (const d of documents) {

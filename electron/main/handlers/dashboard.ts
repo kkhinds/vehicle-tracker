@@ -74,8 +74,9 @@ export function registerDashboardHandlers(): void {
     }
 
     // Upcoming legal/document expiry (registration, road tax, inspection, etc.)
+    // Non-expiring documents (NULL expiry) are excluded — they don't need countdowns.
     const docs = db.prepare(
-      "SELECT id, doc_type, title, expiry_date FROM vehicle_documents WHERE vehicle_id = ? ORDER BY expiry_date ASC"
+      "SELECT id, doc_type, title, expiry_date FROM vehicle_documents WHERE vehicle_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date ASC"
     ).all(vehicleId) as Array<{ id: number; doc_type: string; title: string; expiry_date: string }>
 
     let upcomingDocument = null

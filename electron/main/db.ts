@@ -279,7 +279,7 @@ function initSchema(db: Db): void {
       reference_number TEXT,
       issuer TEXT,
       issued_date TEXT,
-      expiry_date TEXT NOT NULL,
+      expiry_date TEXT,
       cost REAL,
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -338,11 +338,17 @@ function initSchema(db: Db): void {
   `)
 }
 
-interface ColumnInfo { name: string }
+interface ColumnInfo { name: string; notnull: number }
 
 function tableHasColumn(db: Db, table: string, column: string): boolean {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as ColumnInfo[]
   return cols.some(c => c.name === column)
+}
+
+function columnIsNotNull(db: Db, table: string, column: string): boolean {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as ColumnInfo[]
+  const col = cols.find(c => c.name === column)
+  return !!col && col.notnull === 1
 }
 
 function tableExists(db: Db, table: string): boolean {
@@ -373,6 +379,32 @@ function migrate(db: Db): void {
   // notes.vehicle_id is nullable (notes can be global)
   if (tableExists(db, 'notes') && !tableHasColumn(db, 'notes', 'vehicle_id')) {
     db.exec(`ALTER TABLE notes ADD COLUMN vehicle_id INTEGER`)
+  }
+
+  // Relax NOT NULL constraint on vehicle_documents.expiry_date so users can
+  // log items that don't expire (warranties, roadside-assistance contracts,
+  // anything where the renewal model is irrelevant). SQLite can't ALTER COLUMN
+  // to change a constraint, so rebuild the table if it has the old constraint.
+  if (tableExists(db, 'vehicle_documents') && columnIsNotNull(db, 'vehicle_documents', 'expiry_date')) {
+    db.exec(`
+      CREATE TABLE vehicle_documents_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+        doc_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        reference_number TEXT,
+        issuer TEXT,
+        issued_date TEXT,
+        expiry_date TEXT,
+        cost REAL,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO vehicle_documents_new (id, vehicle_id, doc_type, title, reference_number, issuer, issued_date, expiry_date, cost, notes, created_at)
+      SELECT id, vehicle_id, doc_type, title, reference_number, issuer, issued_date, expiry_date, cost, notes, created_at FROM vehicle_documents;
+      DROP TABLE vehicle_documents;
+      ALTER TABLE vehicle_documents_new RENAME TO vehicle_documents;
+    `)
   }
 
   // service_intervals new columns

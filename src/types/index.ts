@@ -158,14 +158,14 @@ export interface VehicleDocument {
   reference_number: string | null
   issuer: string | null
   issued_date: string | null
-  expiry_date: string
+  expiry_date: string | null  // null = doesn't expire (warranty for life, etc.)
   cost: number | null
   notes: string | null
   photos: string[]
   created_at: string
   // Computed
-  days_remaining?: number
-  status?: 'ok' | 'due-soon' | 'overdue'
+  days_remaining?: number | null
+  status?: 'ok' | 'due-soon' | 'overdue' | 'no-expiry'
 }
 
 export const TIRE_POSITIONS = ['FL', 'FR', 'RL', 'RR', 'SPARE'] as const
