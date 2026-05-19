@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Car, Archive, CheckCircle2 } from 'lucide-react'
@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useVehicles } from '@/hooks/useVehicles'
 import { DRIVETRAINS, DRIVETRAIN_LABELS } from '@/types'
 import type { Vehicle, Drivetrain } from '@/types'
@@ -43,7 +44,7 @@ export default function Vehicles() {
   const [editing, setEditing] = useState<Vehicle | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       drivetrain: 'petrol-na',
@@ -270,7 +271,13 @@ export default function Vehicles() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Purchase Date</Label>
-                <Input type="date" {...register('purchase_date')} />
+                <Controller
+                  name="purchase_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value ?? ''} onChange={field.onChange} placeholder="Optional" />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Purchase Odometer (km)</Label>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, FileBadge2, AlertTriangle, Infinity as InfinityIcon } from 'lucide-react'
@@ -20,6 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
@@ -65,7 +66,7 @@ export default function Documents() {
   const { currentVehicleId } = useVehicles()
   const currency = settings.currency
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { doc_type: 'registration', expiry_date: '', no_expiry: false },
   })
@@ -312,16 +313,34 @@ export default function Documents() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Issued Date</Label>
-                <Input type="date" {...register('issued_date')} max={todayISO()} />
+                <Controller
+                  name="issued_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      max={todayISO()}
+                      placeholder="Optional"
+                    />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className={watch('no_expiry') ? 'text-muted-foreground' : ''}>
                   Expiry Date {!watch('no_expiry') && '*'}
                 </Label>
-                <Input
-                  type="date"
-                  {...register('expiry_date')}
-                  disabled={watch('no_expiry')}
+                <Controller
+                  name="expiry_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      disabled={watch('no_expiry')}
+                      placeholder={watch('no_expiry') ? "Doesn't expire" : 'Pick a date'}
+                    />
+                  )}
                 />
                 {errors.expiry_date && <p className="text-xs text-destructive">{errors.expiry_date.message}</p>}
               </div>

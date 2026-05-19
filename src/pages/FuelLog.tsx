@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Fuel } from 'lucide-react'
@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
@@ -53,7 +54,7 @@ export default function FuelLog() {
   const currency = settings.currency
   const unit = settings.distance_unit
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { date: todayISO(), full_tank: true },
   })
@@ -276,7 +277,13 @@ export default function FuelLog() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Date *</Label>
-                <Input type="date" {...register('date')} />
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                  )}
+                />
                 {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
               </div>
               <div className="space-y-1.5">

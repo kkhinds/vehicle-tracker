@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, FileText, Search } from 'lucide-react'
@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
 import type { Note } from '@/types'
@@ -36,7 +37,7 @@ export default function Notes() {
   const [searching, setSearching] = useState(false)
   const { currentVehicleId } = useVehicles()
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { date: todayISO() },
   })
@@ -173,7 +174,13 @@ export default function Notes() {
             </div>
             <div className="space-y-1.5">
               <Label>Date</Label>
-              <Input type="date" {...register('date')} />
+              <Controller
+                name="date"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                )}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Body</Label>

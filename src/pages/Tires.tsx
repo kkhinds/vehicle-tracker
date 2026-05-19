@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, CircleDot, AlertTriangle, History, Gauge, RotateCw } from 'lucide-react'
@@ -19,6 +19,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
@@ -471,7 +472,13 @@ export default function Tires() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Install Date *</Label>
-                <Input type="date" {...setForm.register('install_date')} />
+                <Controller
+                name="install_date"
+                control={setForm.control}
+                render={({ field }) => (
+                  <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                )}
+              />
               </div>
               <div className="space-y-1.5">
                 <Label>Install Odometer ({unit}) *</Label>
@@ -513,7 +520,13 @@ export default function Tires() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Date *</Label>
-                <Input type="date" {...inspForm.register('date')} />
+                <Controller
+                  name="date"
+                  control={inspForm.control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Odometer ({unit}) *</Label>
@@ -561,7 +574,13 @@ export default function Tires() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Date *</Label>
-                <Input type="date" {...rotForm.register('date')} />
+                <Controller
+                  name="date"
+                  control={rotForm.control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Odometer ({unit}) *</Label>

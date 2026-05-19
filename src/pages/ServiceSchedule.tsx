@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, CheckCircle, Calendar, AlertTriangle, Trash2, Pencil, Info, ChevronDown, ChevronUp } from 'lucide-react'
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
+import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
@@ -47,11 +48,11 @@ export default function ServiceSchedule() {
   const unit = settings.distance_unit
 
   const {
-    register: regI, handleSubmit: handleI, reset: resetI, formState: { errors: errI }
+    register: regI, handleSubmit: handleI, reset: resetI, control: controlI, formState: { errors: errI }
   } = useForm<IntervalForm>({ resolver: zodResolver(intervalSchema) })
 
   const {
-    register: regC, handleSubmit: handleC, reset: resetC, formState: { errors: errC }
+    register: regC, handleSubmit: handleC, reset: resetC, control: controlC, formState: { errors: errC }
   } = useForm<CompleteForm>({
     resolver: zodResolver(completeSchema),
     defaultValues: { date: todayISO(), odometer: settings.current_odometer },
@@ -277,7 +278,13 @@ export default function ServiceSchedule() {
               </div>
               <div className="space-y-1.5">
                 <Label>Last Done Date</Label>
-                <Input type="date" {...regI('last_done_date')} />
+                <Controller
+                name="last_done_date"
+                control={controlI}
+                render={({ field }) => (
+                  <DatePicker value={field.value ?? ''} onChange={field.onChange} placeholder="Optional" />
+                )}
+              />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -307,7 +314,13 @@ export default function ServiceSchedule() {
             </div>
             <div className="space-y-1.5">
               <Label>Date *</Label>
-              <Input type="date" {...regC('date')} />
+              <Controller
+                name="date"
+                control={controlC}
+                render={({ field }) => (
+                  <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                )}
+              />
               {errC.date && <p className="text-xs text-destructive">{errC.date.message}</p>}
             </div>
             <p className="text-xs text-muted-foreground">

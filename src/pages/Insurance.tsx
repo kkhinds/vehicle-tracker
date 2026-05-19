@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Shield, AlertCircle, ArchiveX } from 'lucide-react'
@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import PhotoUpload from '@/components/shared/PhotoUpload'
 import EmptyState from '@/components/shared/EmptyState'
+import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
@@ -58,7 +59,7 @@ export default function Insurance() {
   const { currentVehicleId } = useVehicles()
   const currency = settings.currency
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       coverage_type: 'comprehensive',
@@ -285,11 +286,23 @@ export default function Insurance() {
               </div>
               <div className="space-y-1.5">
                 <Label>Start Date *</Label>
-                <Input type="date" {...register('start_date')} />
+                <Controller
+                  name="start_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                  )}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Renewal Date *</Label>
-                <Input type="date" {...register('renewal_date')} />
+                <Controller
+                  name="renewal_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePicker value={field.value} onChange={field.onChange} allowClear={false} />
+                  )}
+                />
                 {errors.renewal_date && <p className="text-xs text-destructive">{errors.renewal_date.message}</p>}
               </div>
               <div className="space-y-1.5">
