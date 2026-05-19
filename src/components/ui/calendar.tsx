@@ -6,7 +6,6 @@ import { buttonVariants } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
@@ -35,17 +34,15 @@ function CalendarDropdown({ value, onChange, children }: DropdownProps) {
       <SelectTrigger className="h-7 w-auto gap-1 border-input px-2 text-sm focus:ring-0">
         <SelectValue>{selected?.props.children}</SelectValue>
       </SelectTrigger>
-      <SelectContent position="popper">
-        <ScrollArea className="h-80">
-          {options.map((opt, idx) => (
-            <SelectItem
-              key={`${opt.props.value}-${idx}`}
-              value={opt.props.value?.toString() ?? ''}
-            >
-              {opt.props.children}
-            </SelectItem>
-          ))}
-        </ScrollArea>
+      <SelectContent position="popper" className="max-h-[15rem]">
+        {options.map((opt, idx) => (
+          <SelectItem
+            key={`${opt.props.value}-${idx}`}
+            value={opt.props.value?.toString() ?? ''}
+          >
+            {opt.props.children}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   )
