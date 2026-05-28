@@ -106,6 +106,36 @@ interface ElectronAPI {
     check: () => Promise<NotificationCheckResult>
     test: () => Promise<boolean>
   }
+  backup: {
+    getStatus: () => Promise<BackupStatus>
+    updateSettings: (partial: Partial<{
+      enabled: boolean; frequency: BackupFrequency; retention: number
+    }>) => Promise<BackupStatus>
+    createNow: () => Promise<BackupFile>
+    export: () => Promise<string | null>
+    pickRestoreFile: () => Promise<string | null>
+    restore: (filePath: string) => Promise<void>
+    delete: (filePath: string) => Promise<BackupStatus>
+    openFolder: () => Promise<void>
+  }
+}
+
+export type BackupFrequency = 'on_open' | 'daily' | 'weekly' | 'manual'
+
+export interface BackupFile {
+  name: string
+  path: string
+  size: number
+  createdAt: string
+}
+
+export interface BackupStatus {
+  enabled: boolean
+  frequency: BackupFrequency
+  retention: number
+  backupsDir: string
+  lastBackupAt: string | null
+  backups: BackupFile[]
 }
 
 declare global {

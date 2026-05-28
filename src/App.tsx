@@ -13,6 +13,7 @@ import Settings from '@/pages/Settings'
 import Vehicles from '@/pages/Vehicles'
 import Tires from '@/pages/Tires'
 import Documents from '@/pages/Documents'
+import WelcomeDialog from '@/components/shared/WelcomeDialog'
 import { SettingsContext } from '@/hooks/useSettings'
 import { VehiclesContext } from '@/hooks/useVehicles'
 import type { AppSettings, Vehicle } from '@/types'
@@ -25,6 +26,7 @@ export default function App() {
     currency: 'BBD',
     theme: 'dark',
     notifications_enabled: true,
+    has_seen_welcome: false,
   })
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
 
@@ -49,6 +51,11 @@ export default function App() {
     refreshSettings()
     refreshVehicles()
   }, [refreshSettings, refreshVehicles])
+
+  async function dismissWelcome() {
+    await window.api.settings.update({ has_seen_welcome: true })
+    await refreshSettings()
+  }
 
   const currentVehicle = vehicles.find(v => v.id === settings.current_vehicle_id) ?? null
 
@@ -80,6 +87,7 @@ export default function App() {
           </Layout>
         </HashRouter>
         <Toaster richColors position="bottom-right" />
+        <WelcomeDialog open={!settings.has_seen_welcome} onDismiss={dismissWelcome} />
       </VehiclesContext.Provider>
     </SettingsContext.Provider>
   )

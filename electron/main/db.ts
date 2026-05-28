@@ -427,6 +427,10 @@ function seedDefaultData(db: Db): void {
   settingStmt.run('currency', 'BBD')
   settingStmt.run('theme', 'dark')
   settingStmt.run('notifications_enabled', 'true')
+  settingStmt.run('has_seen_welcome', 'false')
+  settingStmt.run('backup_enabled', 'true')
+  settingStmt.run('backup_frequency', 'daily')
+  settingStmt.run('backup_retention', '10')
 
   // ─── Seed default vehicle (the original D-Max) ────────────────────────────
   const { count: vehicleCount } = db.prepare(

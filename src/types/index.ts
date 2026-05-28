@@ -228,6 +228,7 @@ export interface AppSettings {
   currency: string
   theme: 'dark' | 'light'
   notifications_enabled: boolean
+  has_seen_welcome: boolean
 }
 
 export interface ActivityEntry {

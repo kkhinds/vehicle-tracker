@@ -14,6 +14,7 @@ export const SettingsContext = createContext<SettingsContextValue>({
     currency: 'BBD',
     theme: 'dark',
     notifications_enabled: true,
+    has_seen_welcome: false,
   },
   refreshSettings: async () => {},
 })

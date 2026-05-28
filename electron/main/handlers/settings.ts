@@ -31,6 +31,7 @@ export function registerSettingsHandlers(): void {
       currency: map['currency'] ?? 'BBD',
       theme: map['theme'] ?? 'dark',
       notifications_enabled: (map['notifications_enabled'] ?? 'true') === 'true',
+      has_seen_welcome: (map['has_seen_welcome'] ?? 'false') === 'true',
     }
   })
 

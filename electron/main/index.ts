@@ -15,6 +15,8 @@ import { registerVehicleHandlers } from './handlers/vehicles'
 import { registerTireHandlers } from './handlers/tires'
 import { registerDocumentHandlers } from './handlers/documents'
 import { registerNotificationHandlers, startNotificationScheduler } from './notifications'
+import { registerBackupHandlers } from './handlers/backup'
+import { runStartupBackup } from './backups'
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
@@ -62,6 +64,10 @@ app.whenReady().then(async () => {
 
   await initDb()
 
+  // Auto-backup on startup (idempotent — skips if a backup already exists
+  // for the current frequency bucket).
+  runStartupBackup()
+
   registerVehicleHandlers()
   registerFuelHandlers()
   registerMaintenanceHandlers()
@@ -75,6 +81,7 @@ app.whenReady().then(async () => {
   registerTireHandlers()
   registerDocumentHandlers()
   registerNotificationHandlers()
+  registerBackupHandlers()
 
   createWindow()
   startNotificationScheduler()

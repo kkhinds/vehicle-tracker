@@ -93,4 +93,14 @@ contextBridge.exposeInMainWorld('api', {
     check: () => ipcRenderer.invoke('notifications:check'),
     test: () => ipcRenderer.invoke('notifications:test'),
   },
+  backup: {
+    getStatus: () => ipcRenderer.invoke('backup:getStatus'),
+    updateSettings: (partial: unknown) => ipcRenderer.invoke('backup:updateSettings', partial),
+    createNow: () => ipcRenderer.invoke('backup:createNow'),
+    export: () => ipcRenderer.invoke('backup:export'),
+    pickRestoreFile: () => ipcRenderer.invoke('backup:pickRestoreFile'),
+    restore: (filePath: string) => ipcRenderer.invoke('backup:restore', filePath),
+    delete: (filePath: string) => ipcRenderer.invoke('backup:delete', filePath),
+    openFolder: () => ipcRenderer.invoke('backup:openFolder'),
+  },
 })
