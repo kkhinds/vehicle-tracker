@@ -335,6 +335,18 @@ function initSchema(db: Db): void {
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS fluid_topups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      odometer REAL NOT NULL,
+      fluid_type TEXT NOT NULL,
+      amount REAL NOT NULL,
+      unit TEXT NOT NULL DEFAULT 'ml',
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `)
 }
 

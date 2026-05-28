@@ -17,6 +17,7 @@ import { registerDocumentHandlers } from './handlers/documents'
 import { registerNotificationHandlers, startNotificationScheduler } from './notifications'
 import { registerBackupHandlers } from './handlers/backup'
 import { runStartupBackup } from './backups'
+import { registerFluidHandlers } from './handlers/fluids'
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
@@ -82,6 +83,7 @@ app.whenReady().then(async () => {
   registerDocumentHandlers()
   registerNotificationHandlers()
   registerBackupHandlers()
+  registerFluidHandlers()
 
   createWindow()
   startNotificationScheduler()

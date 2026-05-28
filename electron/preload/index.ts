@@ -93,6 +93,15 @@ contextBridge.exposeInMainWorld('api', {
     check: () => ipcRenderer.invoke('notifications:check'),
     test: () => ipcRenderer.invoke('notifications:test'),
   },
+  fluids: {
+    getPresets: () => ipcRenderer.invoke('fluids:getPresets'),
+    getAll: () => ipcRenderer.invoke('fluids:getAll'),
+    add: (entry: unknown) => ipcRenderer.invoke('fluids:add', entry),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('fluids:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('fluids:delete', id),
+    getStats: () => ipcRenderer.invoke('fluids:getStats'),
+    getDashboardWarning: () => ipcRenderer.invoke('fluids:getDashboardWarning'),
+  },
   backup: {
     getStatus: () => ipcRenderer.invoke('backup:getStatus'),
     updateSettings: (partial: unknown) => ipcRenderer.invoke('backup:updateSettings', partial),

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Fuel, Wrench, Calendar, Shield, DollarSign,
-  TrendingUp, Activity, AlertCircle, FileBadge2, CircleDot
+  TrendingUp, Activity, AlertCircle, FileBadge2, CircleDot, Droplet
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -273,6 +273,24 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground">{summary.tireWarning.reason}</p>
               </div>
               <Badge variant="danger" className="ml-auto">Action needed</Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {summary?.fluidWarning && (
+          <Card
+            className="border-red-500/30 bg-red-500/5 cursor-pointer"
+            onClick={() => navigate('/fluids')}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <Droplet className="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {summary.fluidWarning.fluidLabel}: high consumption
+                </p>
+                <p className="text-xs text-muted-foreground">{summary.fluidWarning.reason}</p>
+              </div>
+              <Badge variant="danger" className="ml-auto">Investigate</Badge>
             </CardContent>
           </Card>
         )}

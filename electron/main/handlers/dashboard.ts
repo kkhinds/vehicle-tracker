@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { FLUID_PRESETS } from '../presets/fluids'
 import type { ActivityEntry, MonthlyTrendEntry, DocumentType } from '../../../src/types'
 
 interface SumRow { total: number | null }
@@ -94,6 +95,9 @@ export function registerDashboardHandlers(): void {
     // Tire warning: active tire set with tread ≤ 3mm OR set > 6 years old
     const tireWarning = computeTireWarning(db, vehicleId, odometer)
 
+    // Fluid warning: any fluid being topped up faster than its threshold
+    const fluidWarning = computeFluidWarning(db, vehicleId, odometer)
+
     // Recent activity
     const recentFuel = db.prepare(
       "SELECT id, date, total_cost as amount, fuel_station as description FROM fuel_log WHERE vehicle_id = ? ORDER BY date DESC, id DESC LIMIT 5"
@@ -153,11 +157,69 @@ export function registerDashboardHandlers(): void {
       insuranceRenewal,
       upcomingDocument,
       tireWarning,
+      fluidWarning,
       recentActivity: activity,
       totalCost: Math.round(totalCost * 100) / 100,
       monthlyTrend,
     }
   })
+}
+
+interface FluidRow {
+  fluid_type: string
+  amount: number
+  unit: string
+  odometer: number
+}
+
+function toMl(amount: number, unit: string): number {
+  switch (unit) {
+    case 'L': return amount * 1000
+    case 'oz': return amount * 29.5735
+    case 'ml':
+    default: return amount
+  }
+}
+
+function fromMl(ml: number, unit: string): number {
+  switch (unit) {
+    case 'L': return ml / 1000
+    case 'oz': return ml / 29.5735
+    case 'ml':
+    default: return ml
+  }
+}
+
+function computeFluidWarning(
+  db: ReturnType<typeof import('../db').getDb>,
+  vehicleId: number,
+  odometer: number,
+): { fluidKey: string; fluidLabel: string; reason: string } | null {
+  const rows = db.prepare(
+    'SELECT fluid_type, amount, unit, odometer FROM fluid_topups WHERE vehicle_id = ?'
+  ).all(vehicleId) as FluidRow[]
+  if (rows.length === 0) return null
+
+  for (const preset of FLUID_PRESETS) {
+    const fluidRows = rows.filter(r => r.fluid_type === preset.key)
+    if (fluidRows.length < 2) continue
+
+    const oldest = fluidRows.reduce((min, r) => r.odometer < min.odometer ? r : min, fluidRows[0])
+    const kmSpan = odometer - oldest.odometer
+    if (kmSpan < 500) continue
+
+    const totalMl = fluidRows.reduce((sum, r) => sum + toMl(r.amount, r.unit), 0)
+    const rate = fromMl((totalMl / kmSpan) * 1000, preset.unit)
+
+    if (rate > preset.warnPerThousandKm) {
+      return {
+        fluidKey: preset.key,
+        fluidLabel: preset.label,
+        reason: `${rate.toFixed(1)} ${preset.unit}/1000 km — above the ${preset.warnPerThousandKm} ${preset.unit} threshold.`,
+      }
+    }
+  }
+  return null
 }
 
 interface TireSetMin {

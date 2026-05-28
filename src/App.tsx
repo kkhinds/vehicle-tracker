@@ -12,6 +12,7 @@ import Notes from '@/pages/Notes'
 import Settings from '@/pages/Settings'
 import Vehicles from '@/pages/Vehicles'
 import Tires from '@/pages/Tires'
+import Fluids from '@/pages/Fluids'
 import Documents from '@/pages/Documents'
 import WelcomeDialog from '@/components/shared/WelcomeDialog'
 import { SettingsContext } from '@/hooks/useSettings'
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/schedule" element={<ServiceSchedule />} />
               <Route path="/tires" element={<Tires />} />
+              <Route path="/fluids" element={<Fluids />} />
               <Route path="/insurance" element={<Insurance />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/expenses" element={<Expenses />} />

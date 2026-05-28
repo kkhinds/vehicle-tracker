@@ -221,6 +221,37 @@ export interface TireRotation {
   created_at: string
 }
 
+export interface FluidTopup {
+  id: number
+  vehicle_id: number
+  date: string
+  odometer: number
+  fluid_type: string  // matches FluidPreset.key
+  amount: number
+  unit: 'ml' | 'L' | 'oz'
+  notes: string | null
+  created_at: string
+}
+
+export interface FluidPresetDTO {
+  key: string
+  label: string
+  unit: 'ml' | 'L' | 'oz'
+  warnPerThousandKm: number
+  meaning: string
+  /** Filtered server-side based on the current vehicle's drivetrain. */
+  relevant: boolean
+}
+
+export interface FluidStat {
+  preset: FluidPresetDTO
+  entries: number
+  totalAmount: number          // in preset.unit, normalized
+  lastTopup: { date: string; amount: number; odometer: number } | null
+  consumptionPer1000Km: number | null  // null if not enough data
+  exceedsThreshold: boolean
+}
+
 export interface AppSettings {
   current_odometer: number  // kept for backward compat; mirrors current vehicle's odometer
   current_vehicle_id: number
@@ -272,6 +303,11 @@ export interface DashboardSummary {
   } | null
   tireWarning: {
     tireSetId: number
+    reason: string
+  } | null
+  fluidWarning: {
+    fluidKey: string
+    fluidLabel: string
     reason: string
   } | null
   recentActivity: ActivityEntry[]

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Fuel, Wrench, Calendar, Shield,
   PieChart, FileText, Settings, Car, CircleDot, FileBadge2,
-  ChevronsUpDown, Plus
+  Droplet, ChevronsUpDown, Plus
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
   { to: '/schedule', icon: Calendar, label: 'Service Schedule' },
   { to: '/tires', icon: CircleDot, label: 'Tires' },
+  { to: '/fluids', icon: Droplet, label: 'Fluids' },
   { to: '/insurance', icon: Shield, label: 'Insurance' },
   { to: '/documents', icon: FileBadge2, label: 'Documents' },
   { to: '/expenses', icon: PieChart, label: 'Expenses' },

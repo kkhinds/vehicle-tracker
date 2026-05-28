@@ -1,7 +1,8 @@
 import type {
   Vehicle, FuelEntry, MaintenanceEntry, ServiceInterval, InsurancePolicy,
   Note, AppSettings, DashboardSummary, ExpenseSummary,
-  TireSet, TireInspection, TireRotation, VehicleDocument
+  TireSet, TireInspection, TireRotation, VehicleDocument,
+  FluidTopup, FluidPresetDTO, FluidStat,
 } from './types'
 
 interface FileDialogOptions {
@@ -105,6 +106,15 @@ interface ElectronAPI {
   notifications: {
     check: () => Promise<NotificationCheckResult>
     test: () => Promise<boolean>
+  }
+  fluids: {
+    getPresets: () => Promise<FluidPresetDTO[]>
+    getAll: () => Promise<FluidTopup[]>
+    add: (entry: Omit<FluidTopup, 'id' | 'created_at' | 'vehicle_id'>) => Promise<FluidTopup>
+    update: (id: number, data: Partial<FluidTopup>) => Promise<void>
+    delete: (id: number) => Promise<void>
+    getStats: () => Promise<FluidStat[]>
+    getDashboardWarning: () => Promise<{ fluidKey: string; fluidLabel: string; reason: string } | null>
   }
   backup: {
     getStatus: () => Promise<BackupStatus>
