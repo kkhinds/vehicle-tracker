@@ -40,6 +40,8 @@ function resolveResource(name: string): string {
 
 let splashWindow: BrowserWindow | null = null
 let mainWindow: BrowserWindow | null = null
+let splashShownAt = 0
+const MIN_SPLASH_MS = 3000  // splash stays visible at least this long, even on a fast launch
 
 function createSplashWindow(): void {
   splashWindow = new BrowserWindow({
@@ -58,7 +60,10 @@ function createSplashWindow(): void {
       nodeIntegration: false,
     },
   })
-  splashWindow.once('ready-to-show', () => splashWindow?.show())
+  splashWindow.once('ready-to-show', () => {
+    splashWindow?.show()
+    splashShownAt = Date.now()
+  })
   splashWindow.loadFile(resolveResource('splash.html'))
 }
 
@@ -82,15 +87,19 @@ function createMainWindow(): void {
   })
 
   mainWindow.once('ready-to-show', () => {
-    // Tiny delay so the splash gets at least one frame of "loading"
-    // even on a fast machine — feels intentional rather than flickery.
+    // Keep the splash on screen for at least MIN_SPLASH_MS, even if the
+    // main window is ready sooner. On a slow launch (DB migration, large
+    // backup, etc.) this is a no-op — the splash was already visible
+    // longer than the minimum.
+    const elapsed = splashShownAt > 0 ? Date.now() - splashShownAt : 0
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed)
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
         splashWindow.close()
         splashWindow = null
       }
       mainWindow?.show()
-    }, 250)
+    }, remaining)
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
