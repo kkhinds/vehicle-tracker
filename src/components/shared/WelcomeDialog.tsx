@@ -4,6 +4,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import AppLogo from '@/components/shared/AppLogo'
 
 interface WelcomeDialogProps {
   open: boolean
@@ -31,8 +32,16 @@ export default function WelcomeDialog({ open, onDismiss }: WelcomeDialogProps) {
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleDismiss() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Welcome to Vehicle Tracker</DialogTitle>
-          <DialogDescription>
+          <div className="flex items-center gap-3">
+            <AppLogo size={48} />
+            <div>
+              <DialogTitle>Welcome to Vehicle Tracker</DialogTitle>
+              <DialogDescription className="mt-0.5">
+                by Kemar Hinds
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogDescription className="pt-3">
             A few things to know before you start logging your vehicles.
           </DialogDescription>
         </DialogHeader>

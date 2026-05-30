@@ -23,12 +23,52 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
 ])
 
-function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+// Resolve a resource shipped under /resources at both dev and production paths.
+// Dev:  <project>/resources/foo
+// Prod: depending on packaging, either inside the asar (app.getAppPath()) or
+//       alongside it via extraResources (process.resourcesPath/...).
+function resolveResource(name: string): string {
+  const candidates = [
+    path.join(app.getAppPath(), 'resources', name),
+    path.join(process.resourcesPath, name),
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return candidates[0]
+}
+
+let splashWindow: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null
+
+function createSplashWindow(): void {
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 320,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    movable: true,
+    skipTaskbar: false,
+    show: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  splashWindow.once('ready-to-show', () => splashWindow?.show())
+  splashWindow.loadFile(resolveResource('splash.html'))
+}
+
+function createMainWindow(): void {
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    icon: resolveResource('icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -41,7 +81,17 @@ function createWindow(): void {
     titleBarStyle: 'default'
   })
 
-  mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.once('ready-to-show', () => {
+    // Tiny delay so the splash gets at least one frame of "loading"
+    // even on a fast machine — feels intentional rather than flickery.
+    setTimeout(() => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close()
+        splashWindow = null
+      }
+      mainWindow?.show()
+    }, 250)
+  })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
@@ -56,6 +106,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Show the splash IMMEDIATELY — before any DB or handler initialization —
+  // so the user sees feedback that the app is starting.
+  createSplashWindow()
+
   protocol.handle('localfile', (request) => {
     const filePath = decodeURIComponent(request.url.replace('localfile://', ''))
     return new Response(fs.readFileSync(filePath), {
@@ -85,11 +139,11 @@ app.whenReady().then(async () => {
   registerBackupHandlers()
   registerFluidHandlers()
 
-  createWindow()
+  createMainWindow()
   startNotificationScheduler()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
   })
 })
 

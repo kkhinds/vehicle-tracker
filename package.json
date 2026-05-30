@@ -73,6 +73,17 @@
     "files": [
       "out/**/*",
       "!out/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": ".",
+        "filter": [
+          "splash.html",
+          "logo.svg",
+          "icon.ico"
+        ]
+      }
     ]
   }
 }

@@ -7,6 +7,7 @@ import {
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useVehicles } from '@/hooks/useVehicles'
+import AppLogo from '@/components/shared/AppLogo'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel
@@ -46,12 +47,10 @@ export default function Sidebar() {
             className="flex items-center gap-3 border-b border-border px-4 py-5 hover:bg-accent/50 transition-colors text-left w-full"
             aria-label="Switch vehicle"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shrink-0">
-              <Car className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <AppLogo size={36} className="shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground leading-tight truncate">
-                {currentVehicle?.nickname ?? 'No vehicle'}
+                {currentVehicle?.nickname ?? 'Vehicle Tracker'}
               </p>
               <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
             </div>
