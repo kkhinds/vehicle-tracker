@@ -106,6 +106,13 @@ function createMainWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Tell Windows this is its own app — otherwise the taskbar groups it
+  // under "Electron" and uses the generic Electron icon, no matter what
+  // we set on the BrowserWindow. Must match build.appId in package.json.
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.kemarhinds.vehicletracker')
+  }
+
   // Show the splash IMMEDIATELY — before any DB or handler initialization —
   // so the user sees feedback that the app is starting.
   createSplashWindow()
