@@ -106,10 +106,6 @@ class Db {
     this.db.exec(sql)
   }
 
-  pragma(_str: string): void {
-    // Handled during init
-  }
-
   transaction<T extends (...args: unknown[]) => unknown>(fn: T): T {
     return ((...args: unknown[]) => {
       this.db.run('BEGIN TRANSACTION')

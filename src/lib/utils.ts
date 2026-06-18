@@ -19,10 +19,12 @@ export function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export function formatNumber(n: number, decimals = 2): string {
-  return n.toFixed(decimals)
-}
-
 export function todayISO(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+export function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }

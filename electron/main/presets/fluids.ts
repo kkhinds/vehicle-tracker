@@ -127,3 +127,19 @@ export function getFluidsForDrivetrain(drivetrain: string): FluidPreset[] {
 export function findFluidPreset(key: string): FluidPreset | undefined {
   return FLUID_PRESETS.find(f => f.key === key)
 }
+
+export function toMl(amount: number, unit: string): number {
+  switch (unit) {
+    case 'L': return amount * 1000
+    case 'oz': return amount * 29.5735
+    default: return amount
+  }
+}
+
+export function fromMl(ml: number, unit: string): number {
+  switch (unit) {
+    case 'L': return ml / 1000
+    case 'oz': return ml / 29.5735
+    default: return ml
+  }
+}

@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
+import { formatSize } from '@/lib/utils'
 import { DRIVETRAIN_LABELS } from '@/types'
 import type { BackupStatus, BackupFrequency } from '@/env'
 import { format } from 'date-fns'
@@ -134,12 +135,6 @@ export default function Settings() {
   async function setRetention(value: number) {
     const status = await window.api.backup.updateSettings({ retention: value })
     setBackupStatus(status)
-  }
-
-  function formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
   }
 
   return (

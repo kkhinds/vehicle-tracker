@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { FLUID_PRESETS } from '../presets/fluids'
+import { FLUID_PRESETS, toMl, fromMl } from '../presets/fluids'
 import type { ActivityEntry, MonthlyTrendEntry, DocumentType } from '../../../src/types'
 
 interface SumRow { total: number | null }
@@ -170,24 +170,6 @@ interface FluidRow {
   amount: number
   unit: string
   odometer: number
-}
-
-function toMl(amount: number, unit: string): number {
-  switch (unit) {
-    case 'L': return amount * 1000
-    case 'oz': return amount * 29.5735
-    case 'ml':
-    default: return amount
-  }
-}
-
-function fromMl(ml: number, unit: string): number {
-  switch (unit) {
-    case 'L': return ml / 1000
-    case 'oz': return ml / 29.5735
-    case 'ml':
-    default: return ml
-  }
 }
 
 function computeFluidWarning(

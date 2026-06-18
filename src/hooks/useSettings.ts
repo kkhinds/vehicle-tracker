@@ -6,19 +6,10 @@ export interface SettingsContextValue {
   refreshSettings: () => Promise<void>
 }
 
-export const SettingsContext = createContext<SettingsContextValue>({
-  settings: {
-    current_odometer: 0,
-    current_vehicle_id: 1,
-    distance_unit: 'km',
-    currency: 'BBD',
-    theme: 'dark',
-    notifications_enabled: true,
-    has_seen_welcome: false,
-  },
-  refreshSettings: async () => {},
-})
+export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
-export function useSettings() {
-  return useContext(SettingsContext)
+export function useSettings(): SettingsContextValue {
+  const ctx = useContext(SettingsContext)
+  if (!ctx) throw new Error('useSettings must be used inside <SettingsContext.Provider>')
+  return ctx
 }

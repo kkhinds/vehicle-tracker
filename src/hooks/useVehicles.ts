@@ -9,14 +9,10 @@ export interface VehiclesContextValue {
   refreshVehicles: () => Promise<void>
 }
 
-export const VehiclesContext = createContext<VehiclesContextValue>({
-  vehicles: [],
-  currentVehicleId: 1,
-  currentVehicle: null,
-  switchVehicle: async () => {},
-  refreshVehicles: async () => {},
-})
+export const VehiclesContext = createContext<VehiclesContextValue | null>(null)
 
-export function useVehicles() {
-  return useContext(VehiclesContext)
+export function useVehicles(): VehiclesContextValue {
+  const ctx = useContext(VehiclesContext)
+  if (!ctx) throw new Error('useVehicles must be used inside <VehiclesContext.Provider>')
+  return ctx
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import Layout from '@/components/layout/Layout'
+import Sidebar from '@/components/layout/Sidebar'
 import Dashboard from '@/pages/Dashboard'
 import FuelLog from '@/pages/FuelLog'
 import Maintenance from '@/pages/Maintenance'
@@ -70,23 +70,26 @@ export default function App() {
         refreshVehicles,
       }}>
         <HashRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/fuel" element={<FuelLog />} />
-              <Route path="/maintenance" element={<Maintenance />} />
-              <Route path="/schedule" element={<ServiceSchedule />} />
-              <Route path="/tires" element={<Tires />} />
-              <Route path="/fluids" element={<Fluids />} />
-              <Route path="/insurance" element={<Insurance />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/notes" element={<Notes />} />
-              <Route path="/vehicles" element={<Vehicles />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </Layout>
+          <div className="flex h-screen overflow-hidden bg-background">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/fuel" element={<FuelLog />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/schedule" element={<ServiceSchedule />} />
+                <Route path="/tires" element={<Tires />} />
+                <Route path="/fluids" element={<Fluids />} />
+                <Route path="/insurance" element={<Insurance />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/expenses" element={<Expenses />} />
+                <Route path="/notes" element={<Notes />} />
+                <Route path="/vehicles" element={<Vehicles />} />
+                <Route path="/settings" element={<Settings />} />
+              </Routes>
+            </main>
+          </div>
         </HashRouter>
         <Toaster richColors position="bottom-right" />
         <WelcomeDialog open={!settings.has_seen_welcome} onDismiss={dismissWelcome} />

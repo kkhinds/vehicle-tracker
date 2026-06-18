@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
-import { FLUID_PRESETS, getFluidsForDrivetrain, findFluidPreset } from '../presets/fluids'
+import { FLUID_PRESETS, getFluidsForDrivetrain, findFluidPreset, toMl, fromMl } from '../presets/fluids'
 
 interface FluidRow {
   id: number
@@ -15,26 +15,6 @@ interface FluidRow {
 }
 
 interface VehicleRow { drivetrain: string; current_odometer: number }
-
-// Convert any amount to a normalized "ml" value for cross-unit aggregation.
-function toMl(amount: number, unit: string): number {
-  switch (unit) {
-    case 'L': return amount * 1000
-    case 'oz': return amount * 29.5735
-    case 'ml':
-    default: return amount
-  }
-}
-
-// Convert ml back to the preset's display unit for the rate/total.
-function fromMl(ml: number, unit: string): number {
-  switch (unit) {
-    case 'L': return ml / 1000
-    case 'oz': return ml / 29.5735
-    case 'ml':
-    default: return ml
-  }
-}
 
 /**
  * Compute consumption rate (in the preset's unit) per 1000 km, based on
