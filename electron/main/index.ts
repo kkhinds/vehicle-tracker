@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, protocol } from 'electron'
+import { app, BrowserWindow, shell, protocol, ipcMain } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initDb } from './db'
@@ -157,6 +157,7 @@ app.whenReady().then(async () => {
   registerBackupHandlers()
   registerFluidHandlers()
   registerUpdaterHandlers()
+  ipcMain.handle('app:getVersion', () => app.getVersion())
 
   createMainWindow()
   startNotificationScheduler()

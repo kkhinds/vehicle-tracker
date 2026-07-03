@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Fuel, Wrench, Calendar, Shield,
@@ -28,6 +29,8 @@ const MANAGE_SENTINEL = '__manage__'
 export default function Sidebar() {
   const { vehicles, currentVehicle, switchVehicle } = useVehicles()
   const navigate = useNavigate()
+  const [version, setVersion] = useState('')
+  useEffect(() => { window.api.app.getVersion().then(setVersion) }, [])
   const activeVehicles = vehicles.filter(v => !v.is_archived)
   const subtitle = currentVehicle
     ? `${currentVehicle.year} ${currentVehicle.make} ${currentVehicle.model}`
@@ -91,7 +94,10 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-border px-4 py-3">
-        <p className="text-xs text-muted-foreground">v2.0.0 · Local only</p>
+        <p className="text-xs text-muted-foreground">
+          {version ? `v${version}` : ''} · Local only
+        </p>
+        <p className="text-[11px] text-muted-foreground/70 mt-0.5">Built by Kemar Hinds</p>
       </div>
     </aside>
   )

@@ -22,6 +22,9 @@ interface NotificationCheckResult {
 }
 
 interface ElectronAPI {
+  app: {
+    getVersion: () => Promise<string>
+  }
   vehicles: {
     getAll: () => Promise<Vehicle[]>
     get: (id: number) => Promise<Vehicle | null>

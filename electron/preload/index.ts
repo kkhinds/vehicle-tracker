@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('api', {
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  },
   vehicles: {
     getAll: () => ipcRenderer.invoke('vehicles:getAll'),
     get: (id: number) => ipcRenderer.invoke('vehicles:get', id),
