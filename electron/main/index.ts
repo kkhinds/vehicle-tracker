@@ -18,6 +18,8 @@ import { registerNotificationHandlers, startNotificationScheduler } from './noti
 import { registerBackupHandlers } from './handlers/backup'
 import { runStartupBackup } from './backups'
 import { registerFluidHandlers } from './handlers/fluids'
+import { registerUpdaterHandlers } from './handlers/updater'
+import { initAutoUpdater } from './updater'
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
@@ -154,9 +156,11 @@ app.whenReady().then(async () => {
   registerNotificationHandlers()
   registerBackupHandlers()
   registerFluidHandlers()
+  registerUpdaterHandlers()
 
   createMainWindow()
   startNotificationScheduler()
+  if (mainWindow) initAutoUpdater(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow()

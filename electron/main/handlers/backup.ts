@@ -2,6 +2,7 @@ import { ipcMain, app } from 'electron'
 import {
   getBackupStatus, setBackupSettings, createBackup, exportBackup,
   pickRestoreFile, restoreFromFile, deleteBackup, openBackupsFolder,
+  chooseBackupsDir, resetBackupsDir,
 } from '../backups'
 
 export function registerBackupHandlers(): void {
@@ -36,4 +37,11 @@ export function registerBackupHandlers(): void {
   })
 
   ipcMain.handle('backup:openFolder', () => openBackupsFolder())
+
+  ipcMain.handle('backup:chooseDir', () => chooseBackupsDir())
+
+  ipcMain.handle('backup:resetDir', () => {
+    resetBackupsDir()
+    return getBackupStatus()
+  })
 }

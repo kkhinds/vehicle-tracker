@@ -6,8 +6,12 @@ import { getDb } from './db'
 // ─── Paths ────────────────────────────────────────────────────────────────
 const USER_DATA = app.getPath('userData')
 const DB_FILE = path.join(USER_DATA, 'dmax-tracker.db')
-const BACKUPS_DIR = path.join(USER_DATA, 'backups')
+const DEFAULT_BACKUPS_DIR = path.join(USER_DATA, 'backups')
 const BACKUP_PREFIX = 'vehicle-tracker'
+
+function getBackupsDir(): string {
+  return readSetting('backup_dir') || DEFAULT_BACKUPS_DIR
+}
 
 // ─── Settings keys + defaults ─────────────────────────────────────────────
 type BackupFrequency = 'on_open' | 'daily' | 'weekly' | 'manual'
@@ -54,9 +58,9 @@ export function setBackupSettings(partial: Partial<BackupSettings>): void {
 }
 
 // ─── Filesystem helpers ───────────────────────────────────────────────────
-function ensureBackupsDir(): void {
-  if (!fs.existsSync(BACKUPS_DIR)) {
-    fs.mkdirSync(BACKUPS_DIR, { recursive: true })
+function ensureBackupsDir(dir = getBackupsDir()): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
   }
 }
 
@@ -74,11 +78,12 @@ export interface BackupFile {
 }
 
 export function listBackups(): BackupFile[] {
-  ensureBackupsDir()
-  return fs.readdirSync(BACKUPS_DIR)
+  const dir = getBackupsDir()
+  ensureBackupsDir(dir)
+  return fs.readdirSync(dir)
     .filter(name => name.startsWith(BACKUP_PREFIX) && name.endsWith('.db'))
     .map(name => {
-      const fullPath = path.join(BACKUPS_DIR, name)
+      const fullPath = path.join(dir, name)
       const stat = fs.statSync(fullPath)
       return {
         name,
@@ -141,7 +146,8 @@ function isBackupDue(settings: BackupSettings): boolean {
  * with a timestamped name. Returns the file metadata.
  */
 export function createBackup(): BackupFile {
-  ensureBackupsDir()
+  const dir = getBackupsDir()
+  ensureBackupsDir(dir)
   // Persist any pending writes before copying. The db module persists on
   // every run() call so the file on disk is already up to date — but if
   // we're in the middle of a transaction we don't want to copy a partial.
@@ -152,7 +158,7 @@ export function createBackup(): BackupFile {
   }
 
   const filename = makeBackupFilename()
-  const dest = path.join(BACKUPS_DIR, filename)
+  const dest = path.join(dir, filename)
   fs.copyFileSync(DB_FILE, dest)
 
   // Prune after a successful backup.
@@ -180,8 +186,9 @@ export function restoreFromFile(sourcePath: string): void {
 
   // Before clobbering, snapshot the current DB so the user can roll back.
   if (fs.existsSync(DB_FILE)) {
-    ensureBackupsDir()
-    const safety = path.join(BACKUPS_DIR, `${BACKUP_PREFIX}-pre-restore-${Date.now()}.db`)
+    const dir = getBackupsDir()
+    ensureBackupsDir(dir)
+    const safety = path.join(dir, `${BACKUP_PREFIX}-pre-restore-${Date.now()}.db`)
     fs.copyFileSync(DB_FILE, safety)
   }
 
@@ -191,7 +198,7 @@ export function restoreFromFile(sourcePath: string): void {
 export function deleteBackup(filePath: string): void {
   // Guard: only allow deletions inside our backups directory.
   const resolved = path.resolve(filePath)
-  const root = path.resolve(BACKUPS_DIR)
+  const root = path.resolve(getBackupsDir())
   if (!resolved.startsWith(root + path.sep)) {
     throw new Error('Refusing to delete a file outside the backups directory.')
   }
@@ -213,7 +220,7 @@ export async function exportBackup(): Promise<string | null> {
 export async function pickRestoreFile(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     title: 'Restore Vehicle Tracker from backup',
-    defaultPath: BACKUPS_DIR,
+    defaultPath: getBackupsDir(),
     properties: ['openFile'],
     filters: [{ name: 'Database file', extensions: ['db'] }],
   })
@@ -222,8 +229,57 @@ export async function pickRestoreFile(): Promise<string | null> {
 }
 
 export function openBackupsFolder(): void {
-  ensureBackupsDir()
-  void shell.openPath(BACKUPS_DIR)
+  const dir = getBackupsDir()
+  ensureBackupsDir(dir)
+  void shell.openPath(dir)
+}
+
+/**
+ * Let the user pick a new folder for backups. Existing backup files are
+ * moved (not copied) from the old location into the new one so nothing is
+ * stranded behind. Cross-drive moves fall back to copy+delete since
+ * fs.renameSync can't cross volumes on Windows.
+ */
+export async function chooseBackupsDir(): Promise<{ dir: string; moved: number } | null> {
+  const previousDir = getBackupsDir()
+  const result = await dialog.showOpenDialog({
+    title: 'Choose a folder for Vehicle Tracker backups',
+    defaultPath: previousDir,
+    properties: ['openDirectory', 'createDirectory'],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+
+  const nextDir = result.filePaths[0]
+  if (path.resolve(nextDir) === path.resolve(previousDir)) return { dir: nextDir, moved: 0 }
+
+  ensureBackupsDir(nextDir)
+
+  let moved = 0
+  if (fs.existsSync(previousDir)) {
+    for (const name of fs.readdirSync(previousDir)) {
+      if (!name.startsWith(BACKUP_PREFIX) || !name.endsWith('.db')) continue
+      const from = path.join(previousDir, name)
+      const to = path.join(nextDir, name)
+      if (fs.existsSync(to)) continue
+      try {
+        fs.renameSync(from, to)
+      } catch {
+        try {
+          fs.copyFileSync(from, to)
+          fs.unlinkSync(from)
+        } catch { continue }
+      }
+      moved++
+    }
+  }
+
+  writeSetting('backup_dir', nextDir)
+  return { dir: nextDir, moved }
+}
+
+/** Revert to the default backups folder inside userData. Files are left where they are. */
+export function resetBackupsDir(): void {
+  writeSetting('backup_dir', '')
 }
 
 /**
@@ -247,6 +303,7 @@ export interface BackupStatus {
   frequency: BackupFrequency
   retention: number
   backupsDir: string
+  backupsDirIsDefault: boolean
   lastBackupAt: string | null
   backups: BackupFile[]
 }
@@ -254,9 +311,11 @@ export interface BackupStatus {
 export function getBackupStatus(): BackupStatus {
   const settings = getBackupSettings()
   const list = listBackups()
+  const dir = getBackupsDir()
   return {
     ...settings,
-    backupsDir: BACKUPS_DIR,
+    backupsDir: dir,
+    backupsDirIsDefault: path.resolve(dir) === path.resolve(DEFAULT_BACKUPS_DIR),
     lastBackupAt: list[0]?.createdAt ?? null,
     backups: list,
   }

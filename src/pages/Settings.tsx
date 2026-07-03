@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
   Save, Sun, Moon, Bell, BellRing, Database, Download, Upload,
-  FolderOpen, Trash2, Clock,
+  FolderOpen, Trash2, Clock, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatSize } from '@/lib/utils'
 import { DRIVETRAIN_LABELS } from '@/types'
-import type { BackupStatus, BackupFrequency } from '@/env'
+import type { BackupStatus, BackupFrequency, UpdaterStatus } from '@/env'
 import { format } from 'date-fns'
 
 const schema = z.object({
@@ -33,6 +33,19 @@ const schema = z.object({
   notifications_enabled: z.boolean(),
 })
 type FormData = z.infer<typeof schema>
+
+function updateStatusLabel(status: UpdaterStatus | null): string {
+  if (!status) return ''
+  switch (status.phase) {
+    case 'idle': return 'Up to date'
+    case 'checking': return 'Checking for updates…'
+    case 'available': return `Update v${status.version} found — downloading…`
+    case 'not-available': return status.error ?? 'Up to date'
+    case 'downloading': return `Downloading v${status.version ?? ''} — ${Math.round(status.percent ?? 0)}%`
+    case 'downloaded': return `Update v${status.version} ready to install`
+    case 'error': return status.error ?? 'Update check failed'
+  }
+}
 
 export default function Settings() {
   const { settings, refreshSettings } = useSettings()
@@ -56,6 +69,18 @@ export default function Settings() {
     setBackupStatus(await window.api.backup.getStatus())
   }
   useEffect(() => { refreshBackupStatus() }, [])
+
+  // ─── Updater state ───────────────────────────────────────────────────────
+  const [updaterStatus, setUpdaterStatus] = useState<UpdaterStatus | null>(null)
+
+  useEffect(() => {
+    window.api.updater.getStatus().then(setUpdaterStatus)
+    return window.api.updater.onStatus(setUpdaterStatus)
+  }, [])
+
+  async function checkForUpdates() {
+    setUpdaterStatus(await window.api.updater.check())
+  }
 
   const theme = watch('theme')
   const distanceUnit = watch('distance_unit')
@@ -135,6 +160,27 @@ export default function Settings() {
   async function setRetention(value: number) {
     const status = await window.api.backup.updateSettings({ retention: value })
     setBackupStatus(status)
+  }
+
+  async function chooseBackupDir() {
+    try {
+      const result = await window.api.backup.chooseDir()
+      if (!result) return
+      toast.success(
+        result.moved > 0
+          ? `Backups will now be saved to ${result.dir} (moved ${result.moved} existing file${result.moved === 1 ? '' : 's'})`
+          : `Backups will now be saved to ${result.dir}`
+      )
+      refreshBackupStatus()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  async function resetBackupDir() {
+    const status = await window.api.backup.resetDir()
+    setBackupStatus(status)
+    toast.success('Backup location reset to default')
   }
 
   return (
@@ -312,6 +358,54 @@ export default function Settings() {
         </div>
       </form>
 
+      {/* Software update */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" /> Software Update
+          </CardTitle>
+          <CardDescription>
+            Vehicle Tracker checks for updates on launch and downloads them in the
+            background — you'll be asked to restart when one's ready to install.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">
+                Version {updaterStatus?.currentVersion ?? '—'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {updateStatusLabel(updaterStatus)}
+              </p>
+            </div>
+            {updaterStatus?.phase === 'downloaded' ? (
+              <Button type="button" size="sm" onClick={() => window.api.updater.install()}>
+                <Download className="h-3.5 w-3.5 mr-1.5" /> Restart & install
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={checkForUpdates}
+                disabled={updaterStatus?.phase === 'checking' || updaterStatus?.phase === 'downloading'}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Check for updates
+              </Button>
+            )}
+          </div>
+          {updaterStatus?.phase === 'downloading' && (
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${Math.round(updaterStatus.percent ?? 0)}%` }}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Backups & Data — outside the main settings form so its buttons
           don't double-submit the form. */}
       <Card>
@@ -381,6 +475,26 @@ export default function Settings() {
 
           <Separator />
 
+          {/* Backup location */}
+          <div className="space-y-1.5">
+            <Label>Backup location</Label>
+            <div className="flex items-center gap-2">
+              <p className="flex-1 min-w-0 text-xs font-mono text-muted-foreground truncate rounded-md border bg-muted/30 px-3 py-2">
+                {backupStatus?.backupsDir}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={chooseBackupDir}>
+                <FolderOpen className="h-3.5 w-3.5 mr-1.5" /> Change…
+              </Button>
+              {backupStatus && !backupStatus.backupsDirIsDefault && (
+                <Button type="button" variant="ghost" size="sm" onClick={resetBackupDir}>
+                  Use default
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={backupNow}>
@@ -438,9 +552,6 @@ export default function Settings() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 break-all">
-                  Saved to: <span className="font-mono">{backupStatus.backupsDir}</span>
-                </p>
               </div>
             </>
           )}

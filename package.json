@@ -1,6 +1,6 @@
 {
   "name": "vehicle-tracker",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Vehicle Tracker by Kemar Hinds — household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
   "main": "out/main/index.js",
   "author": "Kemar Hinds",
@@ -29,6 +29,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.2",
@@ -63,6 +64,11 @@
     "productName": "Vehicle Tracker",
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "kkhinds",
+      "repo": "vehicle-tracker"
     },
     "win": {
       "target": "nsis",

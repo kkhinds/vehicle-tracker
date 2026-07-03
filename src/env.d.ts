@@ -127,7 +127,27 @@ interface ElectronAPI {
     restore: (filePath: string) => Promise<void>
     delete: (filePath: string) => Promise<BackupStatus>
     openFolder: () => Promise<void>
+    chooseDir: () => Promise<{ dir: string; moved: number } | null>
+    resetDir: () => Promise<BackupStatus>
   }
+  updater: {
+    check: () => Promise<UpdaterStatus>
+    install: () => Promise<void>
+    getStatus: () => Promise<UpdaterStatus>
+    onStatus: (callback: (status: UpdaterStatus) => void) => () => void
+  }
+}
+
+export type UpdaterPhase =
+  | 'idle' | 'checking' | 'available' | 'not-available'
+  | 'downloading' | 'downloaded' | 'error'
+
+export interface UpdaterStatus {
+  phase: UpdaterPhase
+  currentVersion: string
+  version?: string
+  percent?: number
+  error?: string
 }
 
 export type BackupFrequency = 'on_open' | 'daily' | 'weekly' | 'manual'
@@ -144,6 +164,7 @@ export interface BackupStatus {
   frequency: BackupFrequency
   retention: number
   backupsDir: string
+  backupsDirIsDefault: boolean
   lastBackupAt: string | null
   backups: BackupFile[]
 }

@@ -111,5 +111,17 @@ contextBridge.exposeInMainWorld('api', {
     restore: (filePath: string) => ipcRenderer.invoke('backup:restore', filePath),
     delete: (filePath: string) => ipcRenderer.invoke('backup:delete', filePath),
     openFolder: () => ipcRenderer.invoke('backup:openFolder'),
+    chooseDir: () => ipcRenderer.invoke('backup:chooseDir'),
+    resetDir: () => ipcRenderer.invoke('backup:resetDir'),
+  },
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    getStatus: () => ipcRenderer.invoke('updater:getStatus'),
+    onStatus: (callback: (status: unknown) => void) => {
+      const listener = (_: unknown, status: unknown) => callback(status)
+      ipcRenderer.on('updater:status', listener)
+      return () => ipcRenderer.removeListener('updater:status', listener)
+    },
   },
 })
