@@ -14,6 +14,7 @@ import Vehicles from '@/pages/Vehicles'
 import Tires from '@/pages/Tires'
 import Fluids from '@/pages/Fluids'
 import Documents from '@/pages/Documents'
+import Help from '@/pages/Help'
 import WelcomeDialog from '@/components/shared/WelcomeDialog'
 import { SettingsContext } from '@/hooks/useSettings'
 import { VehiclesContext } from '@/hooks/useVehicles'
@@ -87,6 +88,7 @@ export default function App() {
                 <Route path="/notes" element={<Notes />} />
                 <Route path="/vehicles" element={<Vehicles />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/help" element={<Help />} />
               </Routes>
             </main>
           </div>

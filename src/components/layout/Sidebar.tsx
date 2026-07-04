@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Fuel, Wrench, Calendar, Shield,
   PieChart, FileText, Settings, Car, CircleDot, FileBadge2,
-  Droplet, ChevronsUpDown,
+  Droplet, ChevronsUpDown, HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVehicles } from '@/hooks/useVehicles'
@@ -22,6 +22,7 @@ const navItems = [
   { to: '/notes', icon: FileText, label: 'Notes' },
   { to: '/vehicles', icon: Car, label: 'My Vehicles' },
   { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/help', icon: HelpCircle, label: 'Help' },
 ]
 
 const MANAGE_SENTINEL = '__manage__'
