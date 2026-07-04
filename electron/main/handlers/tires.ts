@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { deletePhotoFiles } from '../photos'
 
 interface TireSetRow {
   id: number
@@ -102,7 +103,10 @@ export function registerTireHandlers(): void {
   })
 
   ipcMain.handle('tires:deleteSet', (_, id: number) => {
+    // Inspections cascade-delete with the set; collect their photos first.
+    const photos = (db.prepare('SELECT photo FROM tire_inspections WHERE tire_set_id = ? AND photo IS NOT NULL').all(id) as { photo: string }[]).map(r => r.photo)
     db.prepare('DELETE FROM tire_sets WHERE id = ?').run(id)
+    deletePhotoFiles(photos)
   })
 
   ipcMain.handle('tires:retireSet', (_, id: number, date: string, odometer: number) => {
@@ -145,7 +149,9 @@ export function registerTireHandlers(): void {
   })
 
   ipcMain.handle('tires:deleteInspection', (_, id: number) => {
+    const row = db.prepare('SELECT photo FROM tire_inspections WHERE id = ?').get(id) as { photo: string | null } | undefined
     db.prepare('DELETE FROM tire_inspections WHERE id = ?').run(id)
+    if (row) deletePhotoFiles([row.photo])
   })
 
   // ─── Rotations ──────────────────────────────────────────────────────────

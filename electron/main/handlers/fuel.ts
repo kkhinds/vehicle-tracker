@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { deletePhotoFiles } from '../photos'
 
 interface FuelRow {
   id: number
@@ -91,9 +92,17 @@ export function registerFuelHandlers(): void {
       total_cost=@total_cost, fuel_station=@fuel_station, full_tank=@full_tank, notes=@notes,
       receipt_photo=@receipt_photo, consumption=@consumption WHERE id=@id
     `).run({ ...merged, consumption, id })
+
+    // Keep the vehicle odometer in sync if this edit raised the reading
+    // (fuel:add does the same). Uses MAX so lowering never regresses it.
+    db.prepare(
+      'UPDATE vehicles SET current_odometer = MAX(current_odometer, ?) WHERE id = ?'
+    ).run(merged.odometer, current.vehicle_id)
   })
 
   ipcMain.handle('fuel:delete', (_, id: number) => {
+    const row = db.prepare('SELECT receipt_photo FROM fuel_log WHERE id = ?').get(id) as { receipt_photo: string | null } | undefined
     db.prepare('DELETE FROM fuel_log WHERE id = ?').run(id)
+    if (row) deletePhotoFiles([row.receipt_photo])
   })
 }

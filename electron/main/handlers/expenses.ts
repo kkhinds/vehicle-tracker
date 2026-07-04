@@ -25,7 +25,7 @@ export function registerExpensesHandlers(): void {
 
     const fuelTotal = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
     const maintTotal = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
-    const insTotal = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date <= ?").get(vehicleId, to) as SumRow).total ?? 0
+    const insTotal = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date >= ? AND start_date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
     const docTotal = (db.prepare("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ? AND COALESCE(issued_date, expiry_date) >= ? AND COALESCE(issued_date, expiry_date) <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
 
     const byCategory = [
@@ -88,32 +88,44 @@ export function registerExpensesHandlers(): void {
     const from = startDate ?? '2000-01-01'
     const to = endDate ?? format(now, 'yyyy-MM-dd')
 
-    const rows: string[] = ['Date,Category,Description,Amount,Notes']
+    // Quote every field and double any embedded quote so commas, quotes, and
+    // newlines in user-entered text can't break column alignment.
+    const csvField = (v: string | number | null | undefined): string =>
+      `"${(v == null ? '' : String(v)).replace(/"/g, '""')}"`
+    const line = (cells: Array<string | number | null | undefined>) => cells.map(csvField).join(',')
+
+    const rows: string[] = [line(['Date', 'Category', 'Description', 'Amount', 'Notes'])]
 
     if (!category || category === 'fuel') {
       const fuel = db.prepare("SELECT date, total_cost, fuel_station, litres, notes FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ? ORDER BY date DESC").all(vehicleId, from, to) as Array<{ date: string; total_cost: number; fuel_station: string | null; litres: number; notes: string | null }>
       for (const r of fuel) {
-        rows.push(`${r.date},Fuel,"${r.fuel_station ?? 'Unknown station'} (${r.litres}L)",${r.total_cost},"${r.notes ?? ''}"`)
+        rows.push(line([r.date, 'Fuel', `${r.fuel_station ?? 'Unknown station'} (${r.litres}L)`, r.total_cost, r.notes ?? '']))
       }
     }
 
     if (!category || category === 'maintenance') {
       const maint = db.prepare("SELECT date, category, description, cost, notes FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ? ORDER BY date DESC").all(vehicleId, from, to) as Array<{ date: string; category: string; description: string; cost: number; notes: string | null }>
       for (const r of maint) {
-        rows.push(`${r.date},Maintenance - ${r.category},"${r.description}",${r.cost},"${r.notes ?? ''}"`)
+        rows.push(line([r.date, `Maintenance - ${r.category}`, r.description, r.cost, r.notes ?? '']))
       }
     }
 
     if (!category || category === 'insurance') {
-      const ins = db.prepare("SELECT start_date, provider, policy_number, premium_amount, payment_frequency FROM insurance_policies WHERE vehicle_id = ? AND start_date <= ? ORDER BY start_date DESC").all(vehicleId, to) as Array<{ start_date: string; provider: string; policy_number: string; premium_amount: number; payment_frequency: string }>
+      const ins = db.prepare("SELECT start_date, provider, policy_number, premium_amount, payment_frequency FROM insurance_policies WHERE vehicle_id = ? AND start_date >= ? AND start_date <= ? ORDER BY start_date DESC").all(vehicleId, from, to) as Array<{ start_date: string; provider: string; policy_number: string; premium_amount: number; payment_frequency: string }>
       for (const r of ins) {
-        rows.push(`${r.start_date},Insurance,"${r.provider} - ${r.policy_number} (${r.payment_frequency})",${r.premium_amount},""`)
+        rows.push(line([r.start_date, 'Insurance', `${r.provider} - ${r.policy_number} (${r.payment_frequency})`, r.premium_amount, '']))
       }
     }
 
-    const csv = rows.join('\n')
-    const exportPath = path.join(app.getPath('downloads'), `vehicle-expenses-${format(now, 'yyyy-MM-dd')}.csv`)
-    fs.writeFileSync(exportPath, csv, 'utf8')
+    // \r\n line endings so Excel opens it cleanly; timestamped filename so a
+    // second export the same day doesn't silently overwrite the first.
+    const csv = rows.join('\r\n')
+    const exportPath = path.join(app.getPath('downloads'), `vehicle-expenses-${format(now, 'yyyy-MM-dd-HHmmss')}.csv`)
+    try {
+      fs.writeFileSync(exportPath, csv, 'utf8')
+    } catch (e) {
+      throw new Error(`Could not write the CSV to your Downloads folder: ${(e as Error).message}`)
+    }
     return exportPath
   })
 }

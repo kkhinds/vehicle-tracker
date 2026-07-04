@@ -23,6 +23,7 @@ import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
+import { optionalNumber } from '@/lib/forms'
 import type { TireSet, TireInspection, TireRotation } from '@/types'
 
 const setSchema = z.object({
@@ -32,8 +33,8 @@ const setSchema = z.object({
   dot_date: z.string().optional(),
   install_date: z.string().min(1),
   install_odometer: z.coerce.number().min(0),
-  recommended_psi_front: z.coerce.number().min(0).optional(),
-  recommended_psi_rear: z.coerce.number().min(0).optional(),
+  recommended_psi_front: optionalNumber(z.coerce.number().min(0)),
+  recommended_psi_rear: optionalNumber(z.coerce.number().min(0)),
   notes: z.string().optional(),
 })
 type SetForm = z.infer<typeof setSchema>
@@ -41,14 +42,14 @@ type SetForm = z.infer<typeof setSchema>
 const inspectionSchema = z.object({
   date: z.string().min(1),
   odometer: z.coerce.number().min(0),
-  tread_fl: z.coerce.number().min(0).max(15).optional(),
-  tread_fr: z.coerce.number().min(0).max(15).optional(),
-  tread_rl: z.coerce.number().min(0).max(15).optional(),
-  tread_rr: z.coerce.number().min(0).max(15).optional(),
-  pressure_fl: z.coerce.number().min(0).max(80).optional(),
-  pressure_fr: z.coerce.number().min(0).max(80).optional(),
-  pressure_rl: z.coerce.number().min(0).max(80).optional(),
-  pressure_rr: z.coerce.number().min(0).max(80).optional(),
+  tread_fl: optionalNumber(z.coerce.number().min(0).max(15)),
+  tread_fr: optionalNumber(z.coerce.number().min(0).max(15)),
+  tread_rl: optionalNumber(z.coerce.number().min(0).max(15)),
+  tread_rr: optionalNumber(z.coerce.number().min(0).max(15)),
+  pressure_fl: optionalNumber(z.coerce.number().min(0).max(80)),
+  pressure_fr: optionalNumber(z.coerce.number().min(0).max(80)),
+  pressure_rl: optionalNumber(z.coerce.number().min(0).max(80)),
+  pressure_rr: optionalNumber(z.coerce.number().min(0).max(80)),
   notes: z.string().optional(),
 })
 type InspectionForm = z.infer<typeof inspectionSchema>

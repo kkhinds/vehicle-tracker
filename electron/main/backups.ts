@@ -96,7 +96,10 @@ export function listBackups(): BackupFile[] {
 }
 
 function pruneOldBackups(retain: number): number {
-  const backups = listBackups()
+  // Only automatic/manual dated backups count toward retention. Pre-restore
+  // safety snapshots are kept out of the rotation so a few restores can't push
+  // genuine dated backups past the cutoff and delete them.
+  const backups = listBackups().filter(b => !b.name.includes('pre-restore'))
   let removed = 0
   for (const b of backups.slice(retain)) {
     try { fs.unlinkSync(b.path); removed++ } catch { /* ignore */ }
@@ -196,10 +199,14 @@ export function restoreFromFile(sourcePath: string): void {
 }
 
 export function deleteBackup(filePath: string): void {
-  // Guard: only allow deletions inside our backups directory.
+  // Guard: only allow deletions inside our backups directory. Use path.relative
+  // rather than a startsWith(root + sep) prefix check so a trailing separator or
+  // (on Windows) a drive-letter-casing difference can't reject a legitimate file.
   const resolved = path.resolve(filePath)
   const root = path.resolve(getBackupsDir())
-  if (!resolved.startsWith(root + path.sep)) {
+  const rel = path.relative(root, resolved)
+  const outside = rel === '' || rel.startsWith('..') || path.isAbsolute(rel)
+  if (outside) {
     throw new Error('Refusing to delete a file outside the backups directory.')
   }
   fs.unlinkSync(resolved)
@@ -259,8 +266,14 @@ export async function chooseBackupsDir(): Promise<{ dir: string; moved: number }
     for (const name of fs.readdirSync(previousDir)) {
       if (!name.startsWith(BACKUP_PREFIX) || !name.endsWith('.db')) continue
       const from = path.join(previousDir, name)
-      const to = path.join(nextDir, name)
-      if (fs.existsSync(to)) continue
+      // On a name collision, suffix the destination so we never strand the old
+      // file in the previous directory (and never overwrite an existing backup).
+      let to = path.join(nextDir, name)
+      if (fs.existsSync(to)) {
+        const base = name.replace(/\.db$/, '')
+        let n = 1
+        while (fs.existsSync(to)) to = path.join(nextDir, `${base}-${n++}.db`)
+      }
       try {
         fs.renameSync(from, to)
       } catch {

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
 import { detectIntervalKey } from '../presets/serviceIntervals'
+import { deletePhotoFiles } from '../photos'
 
 interface MaintenanceRow {
   id: number
@@ -91,7 +92,9 @@ export function registerMaintenanceHandlers(): void {
   })
 
   ipcMain.handle('maintenance:delete', (_, id: number) => {
+    const photos = getPhotos(db, id)
     db.prepare('DELETE FROM maintenance_log WHERE id = ?').run(id)
+    deletePhotoFiles(photos)
   })
 
   /**

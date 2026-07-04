@@ -22,6 +22,9 @@ export function registerFilesHandlers(): void {
   })
 
   ipcMain.handle('files:savePhoto', async (_, sourcePath: string, category: string) => {
+    if (!fs.existsSync(sourcePath)) {
+      throw new Error('That file no longer exists — it may have been moved, deleted, or on a drive that was ejected.')
+    }
     const ext = path.extname(sourcePath)
     const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`
     const destDir = getPhotosDir(category)

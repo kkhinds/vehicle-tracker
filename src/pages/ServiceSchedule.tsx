@@ -136,7 +136,7 @@ export default function ServiceSchedule() {
   }
 
   function IntervalCard({ interval }: { interval: ServiceInterval }) {
-    const pct = interval.last_done_km && interval.next_due_km
+    const pct = interval.last_done_km != null && interval.next_due_km != null
       ? Math.max(0, Math.min(100, ((settings.current_odometer - interval.last_done_km) / interval.interval_km) * 100))
       : 0
     const expanded = expandedId === interval.id

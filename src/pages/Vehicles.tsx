@@ -19,6 +19,7 @@ import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import EmptyState from '@/components/shared/EmptyState'
 import DatePicker from '@/components/shared/DatePicker'
 import { useVehicles } from '@/hooks/useVehicles'
+import { optionalNumber } from '@/lib/forms'
 import { DRIVETRAINS, DRIVETRAIN_LABELS } from '@/types'
 import type { Vehicle, Drivetrain } from '@/types'
 
@@ -33,7 +34,7 @@ const schema = z.object({
   license_plate: z.string().optional(),
   color: z.string().optional(),
   purchase_date: z.string().optional(),
-  purchase_odometer: z.coerce.number().min(0).optional(),
+  purchase_odometer: optionalNumber(z.coerce.number().min(0)),
   current_odometer: z.coerce.number().min(0),
 })
 type FormData = z.infer<typeof schema>

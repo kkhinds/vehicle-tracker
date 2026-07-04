@@ -72,7 +72,8 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "resources/icon.ico"
+      "icon": "resources/icon.ico",
+      "artifactName": "Vehicle-Tracker-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

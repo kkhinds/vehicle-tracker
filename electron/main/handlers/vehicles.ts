@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, seedIntervalsForVehicle } from '../db'
+import { deletePhotoFiles } from '../photos'
 
 interface VehicleRow {
   id: number
@@ -91,7 +92,22 @@ export function registerVehicleHandlers(): void {
     if (count <= 1) {
       throw new Error('Cannot delete the last active vehicle. Archive it instead, or add another vehicle first.')
     }
+
+    // Gather every photo/attachment tied to this vehicle before the cascade
+    // delete removes the rows, so the files can be unlinked from disk.
+    const q = (sql: string) => (db.prepare(sql).all(id) as { p: string | null }[]).map(r => r.p)
+    const photoPaths: (string | null)[] = [
+      ...q('SELECT photo AS p FROM vehicles WHERE id = ?'),
+      ...q('SELECT receipt_photo AS p FROM fuel_log WHERE vehicle_id = ? AND receipt_photo IS NOT NULL'),
+      ...q('SELECT mp.photo_path AS p FROM maintenance_photos mp JOIN maintenance_log ml ON mp.maintenance_id = ml.id WHERE ml.vehicle_id = ?'),
+      ...q('SELECT ip.photo_path AS p FROM insurance_photos ip JOIN insurance_policies pol ON ip.policy_id = pol.id WHERE pol.vehicle_id = ?'),
+      ...q('SELECT dp.photo_path AS p FROM vehicle_document_photos dp JOIN vehicle_documents d ON dp.document_id = d.id WHERE d.vehicle_id = ?'),
+      ...q('SELECT na.file_path AS p FROM note_attachments na JOIN notes n ON na.note_id = n.id WHERE n.vehicle_id = ?'),
+      ...q('SELECT ti.photo AS p FROM tire_inspections ti JOIN tire_sets ts ON ti.tire_set_id = ts.id WHERE ts.vehicle_id = ? AND ti.photo IS NOT NULL'),
+    ]
+
     db.prepare('DELETE FROM vehicles WHERE id = ?').run(id)
+    deletePhotoFiles(photoPaths)
 
     // If the deleted vehicle was the active one, switch to another.
     const cvRow = db.prepare("SELECT value FROM settings WHERE key = 'current_vehicle_id'").get() as { value: string } | undefined

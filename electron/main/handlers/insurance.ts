@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { deletePhotoFiles } from '../photos'
 
 interface PolicyRow {
   id: number
@@ -92,7 +93,9 @@ export function registerInsuranceHandlers(): void {
   })
 
   ipcMain.handle('insurance:delete', (_, id: number) => {
+    const photos = getPhotos(db, id)
     db.prepare('DELETE FROM insurance_policies WHERE id = ?').run(id)
+    deletePhotoFiles(photos)
   })
 
   ipcMain.handle('insurance:deactivate', (_, id: number) => {

@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { deletePhotoFiles } from '../photos'
 
 interface NoteRow {
   id: number
@@ -79,6 +80,8 @@ export function registerNotesHandlers(): void {
   })
 
   ipcMain.handle('notes:delete', (_, id: number) => {
+    const files = getAttachments(db, id)
     db.prepare('DELETE FROM notes WHERE id = ?').run(id)
+    deletePhotoFiles(files)
   })
 }

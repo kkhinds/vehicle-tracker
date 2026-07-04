@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Shield, AlertCircle, ArchiveX } from 'lucide-react'
 import { toast } from 'sonner'
-import { differenceInDays } from 'date-fns'
+import { differenceInDays, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -145,7 +145,9 @@ export default function Insurance() {
   }
 
   function getRenewalBadge(renewalDate: string) {
-    const days = differenceInDays(new Date(renewalDate), new Date())
+    // parseISO treats 'yyyy-MM-dd' as local midnight (new Date() would parse it
+    // as UTC, shifting the day count by one in negative-UTC timezones).
+    const days = differenceInDays(parseISO(renewalDate), new Date())
     if (days < 0) return <Badge variant="danger">Expired</Badge>
     if (days <= 30) return <Badge variant="warning">{days}d to renewal</Badge>
     return <Badge variant="success">{days} days</Badge>

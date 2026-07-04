@@ -129,10 +129,23 @@ app.whenReady().then(async () => {
   createSplashWindow()
 
   protocol.handle('localfile', (request) => {
-    const filePath = decodeURIComponent(request.url.replace('localfile://', ''))
-    return new Response(fs.readFileSync(filePath), {
-      headers: { 'Content-Type': getContentType(filePath) }
-    })
+    try {
+      const filePath = decodeURIComponent(request.url.replace('localfile://', ''))
+      const resolved = path.resolve(filePath)
+      // Only serve files under the app's userData dir (photos, documents, …).
+      const allowedRoot = path.resolve(app.getPath('userData'))
+      if (resolved !== allowedRoot && !resolved.startsWith(allowedRoot + path.sep)) {
+        return new Response(null, { status: 403 })
+      }
+      if (!fs.existsSync(resolved)) {
+        return new Response(null, { status: 404 })
+      }
+      return new Response(fs.readFileSync(resolved), {
+        headers: { 'Content-Type': getContentType(resolved) }
+      })
+    } catch {
+      return new Response(null, { status: 404 })
+    }
   })
 
   await initDb()

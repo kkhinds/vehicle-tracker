@@ -41,20 +41,22 @@ function persist(): void {
 // sql.js requires { '@date': '...' } (keys must match the placeholder prefix).
 function toBindParams(args: unknown[]): import('sql.js').BindParams {
   if (args.length === 0) return null
+  // sql.js throws on a bound value of `undefined` (better-sqlite3 tolerates it),
+  // so every branch coalesces undefined -> null.
   if (args.length === 1) {
     const a = args[0]
     if (a !== null && typeof a === 'object' && !Array.isArray(a)) {
       const obj = a as Record<string, unknown>
       const keys = Object.keys(obj)
-      if (keys.length > 0 && !keys[0].startsWith('@') && !keys[0].startsWith(':') && !keys[0].startsWith('$')) {
-        const prefixed: Record<string, unknown> = {}
-        for (const k of keys) prefixed[`@${k}`] = obj[k]
-        return prefixed as import('sql.js').ParamsObject
+      const needsPrefix = keys.length > 0 && !keys[0].startsWith('@') && !keys[0].startsWith(':') && !keys[0].startsWith('$')
+      const out: Record<string, unknown> = {}
+      for (const k of keys) {
+        out[needsPrefix ? `@${k}` : k] = obj[k] === undefined ? null : obj[k]
       }
-      return obj as import('sql.js').ParamsObject
+      return out as import('sql.js').ParamsObject
     }
   }
-  const flat = (args as unknown[]).flat()
+  const flat = (args as unknown[]).flat().map(v => (v === undefined ? null : v))
   return flat.length ? (flat as import('sql.js').SqlValue[]) : null
 }
 

@@ -34,12 +34,14 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   autoUpdater.autoDownload = true
 
-  autoUpdater.on('checking-for-update', () => setStatus({ phase: 'checking', error: undefined }))
-  autoUpdater.on('update-available', (info) => setStatus({ phase: 'available', version: info.version }))
-  autoUpdater.on('update-not-available', () => setStatus({ phase: 'not-available' }))
+  // Every terminal-success transition also clears `error`/`percent` so a prior
+  // failure or finished download can't leave a stale value on the status.
+  autoUpdater.on('checking-for-update', () => setStatus({ phase: 'checking', error: undefined, percent: undefined }))
+  autoUpdater.on('update-available', (info) => setStatus({ phase: 'available', version: info.version, error: undefined }))
+  autoUpdater.on('update-not-available', () => setStatus({ phase: 'not-available', error: undefined, percent: undefined }))
   autoUpdater.on('download-progress', (progress) => setStatus({ phase: 'downloading', percent: progress.percent }))
-  autoUpdater.on('update-downloaded', (info) => setStatus({ phase: 'downloaded', version: info.version }))
-  autoUpdater.on('error', (err) => setStatus({ phase: 'error', error: err.message }))
+  autoUpdater.on('update-downloaded', (info) => setStatus({ phase: 'downloaded', version: info.version, percent: undefined, error: undefined }))
+  autoUpdater.on('error', (err) => setStatus({ phase: 'error', error: err.message, percent: undefined }))
 
   // A few seconds after launch so the check doesn't compete with initial load.
   setTimeout(() => { void autoUpdater.checkForUpdates().catch(() => { /* surfaced via 'error' event */ }) }, 5000)
@@ -59,6 +61,9 @@ export async function checkForUpdates(): Promise<UpdaterStatus> {
 }
 
 export function installUpdate(): void {
+  // Only restart-to-install once an update is actually downloaded — otherwise
+  // quitAndInstall() would just quit the app with nothing to install.
+  if (status.phase !== 'downloaded') return
   autoUpdater.quitAndInstall()
 }
 

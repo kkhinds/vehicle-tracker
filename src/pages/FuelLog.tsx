@@ -29,7 +29,7 @@ import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 import type { FuelEntry } from '@/types'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 const schema = z.object({
   date: z.string().min(1, 'Date is required'),
@@ -146,10 +146,14 @@ export default function FuelLog() {
 
   const monthlyMap: Record<string, number> = {}
   for (const e of entries) {
-    const month = format(new Date(e.date), 'MMM yy')
+    // parseISO parses the stored 'yyyy-MM-dd' as local midnight; new Date()
+    // would treat it as UTC and bucket into the wrong month in UTC- zones.
+    const month = format(parseISO(e.date), 'MMM yy')
     monthlyMap[month] = (monthlyMap[month] ?? 0) + e.total_cost
   }
-  const monthlyData = Object.entries(monthlyMap).map(([month, cost]) => ({ month, cost })).reverse().slice(0, 12)
+  // entries are newest-first, so reverse to oldest-first then take the LAST 12
+  // (the most recent months), not the first 12 (the oldest).
+  const monthlyData = Object.entries(monthlyMap).map(([month, cost]) => ({ month, cost })).reverse().slice(-12)
 
   const totalSpent = entries.reduce((s, e) => s + e.total_cost, 0)
   const avgConsumption = entries.filter(e => e.consumption).reduce((s, e, _, a) => s + (e.consumption ?? 0) / a.length, 0)
