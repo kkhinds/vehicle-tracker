@@ -1,17 +1,14 @@
 import { ipcMain } from 'electron'
-import { getDb, getCurrentVehicleId } from '../db'
+import { getDb, getCurrentVehicleId, getSetting } from '../db'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { FLUID_PRESETS, toMl, fromMl } from '../presets/fluids'
+import { FLUID_PRESETS, fluidRatePer1000km } from '../presets/fluids'
+import { daysUntil } from '../dates'
 import type { ActivityEntry, MonthlyTrendEntry, DocumentType } from '../../../src/types'
 
 interface SumRow { total: number | null }
 interface AvgRow { avg: number | null }
 interface ActivityRow { id: number; date: string; description: string; amount: number }
 interface VehicleOdoRow { current_odometer: number }
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
-}
 
 export function registerDashboardHandlers(): void {
   const db = getDb()
@@ -68,7 +65,7 @@ export function registerDashboardHandlers(): void {
       const next = policies[0]
       insuranceRenewal = {
         provider: next.provider,
-        daysRemaining: daysBetween(now, new Date(next.renewal_date)),
+        daysRemaining: daysUntil(next.renewal_date),
         renewalDate: next.renewal_date,
         policyId: next.id,
       }
@@ -86,7 +83,7 @@ export function registerDashboardHandlers(): void {
       upcomingDocument = {
         title: next.title,
         docType: next.doc_type as DocumentType,
-        daysRemaining: daysBetween(now, new Date(next.expiry_date)),
+        daysRemaining: daysUntil(next.expiry_date),
         expiryDate: next.expiry_date,
         documentId: next.id,
       }
@@ -182,16 +179,11 @@ function computeFluidWarning(
   ).all(vehicleId) as FluidRow[]
   if (rows.length === 0) return null
 
+  const distanceUnit = getSetting('distance_unit') ?? 'km'
   for (const preset of FLUID_PRESETS) {
     const fluidRows = rows.filter(r => r.fluid_type === preset.key)
-    if (fluidRows.length < 2) continue
-
-    const oldest = fluidRows.reduce((min, r) => r.odometer < min.odometer ? r : min, fluidRows[0])
-    const kmSpan = odometer - oldest.odometer
-    if (kmSpan < 500) continue
-
-    const totalMl = fluidRows.reduce((sum, r) => sum + toMl(r.amount, r.unit), 0)
-    const rate = fromMl((totalMl / kmSpan) * 1000, preset.unit)
+    const rate = fluidRatePer1000km(fluidRows, preset.unit, odometer, distanceUnit)
+    if (rate === null) continue
 
     if (rate > preset.warnPerThousandKm) {
       return {

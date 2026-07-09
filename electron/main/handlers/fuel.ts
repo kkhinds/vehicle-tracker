@@ -33,7 +33,7 @@ export function registerFuelHandlers(): void {
     return rows.map(rowToEntry)
   })
 
-  ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id'> & { full_tank: boolean }) => {
+  ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id' | 'full_tank'> & { full_tank: boolean }) => {
     const vehicleId = getCurrentVehicleId()
 
     let consumption: number | null = null
@@ -68,7 +68,7 @@ export function registerFuelHandlers(): void {
     return rowToEntry(db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(result.lastInsertRowid) as FuelRow)
   })
 
-  ipcMain.handle('fuel:update', (_, id: number, entry: Partial<FuelRow & { full_tank: boolean }>) => {
+  ipcMain.handle('fuel:update', (_, id: number, entry: Partial<Omit<FuelRow, 'full_tank'> & { full_tank: boolean }>) => {
     const current = db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(id) as FuelRow
     if (!current) return
 
@@ -85,6 +85,11 @@ export function registerFuelHandlers(): void {
       }
     } else {
       consumption = null
+    }
+
+    // Unlink the old receipt if this edit replaced or cleared it.
+    if (current.receipt_photo && current.receipt_photo !== merged.receipt_photo) {
+      deletePhotoFiles([current.receipt_photo])
     }
 
     db.prepare(`

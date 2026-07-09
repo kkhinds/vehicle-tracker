@@ -78,7 +78,6 @@ interface ElectronAPI {
     deleteFile: (filePath: string) => Promise<void>
     getImageData: (filePath: string) => Promise<string | null>
     openFile: (filePath: string) => Promise<void>
-    getLocalFileUrl: (filePath: string) => string
   }
   dashboard: {
     getSummary: () => Promise<DashboardSummary>

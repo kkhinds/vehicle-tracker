@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
-import { deletePhotoFiles } from '../photos'
+import { deletePhotoFiles, replaceChildPaths } from '../photos'
 
 interface PolicyRow {
   id: number
@@ -39,7 +39,7 @@ export function registerInsuranceHandlers(): void {
     return rows.map(row => ({ ...row, is_active: row.is_active === 1, photos: getPhotos(db, row.id) }))
   })
 
-  ipcMain.handle('insurance:add', (_, policy: Omit<PolicyRow, 'id' | 'created_at' | 'vehicle_id'> & { photos: string[]; is_active: boolean }) => {
+  ipcMain.handle('insurance:add', (_, policy: Omit<PolicyRow, 'id' | 'created_at' | 'vehicle_id' | 'is_active'> & { photos: string[]; is_active: boolean }) => {
     const vehicleId = getCurrentVehicleId()
     const { photos, ...data } = policy
     const result = db.prepare(`
@@ -66,7 +66,7 @@ export function registerInsuranceHandlers(): void {
     return { ...row, is_active: row.is_active === 1, photos: getPhotos(db, id) }
   })
 
-  ipcMain.handle('insurance:update', (_, id: number, policy: Partial<PolicyRow & { photos: string[]; is_active: boolean }>) => {
+  ipcMain.handle('insurance:update', (_, id: number, policy: Partial<Omit<PolicyRow, 'is_active'> & { photos: string[]; is_active: boolean }>) => {
     const current = db.prepare('SELECT * FROM insurance_policies WHERE id = ?').get(id) as PolicyRow
     if (!current) return
 
@@ -84,11 +84,7 @@ export function registerInsuranceHandlers(): void {
     `).run({ ...merged, id })
 
     if (policy.photos !== undefined) {
-      db.prepare('DELETE FROM insurance_photos WHERE policy_id = ?').run(id)
-      const insertPhoto = db.prepare('INSERT INTO insurance_photos (policy_id, photo_path) VALUES (?, ?)')
-      for (const photo of policy.photos) {
-        insertPhoto.run(id, photo)
-      }
+      replaceChildPaths(db, 'insurance_photos', 'policy_id', id, 'photo_path', policy.photos)
     }
   })
 

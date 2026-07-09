@@ -1,11 +1,10 @@
 import { app, dialog, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { getDb } from './db'
+import { getSetting as readSetting, setSetting as writeSetting, DB_PATH as DB_FILE } from './db'
 
 // ─── Paths ────────────────────────────────────────────────────────────────
 const USER_DATA = app.getPath('userData')
-const DB_FILE = path.join(USER_DATA, 'dmax-tracker.db')
 const DEFAULT_BACKUPS_DIR = path.join(USER_DATA, 'backups')
 const BACKUP_PREFIX = 'vehicle-tracker'
 
@@ -26,21 +25,6 @@ const DEFAULTS: BackupSettings = {
   enabled: true,
   frequency: 'daily',
   retention: 10,
-}
-
-interface SettingRow { value: string }
-
-function readSetting(key: string): string | null {
-  const db = getDb()
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as SettingRow | undefined
-  return row?.value ?? null
-}
-
-function writeSetting(key: string, value: string): void {
-  const db = getDb()
-  db.prepare(
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  ).run(key, value)
 }
 
 export function getBackupSettings(): BackupSettings {

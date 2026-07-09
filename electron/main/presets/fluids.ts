@@ -143,3 +143,29 @@ export function fromMl(ml: number, unit: string): number {
     default: return ml
   }
 }
+
+/**
+ * Rolling consumption rate for one fluid, in `presetUnit` per 1000 km. Returns
+ * null when there isn't enough to judge. Shared by the Fluids page and the
+ * dashboard warning so the math can't drift between them.
+ *
+ * - Needs ≥2 top-ups: the oldest marks the span's START, so it's the baseline,
+ *   not consumption. One top-up can't establish a rate.
+ * - Odometer is stored in the user's unit; normalize the span to real km so the
+ *   per-1000-km threshold means the same thing whether the user picks km or miles.
+ */
+export function fluidRatePer1000km(
+  rows: Array<{ amount: number; unit: string; odometer: number }>,
+  presetUnit: string,
+  currentOdometer: number,
+  distanceUnit: string,
+): number | null {
+  if (rows.length < 2) return null
+  const sorted = [...rows].sort((a, b) => a.odometer - b.odometer)
+  const span = currentOdometer - sorted[0].odometer
+  const kmSpan = distanceUnit === 'miles' ? span * 1.60934 : span
+  if (kmSpan < 500) return null
+  // Exclude the baseline (oldest) fill — it's the start of the window, not use.
+  const totalMl = sorted.slice(1).reduce((sum, r) => sum + toMl(r.amount, r.unit), 0)
+  return fromMl((totalMl / kmSpan) * 1000, presetUnit)
+}

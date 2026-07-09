@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
 import { detectIntervalKey } from '../presets/serviceIntervals'
-import { deletePhotoFiles } from '../photos'
+import { deletePhotoFiles, replaceChildPaths } from '../photos'
 
 interface MaintenanceRow {
   id: number
@@ -83,11 +83,7 @@ export function registerMaintenanceHandlers(): void {
     `).run({ ...merged, id })
 
     if (entry.photos !== undefined) {
-      db.prepare('DELETE FROM maintenance_photos WHERE maintenance_id = ?').run(id)
-      const insertPhoto = db.prepare('INSERT INTO maintenance_photos (maintenance_id, photo_path) VALUES (?, ?)')
-      for (const photo of entry.photos) {
-        insertPhoto.run(id, photo)
-      }
+      replaceChildPaths(db, 'maintenance_photos', 'maintenance_id', id, 'photo_path', entry.photos)
     }
   })
 

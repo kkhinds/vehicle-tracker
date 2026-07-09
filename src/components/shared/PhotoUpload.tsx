@@ -45,6 +45,10 @@ export default function PhotoUpload({
 }: PhotoUploadProps) {
   const [thumbs, setThumbs] = useState<Thumb[]>([])
   const [loading, setLoading] = useState(false)
+  // Paths already on the record when this form opened. Removing one only drops
+  // it from the list — the file is unlinked by the save handler (replaceChildPaths
+  // / fuel:update). That way cancelling the dialog doesn't lose the attachment.
+  const [initial] = useState(() => new Set(value))
 
   useEffect(() => {
     let cancelled = false
@@ -87,7 +91,9 @@ export default function PhotoUpload({
 
   async function handleRemove(path: string) {
     onChange(value.filter(p => p !== path))
-    await window.api.files.deleteFile(path)
+    // Session-added files aren't on the record yet, so unlink them now; pre-existing
+    // ones are left to the save handler so Cancel doesn't lose them.
+    if (!initial.has(path)) await window.api.files.deleteFile(path)
   }
 
   function renderPreview(thumb: Thumb) {

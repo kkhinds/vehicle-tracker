@@ -1,5 +1,6 @@
 import { Notification, ipcMain } from 'electron'
-import { getDb } from './db'
+import { getDb, getSetting, setSetting } from './db'
+import { daysUntil } from './dates'
 
 // Scans all non-archived vehicles for upcoming services, insurance renewals,
 // and document expiries. Fires native OS notifications for items hitting:
@@ -15,45 +16,36 @@ interface VehicleRow { id: number; nickname: string; current_odometer: number }
 interface IntervalRow { id: number; name: string; interval_km: number; last_done_km: number | null }
 interface PolicyRow { id: number; provider: string; renewal_date: string }
 interface DocumentRow { id: number; title: string; expiry_date: string; doc_type: string }
-interface SettingRow { value: string }
-
 const DAY_THRESHOLDS = [60, 30, 7, 0]
 const KM_THRESHOLDS = [1000, 500, 0]
 
-function daysUntil(dateStr: string): number {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-}
-
 function pickThreshold(value: number, thresholds: number[]): number | null {
-  // Returns the smallest threshold the value has crossed below (or null).
+  // thresholds are descending (e.g. [60,30,7,0]); keep the LAST match so we
+  // return the smallest bucket crossed, not the first (largest) one. Otherwise
+  // an item pings once at the outer bucket and never re-alerts as it closes in.
+  let picked: number | null = null
   for (const t of thresholds) {
-    if (value <= t) return t
+    if (value <= t) picked = t
   }
-  return null
+  return picked
 }
 
 function isNotificationsEnabled(): boolean {
-  const db = getDb()
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'notifications_enabled'").get() as SettingRow | undefined
-  return (row?.value ?? 'true') === 'true'
+  return (getSetting('notifications_enabled') ?? 'true') === 'true'
 }
 
 function getAlertedKeys(): Set<string> {
-  const db = getDb()
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'alerted_keys'").get() as SettingRow | undefined
-  if (!row) return new Set()
+  const raw = getSetting('alerted_keys')
+  if (!raw) return new Set()
   try {
-    return new Set(JSON.parse(row.value) as string[])
+    return new Set(JSON.parse(raw) as string[])
   } catch {
     return new Set()
   }
 }
 
 function saveAlertedKeys(keys: Set<string>): void {
-  const db = getDb()
-  db.prepare(
-    "INSERT INTO settings (key, value) VALUES ('alerted_keys', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  ).run(JSON.stringify([...keys]))
+  setSetting('alerted_keys', JSON.stringify([...keys]))
 }
 
 function notify(title: string, body: string): void {

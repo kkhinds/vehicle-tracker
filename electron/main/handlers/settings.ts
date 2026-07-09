@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { getDb } from '../db'
+import { getDb, getCurrentVehicleId } from '../db'
 
 interface SettingRow {
   key: string
@@ -41,13 +41,9 @@ export function registerSettingsHandlers(): void {
       for (const [key, value] of Object.entries(data)) {
         // current_odometer writes through to the active vehicle's record.
         if (key === 'current_odometer') {
-          const cvRow = db.prepare(
-            "SELECT value FROM settings WHERE key = 'current_vehicle_id'"
-          ).get() as { value: string } | undefined
-          const vehicleId = cvRow ? parseInt(cvRow.value, 10) || 1 : 1
           db.prepare(
             'UPDATE vehicles SET current_odometer = ? WHERE id = ?'
-          ).run(Number(value), vehicleId)
+          ).run(Number(value), getCurrentVehicleId())
           continue
         }
         update.run(key, String(value))

@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
-import { deletePhotoFiles } from '../photos'
+import { deletePhotoFiles, replaceChildPaths } from '../photos'
 
 interface NoteRow {
   id: number
@@ -71,11 +71,7 @@ export function registerNotesHandlers(): void {
     `).run({ ...merged, id })
 
     if (note.attachments !== undefined) {
-      db.prepare('DELETE FROM note_attachments WHERE note_id = ?').run(id)
-      const insertAttachment = db.prepare('INSERT INTO note_attachments (note_id, file_path) VALUES (?, ?)')
-      for (const file of note.attachments) {
-        insertAttachment.run(id, file)
-      }
+      replaceChildPaths(db, 'note_attachments', 'note_id', id, 'file_path', note.attachments)
     }
   })
 

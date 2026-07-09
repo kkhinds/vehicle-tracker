@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
-import { getDb, getCurrentVehicleId } from '../db'
-import { FLUID_PRESETS, getFluidsForDrivetrain, findFluidPreset, toMl, fromMl } from '../presets/fluids'
+import { getDb, getCurrentVehicleId, getSetting } from '../db'
+import { FLUID_PRESETS, getFluidsForDrivetrain, findFluidPreset, toMl, fromMl, fluidRatePer1000km } from '../presets/fluids'
 
 interface FluidRow {
   id: number
@@ -16,33 +16,9 @@ interface FluidRow {
 
 interface VehicleRow { drivetrain: string; current_odometer: number }
 
-/**
- * Compute consumption rate (in the preset's unit) per 1000 km, based on
- * top-ups in the last 12 months and the km driven over that window.
- * Returns null if there aren't enough data points to be meaningful.
- */
-function computeRate(
-  rows: FluidRow[],
-  presetUnit: string,
-  currentOdometer: number,
-): number | null {
-  if (rows.length === 0) return null
-
-  // Use the oldest top-up's odometer as the baseline. Need at least two
-  // odometer reference points (oldest top-up odometer + current odometer)
-  // and a meaningful distance.
-  const sorted = [...rows].sort((a, b) => a.odometer - b.odometer)
-  const oldest = sorted[0]
-  const kmSpan = currentOdometer - oldest.odometer
-  if (kmSpan < 500) return null  // not enough driving yet to call it
-
-  const totalMl = rows.reduce((sum, r) => sum + toMl(r.amount, r.unit), 0)
-  const mlPer1000Km = (totalMl / kmSpan) * 1000
-  return fromMl(mlPer1000Km, presetUnit)
-}
-
 export function registerFluidHandlers(): void {
   const db = getDb()
+  const distanceUnit = () => getSetting('distance_unit') ?? 'km'
 
   /** Returns presets relevant to the current vehicle's drivetrain. */
   ipcMain.handle('fluids:getPresets', () => {
@@ -137,7 +113,7 @@ export function registerFluidHandlers(): void {
         odometer: rows[0].odometer,
       } : null
       const rate = preset
-        ? computeRate(rows, preset.unit, vehicle.current_odometer)
+        ? fluidRatePer1000km(rows, preset.unit, vehicle.current_odometer, distanceUnit())
         : null
       const exceeds = preset && rate !== null
         ? rate > preset.warnPerThousandKm
@@ -195,8 +171,7 @@ export function registerFluidHandlers(): void {
 
     for (const preset of FLUID_PRESETS) {
       const fluidRows = rows.filter(r => r.fluid_type === preset.key)
-      if (fluidRows.length < 2) continue
-      const rate = computeRate(fluidRows, preset.unit, vehicle.current_odometer)
+      const rate = fluidRatePer1000km(fluidRows, preset.unit, vehicle.current_odometer, distanceUnit())
       if (rate === null) continue
       if (rate > preset.warnPerThousandKm) {
         return {

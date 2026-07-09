@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { getDb, seedIntervalsForVehicle } from '../db'
+import { getDb, seedIntervalsForVehicle, getCurrentVehicleId, setSetting } from '../db'
 import { deletePhotoFiles } from '../photos'
 
 interface VehicleRow {
@@ -67,7 +67,7 @@ export function registerVehicleHandlers(): void {
     return rowToVehicle(row)
   })
 
-  ipcMain.handle('vehicles:update', (_, id: number, data: Partial<VehicleRow & { is_archived: boolean }>) => {
+  ipcMain.handle('vehicles:update', (_, id: number, data: Partial<Omit<VehicleRow, 'is_archived'> & { is_archived: boolean }>) => {
     const current = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(id) as VehicleRow
     if (!current) return
     const merged = {
@@ -110,21 +110,15 @@ export function registerVehicleHandlers(): void {
     deletePhotoFiles(photoPaths)
 
     // If the deleted vehicle was the active one, switch to another.
-    const cvRow = db.prepare("SELECT value FROM settings WHERE key = 'current_vehicle_id'").get() as { value: string } | undefined
-    const currentVehicleId = cvRow ? parseInt(cvRow.value, 10) : 0
-    if (currentVehicleId === id) {
+    if (getCurrentVehicleId() === id) {
       const next = db.prepare('SELECT id FROM vehicles WHERE is_archived = 0 ORDER BY id ASC LIMIT 1').get() as { id: number } | undefined
-      if (next) {
-        db.prepare("UPDATE settings SET value = ? WHERE key = 'current_vehicle_id'").run(String(next.id))
-      }
+      if (next) setSetting('current_vehicle_id', String(next.id))
     }
   })
 
   ipcMain.handle('vehicles:setCurrent', (_, id: number) => {
     const row = db.prepare('SELECT id FROM vehicles WHERE id = ?').get(id) as { id: number } | undefined
     if (!row) throw new Error(`Vehicle ${id} does not exist`)
-    db.prepare(
-      "INSERT INTO settings (key, value) VALUES ('current_vehicle_id', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-    ).run(String(id))
+    setSetting('current_vehicle_id', String(id))
   })
 }

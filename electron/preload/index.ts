@@ -61,7 +61,6 @@ contextBridge.exposeInMainWorld('api', {
     deleteFile: (filePath: string) => ipcRenderer.invoke('files:deleteFile', filePath),
     getImageData: (filePath: string) => ipcRenderer.invoke('files:getImageData', filePath),
     openFile: (filePath: string) => ipcRenderer.invoke('files:openFile', filePath),
-    getLocalFileUrl: (filePath: string) => `localfile://${encodeURIComponent(filePath)}`,
   },
   dashboard: {
     getSummary: () => ipcRenderer.invoke('dashboard:getSummary'),

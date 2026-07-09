@@ -20,7 +20,10 @@ export function formatDate(dateStr: string): string {
 }
 
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
+  // Local calendar date, not UTC — toISOString() rolls to tomorrow in the
+  // evening for negative-UTC timezones and mis-defaults every new record's date.
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function formatSize(bytes: number): string {

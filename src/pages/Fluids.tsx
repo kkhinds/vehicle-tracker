@@ -160,7 +160,7 @@ export default function Fluids() {
                   <span className={stat.exceedsThreshold ? 'text-red-400' : 'text-foreground'}>
                     {stat.consumptionPer1000Km} {stat.preset.unit}
                   </span>
-                  <span className="text-muted-foreground"> per 1,000 {unit}</span>
+                  <span className="text-muted-foreground"> per 1,000 km</span>
                   {stat.preset.warnPerThousandKm < 99999 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       (warn above {stat.preset.warnPerThousandKm} {stat.preset.unit})

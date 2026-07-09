@@ -6,7 +6,7 @@ import fs from 'fs'
 import { createRequire } from 'module'
 import { getPresetsForDrivetrain } from './presets/serviceIntervals'
 
-const DB_PATH = path.join(app.getPath('userData'), 'dmax-tracker.db')
+export const DB_PATH = path.join(app.getPath('userData'), 'dmax-tracker.db')
 
 // Resolve sql.js's actual install location (could be in a parent node_modules
 // when running from a git worktree without its own deps installed).
@@ -63,26 +63,26 @@ function toBindParams(args: unknown[]): import('sql.js').BindParams {
 class Stmt {
   constructor(private db: SqlJsDb, private sql: string) {}
 
-  get(...args: unknown[]): Record<string, unknown> | undefined {
+  get<T = unknown>(...args: unknown[]): T | undefined {
     const params = toBindParams(args)
     const stmt = this.db.prepare(this.sql)
     if (params) stmt.bind(params)
-    const row = stmt.step() ? (stmt.getAsObject() as Record<string, unknown>) : undefined
+    const row = stmt.step() ? (stmt.getAsObject() as T) : undefined
     stmt.free()
     return row
   }
 
-  all(...args: unknown[]): Record<string, unknown>[] {
+  all<T = unknown>(...args: unknown[]): T[] {
     const params = toBindParams(args)
     const stmt = this.db.prepare(this.sql)
     if (params) stmt.bind(params)
-    const rows: Record<string, unknown>[] = []
-    while (stmt.step()) rows.push(stmt.getAsObject() as Record<string, unknown>)
+    const rows: T[] = []
+    while (stmt.step()) rows.push(stmt.getAsObject() as T)
     stmt.free()
     return rows
   }
 
-  run(...args: unknown[]): { lastInsertRowid: number; changes: number } {
+  run(...args: unknown[]): { lastInsertRowid: number } {
     const params = toBindParams(args)
     const stmt = this.db.prepare(this.sql)
     if (params !== null) stmt.run(params)
@@ -93,7 +93,7 @@ class Stmt {
     if (rid.step()) lastInsertRowid = Number(rid.getAsObject().id ?? 0)
     rid.free()
     persist()
-    return { lastInsertRowid, changes: 1 }
+    return { lastInsertRowid }
   }
 }
 
@@ -108,8 +108,8 @@ class Db {
     this.db.exec(sql)
   }
 
-  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T {
-    return ((...args: unknown[]) => {
+  transaction<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+    return ((...args: A) => {
       this.db.run('BEGIN TRANSACTION')
       inTx = true
       try {
@@ -123,7 +123,7 @@ class Db {
         inTx = false
         throw e
       }
-    }) as T
+    }) as (...args: A) => R
   }
 }
 
@@ -148,11 +148,23 @@ export function getDb(): Db {
   return dbInstance
 }
 
+// Shared settings read/upsert — single source for the key/value table so the
+// same SQL isn't hand-written in five handlers.
+export function getSetting(key: string): string | null {
+  return getDb().prepare('SELECT value FROM settings WHERE key = ?').get<{ value: string }>(key)?.value ?? null
+}
+
+export function setSetting(key: string, value: string): void {
+  getDb().prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ).run(key, value)
+}
+
 // Helper used by handlers — returns the user's currently-selected vehicle id.
 // Falls back to 1 (the seeded default) if the setting is missing.
 export function getCurrentVehicleId(): number {
-  const row = getDb().prepare("SELECT value FROM settings WHERE key = 'current_vehicle_id'").get() as { value: string } | undefined
-  return row ? parseInt(row.value, 10) || 1 : 1
+  const v = getSetting('current_vehicle_id')
+  return v ? parseInt(v, 10) || 1 : 1
 }
 
 function initSchema(db: Db): void {

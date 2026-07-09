@@ -1,5 +1,7 @@
 import fs from 'fs'
 
+type Db = ReturnType<typeof import('./db').getDb>
+
 /**
  * Best-effort deletion of photo/attachment files from disk.
  *
@@ -17,4 +19,20 @@ export function deletePhotoFiles(paths: Array<string | null | undefined>): void 
       /* ignore — best-effort cleanup */
     }
   }
+}
+
+/**
+ * Replace a record's child photo/attachment rows with `newPaths`, unlinking any
+ * files that were removed. Shared by the four update handlers; also the reason
+ * PhotoUpload can stop deleting pre-existing files on remove (so cancelling an
+ * edit no longer loses them — the delete happens here, only on save).
+ */
+export function replaceChildPaths(
+  db: Db, table: string, fkCol: string, fkVal: number, col: string, newPaths: string[],
+): void {
+  const old = (db.prepare(`SELECT ${col} AS p FROM ${table} WHERE ${fkCol} = ?`).all<{ p: string }>(fkVal)).map(r => r.p)
+  deletePhotoFiles(old.filter(p => !newPaths.includes(p)))
+  db.prepare(`DELETE FROM ${table} WHERE ${fkCol} = ?`).run(fkVal)
+  const insert = db.prepare(`INSERT INTO ${table} (${fkCol}, ${col}) VALUES (?, ?)`)
+  for (const p of newPaths) insert.run(fkVal, p)
 }

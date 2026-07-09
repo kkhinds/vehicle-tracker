@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, protocol, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initDb } from './db'
@@ -20,10 +20,6 @@ import { runStartupBackup } from './backups'
 import { registerFluidHandlers } from './handlers/fluids'
 import { registerUpdaterHandlers } from './handlers/updater'
 import { initAutoUpdater } from './updater'
-
-protocol.registerSchemesAsPrivileged([
-  { scheme: 'localfile', privileges: { secure: true, standard: true, supportFetchAPI: true } }
-])
 
 // Resolve a resource shipped under /resources at both dev and production paths.
 // Dev:  <project>/resources/foo
@@ -128,26 +124,6 @@ app.whenReady().then(async () => {
   // so the user sees feedback that the app is starting.
   createSplashWindow()
 
-  protocol.handle('localfile', (request) => {
-    try {
-      const filePath = decodeURIComponent(request.url.replace('localfile://', ''))
-      const resolved = path.resolve(filePath)
-      // Only serve files under the app's userData dir (photos, documents, …).
-      const allowedRoot = path.resolve(app.getPath('userData'))
-      if (resolved !== allowedRoot && !resolved.startsWith(allowedRoot + path.sep)) {
-        return new Response(null, { status: 403 })
-      }
-      if (!fs.existsSync(resolved)) {
-        return new Response(null, { status: 404 })
-      }
-      return new Response(fs.readFileSync(resolved), {
-        headers: { 'Content-Type': getContentType(resolved) }
-      })
-    } catch {
-      return new Response(null, { status: 404 })
-    }
-  })
-
   await initDb()
 
   // Auto-backup on startup (idempotent — skips if a backup already exists
@@ -184,12 +160,3 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
-
-function getContentType(filePath: string): string {
-  const ext = path.extname(filePath).slice(1).toLowerCase()
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf'
-  }
-  return map[ext] ?? 'application/octet-stream'
-}

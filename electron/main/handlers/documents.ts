@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
-import { deletePhotoFiles } from '../photos'
+import { deletePhotoFiles, replaceChildPaths } from '../photos'
+import { daysUntil } from '../dates'
 
 interface DocumentRow {
   id: number
@@ -27,9 +28,7 @@ function computeStatus(row: DocumentRow) {
   if (!row.expiry_date) {
     return { days_remaining: null, status: 'no-expiry' as const }
   }
-  const now = new Date()
-  const expiry = new Date(row.expiry_date)
-  const daysRemaining = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const daysRemaining = daysUntil(row.expiry_date)
   let status: 'ok' | 'due-soon' | 'overdue' = 'ok'
   if (daysRemaining <= 0) status = 'overdue'
   else if (daysRemaining <= 30) status = 'due-soon'
@@ -88,11 +87,7 @@ export function registerDocumentHandlers(): void {
     `).run({ ...merged, id })
 
     if (data.photos !== undefined) {
-      db.prepare('DELETE FROM vehicle_document_photos WHERE document_id = ?').run(id)
-      const insertPhoto = db.prepare('INSERT INTO vehicle_document_photos (document_id, photo_path) VALUES (?, ?)')
-      for (const photo of data.photos) {
-        insertPhoto.run(id, photo)
-      }
+      replaceChildPaths(db, 'vehicle_document_photos', 'document_id', id, 'photo_path', data.photos)
     }
   })
 
