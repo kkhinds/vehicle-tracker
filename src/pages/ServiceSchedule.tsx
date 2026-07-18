@@ -18,12 +18,14 @@ import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate, todayISO } from '@/lib/utils'
+import { optionalNumber } from '@/lib/forms'
 import type { ServiceInterval } from '@/types'
 
 const intervalSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   interval_km: z.coerce.number().positive('Must be positive'),
-  last_done_km: z.coerce.number().min(0).optional(),
+  interval_months: optionalNumber(z.coerce.number().positive()),
+  last_done_km: optionalNumber(z.coerce.number().min(0)),
   last_done_date: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -67,7 +69,7 @@ export default function ServiceSchedule() {
 
   function openAddCustom() {
     setEditTarget(null)
-    resetI({ name: '', interval_km: undefined, last_done_km: undefined, last_done_date: '', notes: '' })
+    resetI({ name: '', interval_km: undefined, interval_months: undefined, last_done_km: undefined, last_done_date: '', notes: '' })
     setAddOpen(true)
   }
 
@@ -76,6 +78,7 @@ export default function ServiceSchedule() {
     resetI({
       name: interval.name,
       interval_km: interval.interval_km,
+      interval_months: interval.interval_months ?? undefined,
       last_done_km: interval.last_done_km ?? undefined,
       last_done_date: interval.last_done_date ?? '',
       notes: interval.notes ?? '',
@@ -86,6 +89,7 @@ export default function ServiceSchedule() {
   async function onIntervalSubmit(data: IntervalForm) {
     const payload = {
       ...data,
+      interval_months: data.interval_months ?? null,
       last_done_km: data.last_done_km ?? null,
       last_done_date: data.last_done_date || null,
       notes: data.notes || null,
@@ -136,9 +140,13 @@ export default function ServiceSchedule() {
   }
 
   function IntervalCard({ interval }: { interval: ServiceInterval }) {
-    const pct = interval.last_done_km != null && interval.next_due_km != null
-      ? Math.max(0, Math.min(100, ((settings.current_odometer - interval.last_done_km) / interval.interval_km) * 100))
+    const kmPct = interval.last_done_km != null && interval.next_due_km != null
+      ? ((settings.current_odometer - interval.last_done_km) / interval.interval_km) * 100
       : 0
+    const timePct = interval.interval_months && interval.days_remaining != null
+      ? (1 - interval.days_remaining / (interval.interval_months * 30.44)) * 100
+      : 0
+    const pct = Math.max(0, Math.min(100, Math.max(kmPct, timePct)))
     const expanded = expandedId === interval.id
     const hasWhy = !!interval.consequence_of_skipping
 
@@ -153,6 +161,7 @@ export default function ServiceSchedule() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Every {interval.interval_km.toLocaleString()} {unit}
+                {interval.interval_months ? ` or ${interval.interval_months} mo` : ''}
                 {interval.last_done_km && ` · Last: ${interval.last_done_km.toLocaleString()} ${unit}`}
                 {interval.last_done_date && ` (${formatDate(interval.last_done_date)})`}
               </p>
@@ -161,6 +170,14 @@ export default function ServiceSchedule() {
                   interval.km_remaining <= 0
                     ? <span className="text-red-400">Overdue by {Math.abs(interval.km_remaining).toLocaleString()} {unit}</span>
                     : <span className="text-muted-foreground">Due in <span className="text-foreground font-medium">{interval.km_remaining.toLocaleString()}</span> {unit}</span>
+                )}
+                {interval.next_due_date && interval.days_remaining != null && (
+                  <span className="text-muted-foreground">
+                    {' · '}
+                    {interval.days_remaining <= 0
+                      ? <span className="text-red-400">time overdue ({formatDate(interval.next_due_date)})</span>
+                      : <>by {formatDate(interval.next_due_date)} ({interval.days_remaining}d)</>}
+                  </span>
                 )}
               </p>
               {/* Progress bar */}
@@ -266,10 +283,16 @@ export default function ServiceSchedule() {
               <Input placeholder="e.g. Tyre replacement" {...regI('name')} />
               {errI.name && <p className="text-xs text-destructive">{errI.name.message}</p>}
             </div>
-            <div className="space-y-1.5">
-              <Label>Interval ({unit}) *</Label>
-              <Input type="number" placeholder="e.g. 50000" {...regI('interval_km')} />
-              {errI.interval_km && <p className="text-xs text-destructive">{errI.interval_km.message}</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Interval ({unit}) *</Label>
+                <Input type="number" placeholder="e.g. 50000" {...regI('interval_km')} />
+                {errI.interval_km && <p className="text-xs text-destructive">{errI.interval_km.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Or months</Label>
+                <Input type="number" placeholder="e.g. 12" {...regI('interval_months')} />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

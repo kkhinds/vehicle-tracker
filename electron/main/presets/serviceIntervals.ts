@@ -10,6 +10,8 @@ export interface IntervalPreset {
   name: string
   category_key: string
   interval_km: number
+  /** Time-based due alongside km. Due = whichever comes first. Omit = km-only. */
+  interval_months?: number
   consequence_of_skipping: string
 }
 
@@ -17,6 +19,7 @@ const SHARED_BRAKE_FLUID: IntervalPreset = {
   name: 'Brake Fluid',
   category_key: 'brake-fluid',
   interval_km: 40000,
+  interval_months: 24,
   consequence_of_skipping:
     'Brake fluid absorbs water over time. When it boils under hard braking, the pedal goes soft and you can lose stopping power — a $60 fluid flush prevents thousands in collision damage.',
 }
@@ -25,6 +28,7 @@ const SHARED_COOLANT: IntervalPreset = {
   name: 'Coolant Flush',
   category_key: 'coolant',
   interval_km: 80000,
+  interval_months: 48,
   consequence_of_skipping:
     "Old coolant goes acidic and eats the inside of your radiator, water pump and head gasket. Skipping leads to overheating and engine damage that can total a car. The flush is cheap; a blown head gasket isn't.",
 }
@@ -33,6 +37,7 @@ const SHARED_CABIN_FILTER: IntervalPreset = {
   name: 'Cabin Air Filter',
   category_key: 'cabin-filter',
   interval_km: 20000,
+  interval_months: 12,
   consequence_of_skipping:
     'A clogged cabin filter restricts AC airflow, lets pollen and exhaust into the cabin, and overworks the blower motor. $20 part, 5-minute job — replace when the AC feels weaker than usual.',
 }
@@ -41,6 +46,7 @@ const SHARED_WIPERS: IntervalPreset = {
   name: 'Wiper Blades',
   category_key: 'wipers',
   interval_km: 20000,
+  interval_months: 12,
   consequence_of_skipping:
     "Worn wipers smear instead of clearing — at night in heavy rain that's a real safety risk. Replace any time they streak or chatter; the rubber typically gives up in 12-18 months in the tropics.",
 }
@@ -65,6 +71,7 @@ const PETROL_OIL: IntervalPreset = {
   name: 'Oil and Filter Change',
   category_key: 'oil-change',
   interval_km: 8000,
+  interval_months: 6,
   consequence_of_skipping:
     "Engine oil gets dirty and loses lubrication ability. Run it too long and metal-on-metal wear eats your bearings, leading to engine rebuilds or replacement ($3,000+). One of the few services where being early costs almost nothing and being late costs everything.",
 }
@@ -153,6 +160,7 @@ const DIESEL_DMAX: IntervalPreset[] = [
     name: 'Oil and Filter Change',
     category_key: 'oil-change',
     interval_km: 10000,
+    interval_months: 6,
     consequence_of_skipping:
       "Diesels generate soot that contaminates oil faster than petrol. Skip oil changes and the turbo bearings and injectors suffer first — a single injector is $400-800; rebuilding a turbo is $2,000+. Use only diesel-spec oil meeting your manufacturer's standard.",
   },
@@ -242,7 +250,7 @@ const DIESEL_DMAX: IntervalPreset[] = [
 ]
 
 const HYBRID: IntervalPreset[] = [
-  { ...PETROL_OIL, interval_km: 10000, consequence_of_skipping:
+  { ...PETROL_OIL, interval_km: 10000, interval_months: 12, consequence_of_skipping:
       "Hybrid engines run cooler and shut off frequently, so oil can last longer — but follow your manufacturer's spec. Skipping still causes the same damage as on a regular petrol engine." },
   PETROL_AIR_FILTER,
   SHARED_TIRE_ROTATION,

@@ -437,7 +437,34 @@ function migrate(db: Db): void {
     if (!tableHasColumn(db, 'service_intervals', 'consequence_of_skipping')) {
       db.exec(`ALTER TABLE service_intervals ADD COLUMN consequence_of_skipping TEXT`)
     }
+    // Time-based due date alongside distance (oil "5000 km OR 6 months").
+    if (!tableHasColumn(db, 'service_intervals', 'interval_months')) {
+      db.exec(`ALTER TABLE service_intervals ADD COLUMN interval_months REAL`)
+    }
   }
+}
+
+/**
+ * Recompute a vehicle's current_odometer from the highest reading actually
+ * logged anywhere (+ purchase reading). Lets a fat-fingered odometer typo drop
+ * back down once the offending entry is fixed or deleted, instead of the old
+ * MAX() ratchet locking it high forever.
+ */
+export function recomputeVehicleOdometer(db: Db, vehicleId: number): void {
+  const row = db.prepare(`
+    SELECT COALESCE(MAX(o), 0) AS m FROM (
+      SELECT MAX(odometer) o FROM fuel_log WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(odometer) FROM maintenance_log WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(odometer) FROM fluid_topups WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(last_done_km) FROM service_intervals WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(install_odometer) FROM tire_sets WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(retired_odometer) FROM tire_sets WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(ti.odometer) FROM tire_inspections ti
+        JOIN tire_sets ts ON ti.tire_set_id = ts.id WHERE ts.vehicle_id = @v
+      UNION ALL SELECT purchase_odometer FROM vehicles WHERE id = @v
+    )
+  `).get<{ m: number }>({ v: vehicleId })
+  db.prepare('UPDATE vehicles SET current_odometer = ? WHERE id = ?').run(row?.m ?? 0, vehicleId)
 }
 
 function seedDefaultData(db: Db): void {
@@ -446,6 +473,7 @@ function seedDefaultData(db: Db): void {
   settingStmt.run('current_odometer', '0')
   settingStmt.run('current_vehicle_id', '1')
   settingStmt.run('distance_unit', 'km')
+  settingStmt.run('economy_unit', 'distance')
   settingStmt.run('currency', 'BBD')
   settingStmt.run('theme', 'dark')
   settingStmt.run('notifications_enabled', 'true')
@@ -498,8 +526,8 @@ function seedDefaultData(db: Db): void {
 export function seedIntervalsForVehicle(db: Db, vehicleId: number, drivetrain: string): void {
   const presets = getPresetsForDrivetrain(drivetrain)
   const insert = db.prepare(`
-    INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, is_custom, consequence_of_skipping)
-    VALUES (@vehicle_id, @name, @category_key, @interval_km, 0, @consequence_of_skipping)
+    INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, interval_months, is_custom, consequence_of_skipping)
+    VALUES (@vehicle_id, @name, @category_key, @interval_km, @interval_months, 0, @consequence_of_skipping)
   `)
   const seed = db.transaction(() => {
     for (const p of presets) {
@@ -508,6 +536,7 @@ export function seedIntervalsForVehicle(db: Db, vehicleId: number, drivetrain: s
         name: p.name,
         category_key: p.category_key,
         interval_km: p.interval_km,
+        interval_months: p.interval_months ?? null,
         consequence_of_skipping: p.consequence_of_skipping,
       })
     }
@@ -520,7 +549,8 @@ function backfillIntervalMetadata(db: Db, vehicleId: number, drivetrain: string)
   const update = db.prepare(`
     UPDATE service_intervals
        SET category_key = @category_key,
-           consequence_of_skipping = COALESCE(consequence_of_skipping, @consequence_of_skipping)
+           consequence_of_skipping = COALESCE(consequence_of_skipping, @consequence_of_skipping),
+           interval_months = COALESCE(interval_months, @interval_months)
      WHERE vehicle_id = @vehicle_id
        AND is_custom = 0
        AND name = @name
@@ -532,6 +562,7 @@ function backfillIntervalMetadata(db: Db, vehicleId: number, drivetrain: string)
         name: p.name,
         category_key: p.category_key,
         consequence_of_skipping: p.consequence_of_skipping,
+        interval_months: p.interval_months ?? null,
       })
     }
   })

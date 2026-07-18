@@ -1,6 +1,6 @@
 import { Notification, ipcMain } from 'electron'
 import { getDb, getSetting, setSetting } from './db'
-import { daysUntil } from './dates'
+import { daysUntil, addMonthsISO } from './dates'
 
 // Scans all non-archived vehicles for upcoming services, insurance renewals,
 // and document expiries. Fires native OS notifications for items hitting:
@@ -13,7 +13,7 @@ import { daysUntil } from './dates'
 // completed/renewed (because the threshold computation changes).
 
 interface VehicleRow { id: number; nickname: string; current_odometer: number }
-interface IntervalRow { id: number; name: string; interval_km: number; last_done_km: number | null }
+interface IntervalRow { id: number; name: string; interval_km: number; interval_months: number | null; last_done_km: number | null; last_done_date: string | null }
 interface PolicyRow { id: number; provider: string; renewal_date: string }
 interface DocumentRow { id: number; title: string; expiry_date: string; doc_type: string }
 const DAY_THRESHOLDS = [60, 30, 7, 0]
@@ -67,13 +67,30 @@ export function runNotificationCheck(): { fired: number; checked: number } {
   let checked = 0
 
   for (const v of vehicles) {
-    // ── Service intervals (km-based)
+    // ── Service intervals (km-based, plus time-based when configured)
     const intervals = db.prepare(
-      'SELECT id, name, interval_km, last_done_km FROM service_intervals WHERE vehicle_id = ?'
+      'SELECT id, name, interval_km, interval_months, last_done_km, last_done_date FROM service_intervals WHERE vehicle_id = ?'
     ).all(v.id) as IntervalRow[]
 
     for (const iv of intervals) {
       checked++
+
+      // Time dimension: fire if the date is due sooner than km.
+      if (iv.interval_months && iv.last_done_date) {
+        const days = daysUntil(addMonthsISO(iv.last_done_date, iv.interval_months))
+        const dt = pickThreshold(days, DAY_THRESHOLDS)
+        if (dt !== null) {
+          const key = `service-date:${v.id}:${iv.id}:${iv.last_done_date}:${dt}`
+          stillRelevant.add(key)
+          if (!alerted.has(key)) {
+            const verb = days <= 0 ? `overdue by ${Math.abs(days)} day(s)` : `due in ${days} day(s)`
+            notify(`${v.nickname}: ${iv.name}`, `Service ${verb}.`)
+            alerted.add(key)
+            fired++
+          }
+        }
+      }
+
       const dueKm = (iv.last_done_km ?? 0) + iv.interval_km
       const remaining = dueKm - v.current_odometer
       const threshold = pickThreshold(remaining, KM_THRESHOLDS)

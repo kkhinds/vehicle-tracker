@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { daysUntil, addMonthsISO } from '../dates'
 
 interface IntervalRow {
   id: number
@@ -7,12 +8,16 @@ interface IntervalRow {
   name: string
   category_key: string | null
   interval_km: number
+  interval_months: number | null
   last_done_km: number | null
   last_done_date: string | null
   is_custom: number
   consequence_of_skipping: string | null
   notes: string | null
 }
+
+type Status = 'ok' | 'due-soon' | 'overdue'
+const RANK: Record<Status, number> = { ok: 0, 'due-soon': 1, overdue: 2 }
 
 interface VehicleOdometerRow { current_odometer: number }
 
@@ -36,15 +41,28 @@ export function registerScheduleHandlers(): void {
     return rows.map(row => {
       const nextDueKm = (row.last_done_km ?? 0) + row.interval_km
       const kmRemaining = nextDueKm - odometer
-      let status: 'ok' | 'due-soon' | 'overdue' = 'ok'
-      if (kmRemaining <= 0) status = 'overdue'
-      else if (kmRemaining <= 1000) status = 'due-soon'
+      const kmStatus: Status = kmRemaining <= 0 ? 'overdue' : kmRemaining <= 1000 ? 'due-soon' : 'ok'
+
+      // Time-based due, only when the interval has a month period AND a last-done date.
+      let nextDueDate: string | null = null
+      let daysRemaining: number | null = null
+      let dateStatus: Status = 'ok'
+      if (row.interval_months && row.last_done_date) {
+        nextDueDate = addMonthsISO(row.last_done_date, row.interval_months)
+        daysRemaining = daysUntil(nextDueDate)
+        dateStatus = daysRemaining <= 0 ? 'overdue' : daysRemaining <= 30 ? 'due-soon' : 'ok'
+      }
+
+      // Due = whichever dimension is more urgent.
+      const status: Status = RANK[dateStatus] > RANK[kmStatus] ? dateStatus : kmStatus
 
       return {
         ...row,
         is_custom: row.is_custom === 1,
         next_due_km: nextDueKm,
         km_remaining: kmRemaining,
+        next_due_date: nextDueDate,
+        days_remaining: daysRemaining,
         status,
       }
     })
@@ -53,13 +71,14 @@ export function registerScheduleHandlers(): void {
   ipcMain.handle('schedule:add', (_, interval: Omit<IntervalRow, 'id' | 'vehicle_id'>) => {
     const vehicleId = getCurrentVehicleId()
     const result = db.prepare(`
-      INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, last_done_km, last_done_date, is_custom, consequence_of_skipping, notes)
-      VALUES (@vehicle_id, @name, @category_key, @interval_km, @last_done_km, @last_done_date, @is_custom, @consequence_of_skipping, @notes)
+      INSERT INTO service_intervals (vehicle_id, name, category_key, interval_km, interval_months, last_done_km, last_done_date, is_custom, consequence_of_skipping, notes)
+      VALUES (@vehicle_id, @name, @category_key, @interval_km, @interval_months, @last_done_km, @last_done_date, @is_custom, @consequence_of_skipping, @notes)
     `).run({
       ...interval,
       vehicle_id: vehicleId,
       is_custom: 1,
       category_key: interval.category_key ?? null,
+      interval_months: interval.interval_months ?? null,
       last_done_km: interval.last_done_km ?? null,
       last_done_date: interval.last_done_date ?? null,
       consequence_of_skipping: interval.consequence_of_skipping ?? null,
@@ -74,8 +93,8 @@ export function registerScheduleHandlers(): void {
     const merged = { ...current, ...data, is_custom: data.is_custom !== undefined ? (data.is_custom ? 1 : 0) : current.is_custom }
     db.prepare(`
       UPDATE service_intervals SET name=@name, category_key=@category_key, interval_km=@interval_km,
-        last_done_km=@last_done_km, last_done_date=@last_done_date, is_custom=@is_custom,
-        consequence_of_skipping=@consequence_of_skipping, notes=@notes WHERE id=@id
+        interval_months=@interval_months, last_done_km=@last_done_km, last_done_date=@last_done_date,
+        is_custom=@is_custom, consequence_of_skipping=@consequence_of_skipping, notes=@notes WHERE id=@id
     `).run({ ...merged, id })
   })
 

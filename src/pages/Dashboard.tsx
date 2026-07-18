@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import StatCard from '@/components/shared/StatCard'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatEconomy, economyLabel } from '@/lib/utils'
 import type { DashboardSummary, ActivityEntry } from '@/types'
 
 const ACTIVITY_ICONS: Record<string, React.ElementType> = {
@@ -56,11 +56,13 @@ export default function Dashboard() {
   const currency = settings.currency
   const unit = settings.distance_unit
 
-  const nextServiceLabel = summary?.nextService
-    ? summary.nextService.kmRemaining <= 0
-      ? `Overdue by ${Math.abs(summary.nextService.kmRemaining)} ${unit}`
-      : `In ${summary.nextService.kmRemaining} ${unit}`
+  const ns = summary?.nextService
+  const nextServiceLabel = ns
+    ? (ns.kmRemaining <= 0 ? `Overdue ${Math.abs(ns.kmRemaining)} ${unit}` : `In ${ns.kmRemaining} ${unit}`)
+      + (ns.daysRemaining != null ? (ns.daysRemaining <= 0 ? ' · time overdue' : ` · ${ns.daysRemaining}d`) : '')
     : 'No data'
+
+  const econ = formatEconomy(summary?.avgConsumption, unit, settings.economy_unit)
 
   const renewalLabel = summary?.insuranceRenewal
     ? summary.insuranceRenewal.daysRemaining <= 0
@@ -91,7 +93,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Avg Consumption"
-          value={summary?.avgConsumption ? `${summary.avgConsumption} ${unit}/L` : 'N/A'}
+          value={econ ? `${econ} ${economyLabel(unit, settings.economy_unit)}` : 'N/A'}
           subtitle="Full tank fill-ups only"
           icon={TrendingUp}
           iconClassName="bg-green-500/10 text-green-400"
@@ -158,6 +160,11 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground">Lifetime Cost</p>
                   <p className="text-xl font-bold">{formatCurrency(summary?.totalCost ?? 0, currency)}</p>
+                  {summary?.costPerDistance != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(summary.costPerDistance, currency)} / {unit}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

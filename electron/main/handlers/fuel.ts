@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { getDb, getCurrentVehicleId } from '../db'
+import { getDb, getCurrentVehicleId, recomputeVehicleOdometer } from '../db'
 import { deletePhotoFiles } from '../photos'
 
 interface FuelRow {
@@ -22,6 +22,41 @@ function rowToEntry(row: FuelRow) {
   return { ...row, full_tank: row.full_tank === 1 }
 }
 
+type Db = ReturnType<typeof getDb>
+
+/**
+ * Recompute consumption for every full-tank entry using the fill-to-full method:
+ * distance between two consecutive full fills / litres added across that span
+ * (partial fills in between included). Stored on the later full-tank entry.
+ * Recomputed wholesale after any add/edit/delete so a changed partial fill
+ * correctly re-flows into its span's economy.
+ */
+function recomputeConsumption(db: Db, vehicleId: number): void {
+  const rows = db.prepare(
+    'SELECT id, odometer, litres, full_tank FROM fuel_log WHERE vehicle_id = ? ORDER BY odometer ASC, id ASC'
+  ).all<{ id: number; odometer: number; litres: number; full_tank: number }>(vehicleId)
+
+  let lastFullOdo: number | null = null
+  let litresSinceFull = 0
+  const stmt = db.prepare('UPDATE fuel_log SET consumption = ? WHERE id = ?')
+  const apply = db.transaction(() => {
+    for (const r of rows) {
+      if (lastFullOdo !== null) litresSinceFull += r.litres
+      let consumption: number | null = null
+      if (r.full_tank === 1) {
+        if (lastFullOdo !== null) {
+          const km = r.odometer - lastFullOdo
+          if (km > 0 && litresSinceFull > 0) consumption = km / litresSinceFull
+        }
+        lastFullOdo = r.odometer
+        litresSinceFull = 0
+      }
+      stmt.run(consumption, r.id)
+    }
+  })
+  apply()
+}
+
 export function registerFuelHandlers(): void {
   const db = getDb()
 
@@ -36,34 +71,20 @@ export function registerFuelHandlers(): void {
   ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id' | 'full_tank'> & { full_tank: boolean }) => {
     const vehicleId = getCurrentVehicleId()
 
-    let consumption: number | null = null
-    if (entry.full_tank) {
-      const prev = db.prepare(
-        'SELECT * FROM fuel_log WHERE vehicle_id = ? AND full_tank = 1 AND odometer < ? ORDER BY odometer DESC LIMIT 1'
-      ).get(vehicleId, entry.odometer) as FuelRow | undefined
-      if (prev) {
-        const kmDriven = entry.odometer - prev.odometer
-        if (kmDriven > 0) consumption = kmDriven / entry.litres
-      }
-    }
-
     const result = db.prepare(`
       INSERT INTO fuel_log (vehicle_id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, notes, receipt_photo, consumption)
-      VALUES (@vehicle_id, @date, @odometer, @litres, @cost_per_litre, @total_cost, @fuel_station, @full_tank, @notes, @receipt_photo, @consumption)
+      VALUES (@vehicle_id, @date, @odometer, @litres, @cost_per_litre, @total_cost, @fuel_station, @full_tank, @notes, @receipt_photo, NULL)
     `).run({
       ...entry,
       vehicle_id: vehicleId,
       full_tank: entry.full_tank ? 1 : 0,
-      consumption,
       fuel_station: entry.fuel_station ?? null,
       notes: entry.notes ?? null,
       receipt_photo: entry.receipt_photo ?? null,
     })
 
-    // Update the vehicle's current_odometer if this is the newest reading.
-    db.prepare(
-      'UPDATE vehicles SET current_odometer = MAX(current_odometer, ?) WHERE id = ?'
-    ).run(entry.odometer, vehicleId)
+    recomputeConsumption(db, vehicleId)
+    recomputeVehicleOdometer(db, vehicleId)
 
     return rowToEntry(db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(result.lastInsertRowid) as FuelRow)
   })
@@ -74,19 +95,6 @@ export function registerFuelHandlers(): void {
 
     const merged = { ...current, ...entry, full_tank: entry.full_tank !== undefined ? (entry.full_tank ? 1 : 0) : current.full_tank }
 
-    let consumption = merged.consumption
-    if (merged.full_tank === 1) {
-      const prev = db.prepare(
-        'SELECT * FROM fuel_log WHERE vehicle_id = ? AND full_tank = 1 AND odometer < ? AND id != ? ORDER BY odometer DESC LIMIT 1'
-      ).get(current.vehicle_id, merged.odometer, id) as FuelRow | undefined
-      if (prev) {
-        const kmDriven = merged.odometer - prev.odometer
-        if (kmDriven > 0) consumption = kmDriven / merged.litres
-      }
-    } else {
-      consumption = null
-    }
-
     // Unlink the old receipt if this edit replaced or cleared it.
     if (current.receipt_photo && current.receipt_photo !== merged.receipt_photo) {
       deletePhotoFiles([current.receipt_photo])
@@ -95,19 +103,20 @@ export function registerFuelHandlers(): void {
     db.prepare(`
       UPDATE fuel_log SET date=@date, odometer=@odometer, litres=@litres, cost_per_litre=@cost_per_litre,
       total_cost=@total_cost, fuel_station=@fuel_station, full_tank=@full_tank, notes=@notes,
-      receipt_photo=@receipt_photo, consumption=@consumption WHERE id=@id
-    `).run({ ...merged, consumption, id })
+      receipt_photo=@receipt_photo WHERE id=@id
+    `).run({ ...merged, id })
 
-    // Keep the vehicle odometer in sync if this edit raised the reading
-    // (fuel:add does the same). Uses MAX so lowering never regresses it.
-    db.prepare(
-      'UPDATE vehicles SET current_odometer = MAX(current_odometer, ?) WHERE id = ?'
-    ).run(merged.odometer, current.vehicle_id)
+    recomputeConsumption(db, current.vehicle_id)
+    recomputeVehicleOdometer(db, current.vehicle_id)
   })
 
   ipcMain.handle('fuel:delete', (_, id: number) => {
-    const row = db.prepare('SELECT receipt_photo FROM fuel_log WHERE id = ?').get(id) as { receipt_photo: string | null } | undefined
+    const row = db.prepare('SELECT vehicle_id, receipt_photo FROM fuel_log WHERE id = ?').get(id) as { vehicle_id: number; receipt_photo: string | null } | undefined
     db.prepare('DELETE FROM fuel_log WHERE id = ?').run(id)
-    if (row) deletePhotoFiles([row.receipt_photo])
+    if (row) {
+      deletePhotoFiles([row.receipt_photo])
+      recomputeConsumption(db, row.vehicle_id)
+      recomputeVehicleOdometer(db, row.vehicle_id)
+    }
   })
 }

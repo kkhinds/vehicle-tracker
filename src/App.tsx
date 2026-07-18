@@ -25,6 +25,7 @@ export default function App() {
     current_odometer: 0,
     current_vehicle_id: 1,
     distance_unit: 'km',
+    economy_unit: 'distance',
     currency: 'BBD',
     theme: 'dark',
     notifications_enabled: true,

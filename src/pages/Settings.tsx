@@ -28,6 +28,7 @@ import { format } from 'date-fns'
 const schema = z.object({
   current_odometer: z.coerce.number().min(0),
   distance_unit: z.enum(['km', 'miles']),
+  economy_unit: z.enum(['distance', 'l_per_100km', 'mpg']),
   currency: z.string().min(1),
   theme: z.enum(['dark', 'light']),
   notifications_enabled: z.boolean(),
@@ -84,6 +85,7 @@ export default function Settings() {
 
   const theme = watch('theme')
   const distanceUnit = watch('distance_unit')
+  const economyUnit = watch('economy_unit')
   const notificationsEnabled = watch('notifications_enabled')
 
   async function onSubmit(data: FormData) {
@@ -221,6 +223,19 @@ export default function Settings() {
                   <SelectContent>
                     <SelectItem value="km">Kilometres (km)</SelectItem>
                     <SelectItem value="miles">Miles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fuel Economy</Label>
+                <Select value={economyUnit} onValueChange={v => setValue('economy_unit', v as 'distance' | 'l_per_100km' | 'mpg')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="distance">{distanceUnit === 'miles' ? 'Miles per litre' : 'Km per litre'}</SelectItem>
+                    <SelectItem value="l_per_100km">Litres per 100 km</SelectItem>
+                    <SelectItem value="mpg">MPG (US gallon)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

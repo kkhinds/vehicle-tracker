@@ -89,6 +89,7 @@ export interface ServiceInterval {
   name: string
   category_key: string | null
   interval_km: number
+  interval_months: number | null
   last_done_km: number | null
   last_done_date: string | null
   is_custom: boolean
@@ -97,6 +98,8 @@ export interface ServiceInterval {
   // Computed fields added by handler
   next_due_km?: number
   km_remaining?: number
+  next_due_date?: string | null
+  days_remaining?: number | null
   status?: 'ok' | 'due-soon' | 'overdue'
 }
 
@@ -252,10 +255,13 @@ export interface FluidStat {
   exceedsThreshold: boolean
 }
 
+export type EconomyUnit = 'distance' | 'l_per_100km' | 'mpg'
+
 export interface AppSettings {
   current_odometer: number  // kept for backward compat; mirrors current vehicle's odometer
   current_vehicle_id: number
   distance_unit: 'km' | 'miles'
+  economy_unit: EconomyUnit
   currency: string
   theme: 'dark' | 'light'
   notifications_enabled: boolean
@@ -287,7 +293,10 @@ export interface DashboardSummary {
     name: string
     kmRemaining: number
     dueKm: number
+    daysRemaining: number | null
+    dueDate: string | null
   } | null
+  costPerDistance: number | null
   insuranceRenewal: {
     provider: string
     daysRemaining: number

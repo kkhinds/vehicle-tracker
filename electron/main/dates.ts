@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, parseISO, addMonths, format } from 'date-fns'
 
 /**
  * Whole calendar days from today until a stored 'yyyy-MM-dd' date.
@@ -8,4 +8,9 @@ import { differenceInCalendarDays, parseISO } from 'date-fns'
  */
 export function daysUntil(dateStr: string): number {
   return differenceInCalendarDays(parseISO(dateStr), new Date())
+}
+
+/** 'yyyy-MM-dd' + N months, as a local 'yyyy-MM-dd'. */
+export function addMonthsISO(dateStr: string, months: number): string {
+  return format(addMonths(parseISO(dateStr), months), 'yyyy-MM-dd')
 }

@@ -2,13 +2,13 @@ import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId, getSetting } from '../db'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { FLUID_PRESETS, fluidRatePer1000km } from '../presets/fluids'
-import { daysUntil } from '../dates'
+import { daysUntil, addMonthsISO } from '../dates'
 import type { ActivityEntry, MonthlyTrendEntry, DocumentType } from '../../../src/types'
 
 interface SumRow { total: number | null }
 interface AvgRow { avg: number | null }
 interface ActivityRow { id: number; date: string; description: string; amount: number }
-interface VehicleOdoRow { current_odometer: number }
+interface VehicleOdoRow { current_odometer: number; purchase_odometer: number | null }
 
 export function registerDashboardHandlers(): void {
   const db = getDb()
@@ -33,25 +33,40 @@ export function registerDashboardHandlers(): void {
 
     // Vehicle odometer (single source of truth)
     const odoRow = db.prepare(
-      'SELECT current_odometer FROM vehicles WHERE id = ?'
+      'SELECT current_odometer, purchase_odometer FROM vehicles WHERE id = ?'
     ).get(vehicleId) as VehicleOdoRow | undefined
     const odometer = odoRow?.current_odometer ?? 0
 
-    // Next service due
+    // Next service due — most urgent by km OR time. Compare on remaining
+    // fraction (remaining / interval) so a low-mileage car's time-overdue oil
+    // surfaces even when km is fine.
     const intervals = db.prepare(
       'SELECT * FROM service_intervals WHERE vehicle_id = ? ORDER BY interval_km ASC'
     ).all(vehicleId) as Array<{
-      id: number; name: string; interval_km: number; last_done_km: number | null
+      id: number; name: string; interval_km: number; interval_months: number | null
+      last_done_km: number | null; last_done_date: string | null
     }>
 
     let nextService = null
-    let minRemaining = Infinity
+    let minFrac = Infinity
     for (const interval of intervals) {
       const dueKm = (interval.last_done_km ?? 0) + interval.interval_km
-      const remaining = dueKm - odometer
-      if (remaining < minRemaining) {
-        minRemaining = remaining
-        nextService = { name: interval.name, kmRemaining: Math.round(remaining), dueKm }
+      const kmRemaining = dueKm - odometer
+      const kmFrac = kmRemaining / interval.interval_km
+
+      let daysRemaining: number | null = null
+      let dueDate: string | null = null
+      let timeFrac = Infinity
+      if (interval.interval_months && interval.last_done_date) {
+        dueDate = addMonthsISO(interval.last_done_date, interval.interval_months)
+        daysRemaining = daysUntil(dueDate)
+        timeFrac = daysRemaining / (interval.interval_months * 30.44)
+      }
+
+      const frac = Math.min(kmFrac, timeFrac)
+      if (frac < minFrac) {
+        minFrac = frac
+        nextService = { name: interval.name, kmRemaining: Math.round(kmRemaining), dueKm, daysRemaining, dueDate }
       }
     }
 
@@ -124,6 +139,10 @@ export function registerDashboardHandlers(): void {
     const totalInsurance = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ?").get(vehicleId) as SumRow).total ?? 0
     const totalCost = totalFuel + totalMaint + totalInsurance
 
+    // Cost per distance over the life we can measure (purchase reading to now).
+    const distance = odometer - (odoRow?.purchase_odometer ?? 0)
+    const costPerDistance = distance > 0 ? Math.round((totalCost / distance) * 100) / 100 : null
+
     // Monthly trend (last 6 months)
     const monthlyTrend: MonthlyTrendEntry[] = []
     for (let i = 5; i >= 0; i--) {
@@ -157,6 +176,7 @@ export function registerDashboardHandlers(): void {
       fluidWarning,
       recentActivity: activity,
       totalCost: Math.round(totalCost * 100) / 100,
+      costPerDistance,
       monthlyTrend,
     }
   })

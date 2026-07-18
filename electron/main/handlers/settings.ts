@@ -28,6 +28,7 @@ export function registerSettingsHandlers(): void {
       current_odometer: vehicle?.current_odometer ?? parseFloat(map['current_odometer'] ?? '0'),
       current_vehicle_id: currentVehicleId,
       distance_unit: map['distance_unit'] ?? 'km',
+      economy_unit: map['economy_unit'] ?? 'distance',
       currency: map['currency'] ?? 'BBD',
       theme: map['theme'] ?? 'dark',
       notifications_enabled: (map['notifications_enabled'] ?? 'true') === 'true',

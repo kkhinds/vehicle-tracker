@@ -27,7 +27,7 @@ import EmptyState from '@/components/shared/EmptyState'
 import DatePicker from '@/components/shared/DatePicker'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
-import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
+import { formatCurrency, formatDate, todayISO, formatEconomy, economyValue, economyLabel } from '@/lib/utils'
 import type { FuelEntry } from '@/types'
 import { format, parseISO } from 'date-fns'
 
@@ -53,6 +53,8 @@ export default function FuelLog() {
   const { currentVehicleId } = useVehicles()
   const currency = settings.currency
   const unit = settings.distance_unit
+  const eu = settings.economy_unit
+  const elabel = economyLabel(unit, eu)
 
   const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -142,7 +144,7 @@ export default function FuelLog() {
   const chartEntries = [...entries].reverse()
   const efficiencyData = chartEntries
     .filter(e => e.consumption !== null)
-    .map(e => ({ label: formatDate(e.date), consumption: e.consumption }))
+    .map(e => ({ label: formatDate(e.date), consumption: economyValue(e.consumption, unit, eu) }))
 
   const monthlyMap: Record<string, number> = {}
   for (const e of entries) {
@@ -165,7 +167,7 @@ export default function FuelLog() {
           <h1 className="text-2xl font-bold">Fuel Log</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {entries.length} entries · Total {formatCurrency(totalSpent, currency)}
-            {avgConsumption > 0 && ` · Avg ${avgConsumption.toFixed(2)} ${unit}/L`}
+            {avgConsumption > 0 && ` · Avg ${formatEconomy(avgConsumption, unit, eu)} ${elabel}`}
           </p>
         </div>
         <Button onClick={openAdd}>
@@ -198,7 +200,7 @@ export default function FuelLog() {
                     <TableHead>Cost/L</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Station</TableHead>
-                    <TableHead>{unit}/L</TableHead>
+                    <TableHead>{elabel}</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -212,8 +214,8 @@ export default function FuelLog() {
                       <TableCell className="font-medium">{formatCurrency(entry.total_cost, currency)}</TableCell>
                       <TableCell className="text-muted-foreground">{entry.fuel_station ?? '—'}</TableCell>
                       <TableCell>
-                        {entry.consumption
-                          ? <span className="text-green-400">{entry.consumption.toFixed(2)}</span>
+                        {formatEconomy(entry.consumption, unit, eu)
+                          ? <span className="text-green-400">{formatEconomy(entry.consumption, unit, eu)}</span>
                           : <span className="text-muted-foreground">—</span>
                         }
                       </TableCell>
@@ -237,7 +239,7 @@ export default function FuelLog() {
 
         <TabsContent value="charts" className="space-y-6">
           <Card>
-            <CardHeader><CardTitle className="text-base">Fuel Efficiency Over Time ({unit}/L)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Fuel Efficiency Over Time ({elabel})</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={efficiencyData}>
@@ -245,7 +247,7 @@ export default function FuelLog() {
                   <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                   <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8 }} />
-                  <Line type="monotone" dataKey="consumption" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name={`${unit}/L`} />
+                  <Line type="monotone" dataKey="consumption" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name={elabel} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
