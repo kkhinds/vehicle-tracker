@@ -1,61 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Driver's Log mark: road running to the horizon, centre line dashed.
+       One bold amber shape on a dark tile — it has to survive 16px in the
+       taskbar, where anything finer turns to mush. Amber is the app accent. -->
   <defs>
-    <linearGradient id="vt-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#1d4ed8"/>
+    <linearGradient id="vt-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#131C2A"/>
+      <stop offset="100%" stop-color="#0A0E14"/>
     </linearGradient>
-    <linearGradient id="vt-body" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#e5e7eb"/>
+    <!-- Road fades out toward the vanishing point instead of ending on a hard
+         edge, which is what sells the perspective at large sizes. -->
+    <linearGradient id="vt-road" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FFC155"/>
+      <stop offset="45%" stop-color="#FFAA2B"/>
+      <stop offset="100%" stop-color="#D97A00" stop-opacity=".3"/>
     </linearGradient>
+    <!-- The road runs off the bottom edge, so it has to be clipped to the tile
+         or it squares off the two bottom corners. -->
+    <clipPath id="vt-clip"><rect width="64" height="64" rx="14"/></clipPath>
   </defs>
 
-  <!-- Rounded square background -->
   <rect width="64" height="64" rx="14" fill="url(#vt-bg)"/>
 
-  <!-- Car body (side profile, SUV/hatchback proportions) -->
-  <path d="M 7 42
-           L 7 36
-           Q 7 35 8 35
-           L 11 35
-           Q 13 31 17 28
-           L 24 24
-           Q 27 23 30 23
-           L 41 23
-           Q 45 24 48 28
-           L 53 34
-           L 56 35
-           Q 57 35 57 36
-           L 57 42
-           L 51 42
-           Q 51 38 47 38
-           Q 43 38 43 42
-           L 21 42
-           Q 21 38 17 38
-           Q 13 38 13 42
-           Z"
-        fill="url(#vt-body)"/>
+  <path d="M 3 64 L 26 12 L 38 12 L 61 64 Z" fill="url(#vt-road)" clip-path="url(#vt-clip)"/>
 
-  <!-- Front window -->
-  <path d="M 31 26 L 31 33 L 19 33 Q 18 33 18.5 32 L 23 28 Q 26 26 28 26 Z"
-        fill="#1e3a8a"/>
+  <!-- Centre line, shrinking with distance -->
+  <g stroke="#0A0E14" stroke-opacity=".5" stroke-linecap="butt">
+    <line x1="32" y1="60" x2="32" y2="50" stroke-width="3.4"/>
+    <line x1="32" y1="44" x2="32" y2="37" stroke-width="2.6"/>
+    <line x1="32" y1="32" x2="32" y2="27" stroke-width="1.9"/>
+  </g>
 
-  <!-- Rear window -->
-  <path d="M 33 26 L 41 26 Q 43 26 45 28 L 49 33 L 33 33 Z"
-        fill="#1e3a8a"/>
-
-  <!-- Front wheel -->
-  <circle cx="17" cy="44" r="6" fill="#0f172a"/>
-  <circle cx="17" cy="44" r="3" fill="#94a3b8"/>
-  <circle cx="17" cy="44" r="1" fill="#0f172a"/>
-
-  <!-- Rear wheel -->
-  <circle cx="47" cy="44" r="6" fill="#0f172a"/>
-  <circle cx="47" cy="44" r="3" fill="#94a3b8"/>
-  <circle cx="47" cy="44" r="1" fill="#0f172a"/>
-
-  <!-- "Tracked / healthy" check badge -->
-  <circle cx="50" cy="17" r="9" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
-  <path d="M 46 17 L 49 20 L 54 14"
-        fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Tile edge, so the icon keeps a silhouette on a dark taskbar -->
+  <rect x=".5" y=".5" width="63" height="63" rx="13.5"
+        fill="none" stroke="#FFFFFF" stroke-opacity=".07"/>
 </svg>
