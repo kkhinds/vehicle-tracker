@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, Menu } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { initDb } from './db'
@@ -79,11 +79,14 @@ function createMainWindow(): void {
       nodeIntegration: false,
       sandbox: false
     },
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0A0E14',
     show: false,
     frame: true,
-    titleBarStyle: 'default'
+    titleBarStyle: 'default',
+    // No File/Edit/View menu bar — the app navigates entirely through its own UI.
+    autoHideMenuBar: true,
   })
+  mainWindow.setMenuBarVisibility(false)
 
   mainWindow.once('ready-to-show', () => {
     // Keep the splash on screen for at least MIN_SPLASH_MS, even if the
@@ -120,6 +123,10 @@ app.whenReady().then(async () => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.kemarhinds.vehicletracker')
   }
+
+  // Drop the default File/Edit/View menu entirely, so Alt can't summon it either.
+  // Clipboard shortcuts inside text fields are handled by Chromium, not the menu.
+  Menu.setApplicationMenu(null)
 
   // Show the splash IMMEDIATELY — before any DB or handler initialization —
   // so the user sees feedback that the app is starting.
