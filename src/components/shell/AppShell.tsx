@@ -5,6 +5,9 @@ import LensBar, { type Lens } from './LensBar'
 import Spine from './Spine'
 import Sheet from './Sheet'
 import LogForm, { KIND_TO_LOG, type LogType } from './LogForm'
+import {
+  IntervalsSheet, GarageSheet, BackupsSheet, SettingsSheet, OdometerSheet, TireSetSheet,
+} from './ManagementSheets'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate } from '@/lib/utils'
@@ -29,6 +32,8 @@ export default function AppShell() {
   const [logType, setLogType] = useState<LogType>('fuel')
   const [detail, setDetail] = useState<TimelineEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset'
+  const [sheet, setSheet] = useState<SheetName | null>(null)
 
   const reload = useCallback(async () => {
     const [s, e, a] = await Promise.all([
@@ -141,17 +146,17 @@ export default function AppShell() {
         nextDue={nextDue}
         alerting={alerting}
         onSwitchVehicle={switchVehicle}
-        onOpenGarage={soon}
-        onEditOdometer={soon}
+        onOpenGarage={() => setSheet('garage')}
+        onEditOdometer={() => setSheet('odometer')}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onOpenSettings={soon}
+        onOpenSettings={() => setSheet('settings')}
       />
       <LensBar
         lens={lens}
         onChange={setLens}
         vehicleName={currentVehicle?.nickname ?? 'No vehicle'}
-        onOpenGarage={soon}
+        onOpenGarage={() => setSheet('garage')}
         onSearch={soon}
       />
       <main className="shell" style={{ paddingBlock: 32, paddingBottom: 130 }} ref={spineRef}>
@@ -171,7 +176,7 @@ export default function AppShell() {
             onOpenEntry={setDetail}
             onOpenAhead={a => openLog(KIND_TO_LOG[a.kind])}
             onLogFirst={() => openLog(lens === 'all' ? 'fuel' : KIND_TO_LOG[lens])}
-            onManageIntervals={soon}
+            onManageIntervals={() => setSheet(lens === 'tires' ? 'tireset' : 'intervals')}
           />
         )}
       </main>
@@ -234,6 +239,70 @@ export default function AppShell() {
             <p className="dl-microcopy">Editing lands next; delete asks twice</p>
           </>
         )}
+      </Sheet>
+
+      <Sheet open={sheet === 'settings'} title="Settings" onClose={() => setSheet(null)}>
+        <SettingsSheet
+          onOpenBackups={() => setSheet('backups')}
+          onOpenOdometer={() => setSheet('odometer')}
+          onChanged={async () => { await refreshSettings(); await refreshVehicles(); reload() }}
+        />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'garage'}
+        title="Garage"
+        subtitle="Every vehicle · click to switch"
+        onClose={() => setSheet(null)}
+      >
+        <GarageSheet
+          vehicles={vehicles}
+          currentId={currentVehicleId}
+          distanceUnit={settings.distance_unit}
+          onSwitch={id => { switchVehicle(id); setSheet(null) }}
+        />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'intervals'}
+        title={`Service intervals — ${currentVehicle?.nickname ?? ''}`}
+        subtitle="Click a row to edit, or ✓ to mark it done"
+        onClose={() => setSheet(null)}
+      >
+        <IntervalsSheet
+          odometer={currentVehicle?.current_odometer ?? 0}
+          distanceUnit={settings.distance_unit}
+          onChanged={reload}
+        />
+      </Sheet>
+
+      <Sheet open={sheet === 'backups'} title="Backups & data" onClose={() => setSheet(null)}>
+        <BackupsSheet />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'odometer'}
+        title={`Correct odometer — ${currentVehicle?.nickname ?? ''}`}
+        subtitle="Fixes a wrong reading"
+        onClose={() => setSheet(null)}
+      >
+        <OdometerSheet
+          current={currentVehicle?.current_odometer ?? 0}
+          distanceUnit={settings.distance_unit}
+          onSaved={async () => { setSheet(null); await refreshSettings(); await refreshVehicles(); reload() }}
+        />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'tireset'}
+        title={`Tires — ${currentVehicle?.nickname ?? ''}`}
+        onClose={() => setSheet(null)}
+      >
+        <TireSetSheet
+          distanceUnit={settings.distance_unit}
+          odometer={currentVehicle?.current_odometer ?? 0}
+          onChanged={reload}
+        />
       </Sheet>
     </>
   )

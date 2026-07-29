@@ -287,3 +287,58 @@
 }
 .dl-fab:hover{ transform:scale(1.05) }
 .dl-fab .plus{ font-size:21px; font-weight:600 }
+
+/* ── MANAGEMENT SHEET ROWS ────────────────────────────── */
+.dl-setrow{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.dl-setrow:last-of-type{ border-bottom:none }
+.dl-lab b{ display:block; font-weight:500; font-size:14px }
+.dl-lab span{ color:var(--dim); font-size:12px }
+.dl-ctl{
+  color:var(--dim); font-size:12px; border:1px solid var(--line2);
+  padding:8px 12px; border-radius:7px; flex:none;
+}
+.dl-ctl:hover{ color:var(--text); background:var(--hover) }
+
+.dl-vrow{
+  display:flex; align-items:center; gap:16px; padding:12px 0; width:100%;
+  text-align:left; border-bottom:1px solid var(--line);
+}
+.dl-vrow:last-of-type{ border-bottom:none }
+.dl-vrow:hover{ background:var(--hover) }
+.dl-vrow-car{ width:60px; height:28px; flex:none }
+.dl-vrow-car path{ fill:none; stroke:var(--dim); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
+.dl-vrow.on .dl-vrow-car path{ stroke:var(--accent) }
+.dl-vrow-nm{ flex:1 }
+.dl-vrow-nm b{ font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:600; letter-spacing:.03em; display:block }
+.dl-vrow-nm span{ display:block; color:var(--dim); font-size:12px }
+
+.dl-chip{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+  letter-spacing:.04em; padding:3px 9px; border-radius:6px; flex:none;
+}
+.dl-chip .dot{ width:6px; height:6px; border-radius:50% }
+.dl-chip.ok{ color:var(--dim); background:var(--green-soft) }
+.dl-chip.ok .dot{ background:var(--green); opacity:.7 }
+
+.dl-irow{ display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line) }
+.dl-irow:last-of-type{ border-bottom:none }
+.dl-irow-main{
+  flex:1; display:flex; align-items:center; gap:14px; padding:10px 0;
+  text-align:left; font-size:13px;
+}
+.dl-irow-main:hover{ background:var(--hover) }
+.dl-irow-nm{ flex:1; font-weight:500 }
+.dl-irow-iv{ font-size:12px; color:var(--dim); flex:none }
+.dl-irow-done{
+  flex:none; width:32px; height:32px; border-radius:8px; color:var(--dim);
+  border:1px solid var(--line2);
+}
+.dl-irow-done:hover{ color:var(--accent-ink); background:var(--accent); border-color:var(--accent) }
+.dl-meter{ display:flex; gap:2px; width:92px; flex:none }
+.dl-meter i{ flex:1; height:8px; border-radius:2px; background:var(--line) }
+.dl-meter i.on{ background:var(--dim); opacity:.7 }
+.dl-meter.warn i.on{ background:var(--accent); opacity:1 }
+.dl-meter.bad i.on{ background:var(--red) }
