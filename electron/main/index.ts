@@ -84,7 +84,8 @@ function createMainWindow(): void {
     frame: true,
     titleBarStyle: 'default',
     // No File/Edit/View menu bar — the app navigates entirely through its own UI.
-    autoHideMenuBar: true,
+    // autoHideMenuBar stays false so Alt doesn't reveal the hidden bar.
+    autoHideMenuBar: false,
   })
   mainWindow.setMenuBarVisibility(false)
 
@@ -109,6 +110,7 @@ function createMainWindow(): void {
     return { action: 'deny' }
   })
 
+
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -124,9 +126,15 @@ app.whenReady().then(async () => {
     app.setAppUserModelId('com.kemarhinds.vehicletracker')
   }
 
-  // Drop the default File/Edit/View menu entirely, so Alt can't summon it either.
-  // Clipboard shortcuts inside text fields are handled by Chromium, not the menu.
-  Menu.setApplicationMenu(null)
+  // No visible menu bar, but the menu itself is kept so its accelerators keep
+  // working — reload, dev tools, zoom and clipboard all hang off these roles.
+  // (Setting the menu to null would take the shortcuts with it.) The bar is
+  // hidden per-window below; with autoHideMenuBar off, Alt can't summon it back.
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' },
+  ]))
 
   // Show the splash IMMEDIATELY — before any DB or handler initialization —
   // so the user sees feedback that the app is starting.
