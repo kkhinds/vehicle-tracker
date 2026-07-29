@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import Sidebar from '@/components/layout/Sidebar'
+import AppShell from '@/components/shell/AppShell'
 import Dashboard from '@/pages/Dashboard'
 import FuelLog from '@/pages/FuelLog'
 import Maintenance from '@/pages/Maintenance'
@@ -72,27 +72,26 @@ export default function App() {
         refreshVehicles,
       }}>
         <HashRouter>
-          <div className="flex h-screen overflow-hidden bg-background">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/fuel" element={<FuelLog />} />
-                <Route path="/maintenance" element={<Maintenance />} />
-                <Route path="/schedule" element={<ServiceSchedule />} />
-                <Route path="/tires" element={<Tires />} />
-                <Route path="/fluids" element={<Fluids />} />
-                <Route path="/insurance" element={<Insurance />} />
-                <Route path="/documents" element={<Documents />} />
-                <Route path="/expenses" element={<Expenses />} />
-                <Route path="/notes" element={<Notes />} />
-                <Route path="/vehicles" element={<Vehicles />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/help" element={<Help />} />
-              </Routes>
-            </main>
-          </div>
+          {/* The Driver's Log shell is the app. The old pages stay routable so no
+              capability is lost while the rebuild lands phase by phase — they are
+              simply no longer linked from anywhere. */}
+          <Routes>
+            <Route path="/" element={<AppShell />} />
+            <Route path="/legacy/dashboard" element={<Dashboard />} />
+            <Route path="/legacy/fuel" element={<FuelLog />} />
+            <Route path="/legacy/maintenance" element={<Maintenance />} />
+            <Route path="/legacy/schedule" element={<ServiceSchedule />} />
+            <Route path="/legacy/tires" element={<Tires />} />
+            <Route path="/legacy/fluids" element={<Fluids />} />
+            <Route path="/legacy/insurance" element={<Insurance />} />
+            <Route path="/legacy/documents" element={<Documents />} />
+            <Route path="/legacy/expenses" element={<Expenses />} />
+            <Route path="/legacy/notes" element={<Notes />} />
+            <Route path="/legacy/vehicles" element={<Vehicles />} />
+            <Route path="/legacy/settings" element={<Settings />} />
+            <Route path="/legacy/help" element={<Help />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </HashRouter>
         <Toaster richColors position="bottom-right" />
         <WelcomeDialog open={!settings.has_seen_welcome} onDismiss={dismissWelcome} />
