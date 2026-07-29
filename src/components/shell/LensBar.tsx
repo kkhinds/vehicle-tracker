@@ -1,11 +1,11 @@
 export const LENSES = [
-  'all', 'fuel', 'service', 'tires', 'fluid', 'insurance', 'docs', 'notes',
+  'all', 'fuel', 'service', 'tires', 'fluid', 'insurance', 'docs',
 ] as const
 export type Lens = (typeof LENSES)[number] | 'stats'
 
 const LABELS: Record<string, string> = {
   all: 'ALL', fuel: 'FUEL', service: 'SERVICE', tires: 'TIRES',
-  fluid: 'FLUIDS', insurance: 'INSURANCE', docs: 'DOCS', notes: 'NOTES',
+  fluid: 'FLUIDS', insurance: 'INSURANCE', docs: 'DOCS',
 }
 
 interface LensBarProps {

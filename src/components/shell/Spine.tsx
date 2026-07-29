@@ -17,7 +17,7 @@ interface SpineProps {
 
 const TAG: Record<EntryKind, string> = {
   fuel: 'FUEL', service: 'SERVICE', tires: 'TIRES', fluid: 'FLUID',
-  insurance: 'INSUR', docs: 'DOCS', notes: 'NOTE',
+  insurance: 'INSUR', docs: 'DOCS',
 }
 
 const EMPTY_COPY: Record<string, string> = {
@@ -27,7 +27,6 @@ const EMPTY_COPY: Record<string, string> = {
   fluid: 'No top-ups logged. A steady top-up pattern is worth knowing about.',
   insurance: 'No policy on file. Add one to get renewal reminders.',
   docs: 'No documents. Add road tax or registration to track expiry.',
-  notes: 'No notes for this vehicle.',
   all: 'Nothing logged yet for this vehicle.',
 }
 

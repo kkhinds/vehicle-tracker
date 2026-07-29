@@ -144,7 +144,7 @@ interface ElectronAPI {
   }
 }
 
-export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs' | 'notes'
+export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs'
 
 export interface TimelineEntry {
   id: string

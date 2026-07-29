@@ -11,7 +11,7 @@ import { format, addDays, parseISO, differenceInDays } from 'date-fns'
  * as an annotation, because only some records carry a reading.
  */
 
-export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs' | 'notes'
+export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs'
 
 export interface TimelineEntry {
   id: string            // "<kind>:<row id>" — rows share ids across tables
@@ -163,18 +163,6 @@ export function registerTimelineHandlers(): void {
         id: `docs:${r.id}`, kind: 'docs', date: when, odometer: null,
         title: r.title, subtitle: r.doc_type.replace(/-/g, ' '),
         value: money(r.cost), valueSub: null,
-      })
-    }
-
-    // Global notes (vehicle_id IS NULL) ride along on every vehicle's spine.
-    for (const r of db.prepare(
-      'SELECT id, title, body, date, vehicle_id FROM notes WHERE vehicle_id = ? OR vehicle_id IS NULL'
-    ).all<{ id: number; title: string; body: string | null; date: string; vehicle_id: number | null }>(v)) {
-      out.push({
-        id: `notes:${r.id}`, kind: 'notes', date: r.date, odometer: null,
-        title: r.title,
-        subtitle: [r.vehicle_id == null ? 'household' : null, (r.body ?? '').slice(0, 90)].filter(Boolean).join(' · '),
-        value: null, valueSub: null,
       })
     }
 

@@ -3,13 +3,12 @@ import { toast } from 'sonner'
 import { todayISO } from '@/lib/utils'
 import type { EntryKind } from '@/env'
 
-export type LogType = 'fuel' | 'service' | 'fluid' | 'tires' | 'insurance' | 'docs' | 'notes'
+export type LogType = 'fuel' | 'service' | 'fluid' | 'tires' | 'insurance' | 'docs'
 
 const TYPES: { key: LogType; label: string }[] = [
   { key: 'fuel', label: 'Fuel' }, { key: 'service', label: 'Service' },
   { key: 'fluid', label: 'Fluid' }, { key: 'tires', label: 'Tires' },
   { key: 'insurance', label: 'Insurance' }, { key: 'docs', label: 'Doc' },
-  { key: 'notes', label: 'Note' },
 ]
 
 interface LogFormProps {
@@ -77,7 +76,6 @@ export default function LogForm({
       if (!f.renewal) e.renewal = 'Renewal date is required'
     }
     if (type === 'docs' && !f.title?.trim()) e.title = 'Title is required'
-    if (type === 'notes' && !f.title?.trim()) e.title = 'Give the note a title'
     return e
   }
 
@@ -147,11 +145,6 @@ export default function LogForm({
             cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null, photos: [],
           })
           onSaved('Document saved'); break
-        case 'notes':
-          await window.api.notes.add({
-            title: f.title, body: f.body || null, date: f.date, attachments: [],
-          })
-          onSaved('Note saved'); break
       }
     } catch (err) {
       toast.error((err as Error).message)
@@ -286,13 +279,6 @@ export default function LogForm({
         </>
       )}
 
-      {type === 'notes' && (
-        <>
-          {field('title', 'Title', { type: 'text' })}
-          {field('body', 'Note', { type: 'text', placeholder: 'What happened?' })}
-        </>
-      )}
-
       <div className="dl-btnrow">
         <button className="dl-save" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save'} <span className="mono" style={{ fontWeight: 400 }}>· Enter</span>
@@ -305,5 +291,5 @@ export default function LogForm({
 
 export const KIND_TO_LOG: Record<EntryKind, LogType> = {
   fuel: 'fuel', service: 'service', fluid: 'fluid', tires: 'tires',
-  insurance: 'insurance', docs: 'docs', notes: 'notes',
+  insurance: 'insurance', docs: 'docs',
 }
