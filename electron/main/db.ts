@@ -451,20 +451,39 @@ function migrate(db: Db): void {
  * MAX() ratchet locking it high forever.
  */
 export function recomputeVehicleOdometer(db: Db, vehicleId: number): void {
+  // A manual correction wins over anything already logged — the owner typing a
+  // reading is better evidence than an old record, and a mistyped log entry
+  // shouldn't be able to drag the odometer back up. Only readings logged from
+  // the correction onwards count, so normal driving still moves it forward.
+  // (>= not >, or a reading logged in the same second as the fix is ignored.)
+  const fixed = getSetting(`odometer_fix:${vehicleId}`)
+  const fixedAt = getSetting(`odometer_fix_at:${vehicleId}`) ?? '0000-01-01'
+  const manual = fixed ? parseFloat(fixed) : null
+
   const row = db.prepare(`
     SELECT COALESCE(MAX(o), 0) AS m FROM (
-      SELECT MAX(odometer) o FROM fuel_log WHERE vehicle_id = @v
-      UNION ALL SELECT MAX(odometer) FROM maintenance_log WHERE vehicle_id = @v
-      UNION ALL SELECT MAX(odometer) FROM fluid_topups WHERE vehicle_id = @v
+      SELECT MAX(odometer) o FROM fuel_log WHERE vehicle_id = @v AND created_at >= @since
+      UNION ALL SELECT MAX(odometer) FROM maintenance_log WHERE vehicle_id = @v AND created_at >= @since
+      UNION ALL SELECT MAX(odometer) FROM fluid_topups WHERE vehicle_id = @v AND created_at >= @since
       UNION ALL SELECT MAX(last_done_km) FROM service_intervals WHERE vehicle_id = @v
-      UNION ALL SELECT MAX(install_odometer) FROM tire_sets WHERE vehicle_id = @v
-      UNION ALL SELECT MAX(retired_odometer) FROM tire_sets WHERE vehicle_id = @v
+      UNION ALL SELECT MAX(install_odometer) FROM tire_sets WHERE vehicle_id = @v AND created_at >= @since
+      UNION ALL SELECT MAX(retired_odometer) FROM tire_sets WHERE vehicle_id = @v AND created_at >= @since
       UNION ALL SELECT MAX(ti.odometer) FROM tire_inspections ti
-        JOIN tire_sets ts ON ti.tire_set_id = ts.id WHERE ts.vehicle_id = @v
+        JOIN tire_sets ts ON ti.tire_set_id = ts.id
+        WHERE ts.vehicle_id = @v AND ti.created_at >= @since
       UNION ALL SELECT purchase_odometer FROM vehicles WHERE id = @v
     )
-  `).get<{ m: number }>({ v: vehicleId })
-  db.prepare('UPDATE vehicles SET current_odometer = ? WHERE id = ?').run(row?.m ?? 0, vehicleId)
+  `).get<{ m: number }>({ v: vehicleId, since: manual != null ? fixedAt : '0000-01-01' })
+
+  const fromLogs = row?.m ?? 0
+  db.prepare('UPDATE vehicles SET current_odometer = ? WHERE id = ?')
+    .run(Math.max(fromLogs, manual ?? 0), vehicleId)
+}
+
+/** Record a manual odometer correction; it outranks readings logged before now. */
+export function setOdometerFix(vehicleId: number, value: number): void {
+  setSetting(`odometer_fix:${vehicleId}`, String(value))
+  setSetting(`odometer_fix_at:${vehicleId}`, new Date().toISOString().replace('T', ' ').slice(0, 19))
 }
 
 function seedDefaultData(db: Db): void {

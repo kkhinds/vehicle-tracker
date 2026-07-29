@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { getDb, getCurrentVehicleId } from '../db'
+import { getDb, getCurrentVehicleId, setOdometerFix } from '../db'
 
 interface SettingRow {
   key: string
@@ -40,11 +40,14 @@ export function registerSettingsHandlers(): void {
     const update = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
     const run = db.transaction((data: Record<string, unknown>) => {
       for (const [key, value] of Object.entries(data)) {
-        // current_odometer writes through to the active vehicle's record.
+        // current_odometer writes through to the active vehicle's record, and is
+        // remembered as a manual fix so a later delete can't revert it.
         if (key === 'current_odometer') {
+          const vehicleId = getCurrentVehicleId()
           db.prepare(
             'UPDATE vehicles SET current_odometer = ? WHERE id = ?'
-          ).run(Number(value), getCurrentVehicleId())
+          ).run(Number(value), vehicleId)
+          setOdometerFix(vehicleId, Number(value))
           continue
         }
         update.run(key, String(value))

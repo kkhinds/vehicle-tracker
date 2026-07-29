@@ -137,7 +137,10 @@ export function registerDashboardHandlers(): void {
     const totalFuel = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ?").get(vehicleId) as SumRow).total ?? 0
     const totalMaint = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ?").get(vehicleId) as SumRow).total ?? 0
     const totalInsurance = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ?").get(vehicleId) as SumRow).total ?? 0
-    const totalCost = totalFuel + totalMaint + totalInsurance
+    // Documents (road tax, registration…) are real spend and appear in the
+    // expenses breakdown, so the lifetime figure has to include them too.
+    const totalDocs = (db.prepare("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ?").get(vehicleId) as SumRow).total ?? 0
+    const totalCost = totalFuel + totalMaint + totalInsurance + totalDocs
 
     // Cost per distance over the life we can measure (purchase reading to now).
     const distance = odometer - (odoRow?.purchase_odometer ?? 0)

@@ -1,6 +1,6 @@
 {
   "name": "vehicle-tracker",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Vehicle Tracker by Kemar Hinds — household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
   "main": "out/main/index.js",
   "author": "Kemar Hinds",
@@ -14,6 +14,9 @@
     "icon": "node scripts/build-icon.mjs"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.2",

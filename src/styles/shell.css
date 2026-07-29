@@ -1,0 +1,402 @@
+/* Hero + lens bar. Ported from mockups/phase0-drivers-log.html. */
+
+/* ── HERO ─────────────────────────────────────────────── */
+.dl-hero{
+  position:relative; height:clamp(220px,28vh,290px); overflow:hidden;
+  border-bottom:1px solid var(--line);
+  background:
+    radial-gradient(120% 90% at 50% 115%, var(--glow), transparent 55%),
+    linear-gradient(180deg, var(--hero-a) 0%, var(--hero-b) 60%, var(--hero-c) 100%);
+}
+.dl-road{
+  position:absolute; inset:auto 0 0 0; height:140px; opacity:.5;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 60%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 60%);
+}
+[data-theme="light"] .dl-road{ opacity:.9 }
+.dl-road line{ stroke:var(--line2); stroke-width:1 }
+.dl-road .mid{ stroke:var(--accent); stroke-width:2; stroke-dasharray:14 22; opacity:.5 }
+
+.dl-hero-in{
+  position:relative; z-index:2; height:100%;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.dl-eyebrow{ font-size:12px; letter-spacing:.28em; color:var(--dim); font-weight:600 }
+.dl-hv h1{
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:58px;
+  line-height:.95; letter-spacing:.01em; margin:0;
+}
+.dl-plate{ color:var(--dim); font-size:14px; margin-top:4px }
+.dl-plate b{ color:var(--accent); font-weight:600 }
+
+.dl-vswitch{ display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap }
+.dl-vswitch > button{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:16px; letter-spacing:.06em;
+  color:var(--dim); padding:4px 12px; border:1px solid var(--line2); border-radius:999px;
+  transition:all .2s;
+}
+.dl-vswitch > button[aria-pressed="true"]{
+  color:var(--accent-ink); background:var(--accent); border-color:var(--accent);
+}
+.dl-vswitch > button[aria-pressed="false"]:hover{ color:var(--text); border-color:var(--dim) }
+.dl-valert{
+  display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--red);
+  margin-left:6px; vertical-align:1px; animation:dl-pulse 1.6s infinite;
+}
+@keyframes dl-pulse{ 50%{ opacity:.3 } }
+.dl-garage-btn{
+  color:var(--dim); font-size:12px; padding:5px 12px; border-radius:999px;
+  border:1px dashed var(--line2);
+}
+.dl-garage-btn:hover{ color:var(--text); border-color:var(--dim) }
+
+.dl-odo{ text-align:right }
+.dl-odo-label{ font-size:11px; letter-spacing:.28em; color:var(--dim); font-weight:600 }
+.dl-odo-value{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-weight:500; font-size:38px; letter-spacing:.02em; line-height:1.1;
+  padding:0 4px; border-radius:8px; transition:background .15s;
+}
+.dl-odo-value:hover{ background:var(--accent-soft) }
+.dl-odo-value small{ font-size:14px; color:var(--dim); font-weight:400 }
+.dl-next{ margin-top:6px; font-size:13px; color:var(--dim) }
+.dl-next b{ color:var(--accent); font-weight:600 }
+
+.dl-hero-actions{ position:absolute; top:16px; right:32px; z-index:3; display:flex; gap:8px }
+.dl-icon-btn{
+  color:var(--dim); font-size:12px; padding:8px 12px;
+  border:1px solid var(--line2); border-radius:8px; transition:all .18s;
+}
+.dl-icon-btn:hover{ color:var(--text); background:var(--hover) }
+
+/* ── LENS BAR ─────────────────────────────────────────── */
+/* Left edge on the shared column, free to the right edge — see tokens.css. */
+.dl-lens{
+  position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:6px;
+  padding-block:12px; padding-right:32px;
+  background:color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+  overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
+}
+.dl-lens::-webkit-scrollbar{ display:none }
+
+.dl-vchip{
+  display:flex; align-items:center; gap:8px; flex:none;
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:.06em;
+  padding:6px 13px; border:1px solid var(--line2); border-radius:8px; margin-right:6px;
+}
+.dl-vchip:hover{ background:var(--hover) }
+.dl-car{ width:34px; height:16px }
+.dl-car path{ fill:none; stroke:var(--accent); stroke-width:3; stroke-linecap:round; stroke-linejoin:round }
+
+.dl-pill{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:16px; letter-spacing:.06em;
+  flex:none; padding:6px 13px; color:var(--dim); border-radius:8px; transition:all .18s;
+}
+.dl-pill:hover{ color:var(--text); background:var(--hover) }
+.dl-pill[aria-selected="true"]{ color:var(--accent); background:var(--accent-soft) }
+[data-theme="light"] .dl-pill[aria-selected="true"]{ color:var(--accent-ink); background:var(--accent) }
+.dl-gap{ flex:1; min-width:12px }
+.dl-stats-pill{ border-left:1px solid var(--line2); padding-left:16px; margin-left:4px }
+.dl-search{
+  color:var(--dim); font-size:13px; border:1px solid var(--line); border-radius:8px;
+  padding:6px 14px; flex:0 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dl-search:hover{ color:var(--text) }
+
+/* Search sheds its label before the pills ever run out of room. */
+@media (max-width:1240px){ .dl-stext{ display:none } }
+@media (max-width:1000px){
+  .dl-hv h1{ font-size:44px }
+  .dl-odo-value{ font-size:30px }
+  .dl-vchip .dl-vlabel{ display:none }
+  .dl-pill{ padding-inline:10px }
+  .dl-lens{ padding-right:20px }
+  .dl-hero-actions{ right:20px }
+}
+
+/* ── SPINE ────────────────────────────────────────────── */
+/* Date is the primary axis; the odometer rides along as an annotation. */
+.dl-spine{ position:relative; padding-left:150px }
+.dl-spine::before{
+  content:''; position:absolute; left:118px; top:0; bottom:0; width:2px;
+  background:linear-gradient(180deg,
+    var(--accent) 0, var(--accent) var(--ahead-h,0px),
+    var(--line2) calc(var(--ahead-h,0px) + 50px), var(--line2) 100%);
+}
+.dl-date-mark{
+  position:absolute; left:-150px; width:104px; text-align:right;
+  font-size:11px; color:var(--dim); padding-top:16px; line-height:1.5;
+}
+.dl-date-mark b{ color:var(--text); font-weight:500; font-size:12px }
+.dl-date-mark .km{ color:var(--faint) }
+.dl-node{
+  position:absolute; left:-38px; top:22px; width:14px; height:14px; border-radius:50%;
+  background:var(--bg); border:2.5px solid var(--faint);
+}
+.dl-entry{ position:relative; margin:0 0 12px 0; animation:dl-slide .45s cubic-bezier(.2,.9,.3,1) backwards }
+@keyframes dl-slide{ from{ opacity:0; transform:translateX(18px) } }
+.dl-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:12px 16px; display:flex; align-items:center; gap:16px;
+  text-align:left; width:100%;
+  transition:border-color .2s, background .2s, transform .2s;
+}
+.dl-card:hover{ background:var(--hover); border-color:var(--line2); transform:translateX(3px) }
+.dl-tag{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.14em; flex:none; width:78px; color:var(--dim);
+}
+.dl-c-main{ flex:1; min-width:0 }
+.dl-c-title{ font-weight:500; font-size:14px; display:block }
+.dl-c-sub{ color:var(--dim); font-size:12px; margin-top:2px; display:block }
+.dl-c-val{
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+  font-size:13px; color:var(--text); flex:none; text-align:right;
+}
+.dl-c-val small{ color:var(--dim); font-size:11px }
+
+/* Road ahead is neutral until something is actually due — chroma is reserved
+   for exceptions, otherwise nothing stands out when it matters. */
+.dl-ahead .dl-card{ background:transparent; border-style:dashed; border-color:var(--line2) }
+.dl-entry.due .dl-card{ border-color:color-mix(in srgb, var(--accent) 50%, transparent) }
+.dl-entry.due .dl-node{ background:var(--accent); border-color:var(--accent) }
+.dl-entry.due .dl-c-title,
+.dl-entry.due .dl-c-val,
+.dl-entry.due .dl-tag{ color:var(--accent) }
+.dl-entry.overdue .dl-card{ border-color:color-mix(in srgb, var(--red) 55%, transparent) }
+.dl-entry.overdue .dl-node{ background:var(--red); border-color:var(--red) }
+.dl-entry.overdue .dl-tag,
+.dl-entry.overdue .dl-c-title,
+.dl-entry.overdue .dl-c-val{ color:var(--red) }
+
+.dl-more-row{
+  border:1px dashed var(--line2); border-radius:12px; padding:10px 16px; width:100%;
+  color:var(--dim); font-size:13px; text-align:center; margin-bottom:12px;
+}
+.dl-more-row:hover{ color:var(--text); background:var(--hover) }
+
+.dl-today{ position:relative; margin:24px 0 28px; display:flex; align-items:center; gap:14px }
+.dl-today-line{ flex:1; height:1px; background:var(--line2) }
+.dl-today-lbl{
+  font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px;
+  letter-spacing:.14em; color:var(--accent);
+}
+.dl-node-now{
+  position:absolute; left:-40px; top:50%; transform:translateY(-50%);
+  width:18px; height:18px; border-radius:50%; background:var(--accent);
+  box-shadow:0 0 0 6px var(--accent-soft), 0 0 24px var(--glow);
+}
+
+.dl-month-h{
+  position:relative; font-family:'Barlow Condensed',sans-serif; font-weight:600;
+  font-size:13px; letter-spacing:.14em; color:var(--dim);
+  margin:20px 0 12px; display:flex; align-items:center; gap:12px;
+}
+.dl-rule{ flex:1; height:1px; background:var(--line) }
+.dl-sum{ font-size:11px; color:var(--faint) }
+.dl-section-lbl{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.14em; color:var(--dim); margin:0 0 12px;
+}
+.dl-empty{
+  border:1px dashed var(--line2); border-radius:12px; padding:32px;
+  text-align:center; color:var(--dim);
+}
+.dl-empty b{ display:block; color:var(--text); font-size:14px; margin-bottom:4px }
+.dl-empty button{
+  margin-top:16px; background:var(--accent); color:var(--accent-ink);
+  font-weight:600; padding:8px 20px; border-radius:8px;
+}
+
+@media (max-width:1000px){
+  /* keep the 32px gutter between the spine line and card content */
+  .dl-spine{ padding-left:118px }
+  .dl-spine::before{ left:86px }
+  .dl-date-mark{ left:-118px; width:70px }
+}
+
+/* ── SHEETS & FORMS ───────────────────────────────────── */
+.dl-scrim{
+  position:fixed; inset:0; background:var(--scrim); z-index:60;
+  opacity:0; transition:opacity .25s;
+}
+.dl-scrim.open{ opacity:1 }
+.dl-sheet{
+  position:fixed; left:50%; bottom:0; z-index:61; width:580px; max-height:84vh;
+  overflow:auto; transform:translate(-50%,105%);
+  background:var(--panel2); border:1px solid var(--line2); border-bottom:none;
+  border-radius:16px 16px 0 0; padding:24px 32px 32px; box-shadow:var(--shadow);
+  animation:dl-sheet-in .35s cubic-bezier(.2,.9,.3,1) forwards;
+}
+@keyframes dl-sheet-in{ to{ transform:translate(-50%,0) } }
+.dl-grab{ width:44px; height:4px; border-radius:3px; background:var(--line2); margin:0 auto 16px }
+.dl-sheet h2{
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:25px;
+  letter-spacing:.02em; margin:0;
+}
+.dl-sheet h2:focus{ outline:none }
+.dl-sheet-meta{ color:var(--dim); margin-top:2px; font-size:13px }
+
+.dl-kv{ display:grid; grid-template-columns:1fr 1fr; gap:8px 24px; margin-top:16px }
+.dl-kv > div{
+  display:flex; justify-content:space-between; border-bottom:1px solid var(--line);
+  padding:8px 0; font-size:13px;
+}
+.dl-kv span{ color:var(--dim) }
+
+.dl-seg{
+  display:flex; background:var(--bg); border:1px solid var(--line); border-radius:9px;
+  padding:3px; gap:3px; margin:16px 0 4px; flex-wrap:wrap;
+}
+.dl-seg button{ flex:1; min-width:56px; padding:7px 0; font-size:12px; color:var(--dim); border-radius:6px }
+.dl-seg button[aria-pressed="true"]{ background:var(--panel); color:var(--text); border:1px solid var(--line2) }
+
+.dl-field{ margin-top:12px; flex:1 }
+.dl-field label{ display:block; font-size:12px; color:var(--dim); margin-bottom:5px }
+.dl-field input[type="text"], .dl-field input:not([type]){
+  width:100%; background:var(--bg); border:1px solid var(--dim); border-radius:8px;
+  padding:9px 12px; color:var(--text); font:inherit;
+}
+.dl-field input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent) }
+.dl-field.error input{ border-color:var(--red) }
+.dl-hint{ font-size:11px; color:var(--faint); margin-top:4px }
+.dl-err{ font-size:11px; color:var(--red); margin-top:4px }
+.dl-frow{ display:flex; gap:12px }
+.dl-check{ display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--dim) }
+
+.dl-save{
+  margin-top:20px; width:100%; background:var(--accent); color:var(--accent-ink);
+  font-weight:600; padding:12px 0; border-radius:9px; text-align:center;
+}
+.dl-save:disabled{ opacity:.6; cursor:default }
+.dl-btnrow{ display:flex; gap:12px }
+.dl-btnrow .dl-save{ margin-top:20px }
+.dl-ghost{ background:var(--panel); color:var(--text); border:1px solid var(--line2) }
+.dl-danger{ background:var(--panel); color:var(--red); border:1px solid var(--line2) }
+.dl-microcopy{ font-size:11px; color:var(--faint); text-align:center; margin-top:12px }
+
+/* ── FAB ──────────────────────────────────────────────── */
+.dl-fab{
+  position:fixed; right:40px; bottom:36px; z-index:50; height:56px; border-radius:999px;
+  padding:0 24px; display:flex; align-items:center; gap:10px;
+  background:var(--accent); color:var(--accent-ink);
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:.06em;
+  box-shadow:0 6px 30px var(--glow); transition:transform .25s cubic-bezier(.2,.9,.3,1.4);
+}
+.dl-fab:hover{ transform:scale(1.05) }
+.dl-fab .plus{ font-size:21px; font-weight:600 }
+
+/* ── MANAGEMENT SHEET ROWS ────────────────────────────── */
+.dl-setrow{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.dl-setrow:last-of-type{ border-bottom:none }
+.dl-lab b{ display:block; font-weight:500; font-size:14px }
+.dl-lab span{ color:var(--dim); font-size:12px }
+.dl-ctl{
+  color:var(--dim); font-size:12px; border:1px solid var(--line2);
+  padding:8px 12px; border-radius:7px; flex:none;
+}
+.dl-ctl:hover{ color:var(--text); background:var(--hover) }
+
+.dl-vrow{
+  display:flex; align-items:center; gap:16px; padding:12px 0; width:100%;
+  text-align:left; border-bottom:1px solid var(--line);
+}
+.dl-vrow:last-of-type{ border-bottom:none }
+.dl-vrow:hover{ background:var(--hover) }
+.dl-vrow-car{ width:60px; height:28px; flex:none }
+.dl-vrow-car path{ fill:none; stroke:var(--dim); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
+.dl-vrow.on .dl-vrow-car path{ stroke:var(--accent) }
+.dl-vrow-nm{ flex:1 }
+.dl-vrow-nm b{ font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:600; letter-spacing:.03em; display:block }
+.dl-vrow-nm span{ display:block; color:var(--dim); font-size:12px }
+
+.dl-chip{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+  letter-spacing:.04em; padding:3px 9px; border-radius:6px; flex:none;
+}
+.dl-chip .dot{ width:6px; height:6px; border-radius:50% }
+.dl-chip.ok{ color:var(--dim); background:var(--green-soft) }
+.dl-chip.ok .dot{ background:var(--green); opacity:.7 }
+
+.dl-irow{ display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line) }
+.dl-irow:last-of-type{ border-bottom:none }
+.dl-irow-main{
+  flex:1; display:flex; align-items:center; gap:14px; padding:10px 0;
+  text-align:left; font-size:13px;
+}
+.dl-irow-main:hover{ background:var(--hover) }
+.dl-irow-nm{ flex:1; font-weight:500 }
+.dl-irow-iv{ font-size:12px; color:var(--dim); flex:none }
+.dl-irow-done{
+  flex:none; width:32px; height:32px; border-radius:8px; color:var(--dim);
+  border:1px solid var(--line2);
+}
+.dl-irow-done:hover{ color:var(--accent-ink); background:var(--accent); border-color:var(--accent) }
+.dl-meter{ display:flex; gap:2px; width:92px; flex:none }
+.dl-meter i{ flex:1; height:8px; border-radius:2px; background:var(--line) }
+.dl-meter i.on{ background:var(--dim); opacity:.7 }
+.dl-meter.warn i.on{ background:var(--accent); opacity:1 }
+.dl-meter.bad i.on{ background:var(--red) }
+
+/* ── STATS ────────────────────────────────────────────── */
+.dl-stats-grid{ display:grid; grid-template-columns:1.35fr 1fr; gap:12px }
+.dl-panelbox{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px }
+.dl-panelbox h3{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.14em; color:var(--dim); margin:0 0 12px;
+}
+.dl-bars{ display:flex; align-items:stretch; gap:14px; height:150px; padding:0 4px }
+.dl-bar{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100% }
+.dl-col{ width:100%; display:flex; flex-direction:column-reverse; gap:2px }
+.dl-col .f{ background:var(--dim); border-radius:3px 3px 0 0 }
+.dl-col .m{ background:var(--faint); border-radius:3px; opacity:.55 }
+.dl-bar-lbl{ font-size:11px; color:var(--dim) }
+.dl-kvrows > div{
+  display:flex; justify-content:space-between; padding:8px 0;
+  border-bottom:1px solid var(--line); font-size:13px;
+}
+.dl-kvrows > div:last-child{ border-bottom:none }
+.dl-kvrows span{ color:var(--dim) }
+.dl-legend > div{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--dim); padding:3px 0 }
+.dl-legend i{ width:9px; height:9px; border-radius:3px; flex:none }
+.dl-track{ height:6px; border-radius:3px; background:var(--line); margin-top:5px; overflow:hidden }
+.dl-track > div{ height:100%; border-radius:3px }
+.dl-export-btn{
+  margin-top:12px; width:100%; border:1px solid var(--line2); border-radius:8px;
+  padding:8px 0; color:var(--dim); font-size:13px;
+}
+.dl-export-btn:hover{ color:var(--text); background:var(--hover) }
+@media (max-width:1000px){ .dl-stats-grid{ grid-template-columns:1fr } }
+
+/* ── HELP ─────────────────────────────────────────────── */
+.dl-help section{ margin-top:20px }
+.dl-help h3{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:14px;
+  letter-spacing:.14em; color:var(--accent); margin:0 0 6px; text-transform:uppercase;
+}
+.dl-help p{ font-size:13px; color:var(--dim); line-height:1.6; margin:0 0 8px }
+.dl-help b{ color:var(--text); font-weight:500 }
+.dl-help ul{ margin:0; padding-left:18px }
+.dl-help li{ font-size:13px; color:var(--dim); line-height:1.6; margin-bottom:4px }
+
+/* ── LEGACY FRAME ─────────────────────────────────────── */
+/* The pre-v3 screens, kept reachable until the new UI covers everything. */
+.dl-legacy-bar{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:10px max(20px, calc((100% - 1200px) / 2));
+  background:var(--panel); border-bottom:1px solid var(--line);
+  font-size:12px; color:var(--faint);
+}
+.dl-legacy-back{
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:.06em; color:var(--accent); text-decoration:none; flex:none;
+}
+.dl-legacy-nav{ display:flex; gap:12px; margin-left:auto; flex-wrap:wrap }
+.dl-legacy-nav a{ color:var(--dim); text-decoration:none; font-size:12px }
+.dl-legacy-nav a:hover{ color:var(--text) }
+.dl-legacy-body{ height:calc(100vh - 41px); overflow-y:auto }

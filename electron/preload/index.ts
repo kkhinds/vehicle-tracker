@@ -116,6 +116,10 @@ contextBridge.exposeInMainWorld('api', {
     chooseDir: () => ipcRenderer.invoke('backup:chooseDir'),
     resetDir: () => ipcRenderer.invoke('backup:resetDir'),
   },
+  timeline: {
+    getEntries: () => ipcRenderer.invoke('timeline:getEntries'),
+    getAhead: () => ipcRenderer.invoke('timeline:getAhead'),
+  },
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
     install: () => ipcRenderer.invoke('updater:install'),

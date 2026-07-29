@@ -1,0 +1,68 @@
+/* Driver's Log design tokens — ported verbatim from
+   mockups/phase0-drivers-log.html (approved Phase 0 reference).
+
+   Type scale: 11 / 12 / 13 / 14 / 16 / 21 / 25 / 38 / 58
+   Tracking:   .28em hero micro-labels · .14em caps labels · .06em pills
+   Space grid: 4px (12 / 16 / 20 / 24 / 32)
+   Colour rule: chroma only for due/overdue. Everything healthy stays neutral. */
+
+:root {
+  --bg:#0A0E14; --panel:#111722; --panel2:#161E2B; --hover:#1A2332;
+  --line:#1E2735; --line2:#2A3547;
+  --text:#EDF1F7; --dim:#7E8A9C; --faint:#78879E;
+  --accent:#FFAA2B; --accent-ink:#131313; --accent-soft:rgba(255,170,43,.12);
+  --red:#FF554B; --red-soft:rgba(255,59,48,.06);
+  --green:#2BD98F; --green-soft:rgba(43,217,143,.10);
+  --hero-a:#0A0E14; --hero-b:#0D1420; --hero-c:#101A29;
+  --glow:rgba(255,170,43,.16); --scrim:rgba(5,8,12,.6);
+  --shadow:none;
+}
+
+[data-theme="light"] {
+  --bg:#F2F4F8; --panel:#FFFFFF; --panel2:#FFFFFF; --hover:#F5F7FB;
+  --line:#E2E7EF; --line2:#CBD4E1;
+  --text:#16202E; --dim:#5B6878; --faint:#5F6C7D;
+  --accent:#A15D00; --accent-ink:#FFFFFF; --accent-soft:rgba(161,93,0,.08);
+  --red:#C6281E; --red-soft:rgba(198,40,30,.08);
+  --green:#097A4C; --green-soft:rgba(9,122,76,.08);
+  --hero-a:#E8ECF4; --hero-b:#DFE6F1; --hero-c:#D6E0EF;
+  --glow:rgba(161,93,0,.18); --scrim:rgba(22,32,46,.4);
+  /* --panel and --panel2 are both white here, so sheets need a real shadow to
+     read as elevated — the border-only ladder collapses in light mode. */
+  --shadow:0 -12px 40px rgba(22,32,46,.22);
+}
+
+html, body, #root { height:100%; }
+
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:14px/1.5 'Barlow', system-ui, sans-serif;
+  transition:background .3s, color .3s;
+}
+
+::selection { background:rgba(255,170,43,.3); }
+
+button { font:inherit; color:inherit; background:none; border:none; cursor:pointer; }
+button:focus-visible, input:focus-visible {
+  outline:2px solid var(--accent); outline-offset:2px; border-radius:6px;
+}
+
+.mono { font-family:'JetBrains Mono', monospace; font-variant-numeric:tabular-nums; }
+.cond { font-family:'Barlow Condensed', sans-serif; }
+
+/* Screen-reader-only text: the spine relies on this to give entries their
+   date/odometer context, which is visual-only in the layout. */
+.sr-only {
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap;
+}
+
+/* Shared content column. The lens bar keeps this left edge but runs to the
+   right edge, otherwise its pills overflow and paint a scrollbar. */
+.shell { padding-inline:max(32px, calc((100% - 948px) / 2)); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation:none !important; transition:none !important; }
+}
