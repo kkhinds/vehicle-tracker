@@ -80,9 +80,13 @@
   .icon-btn:hover{color:var(--text);background:var(--hover)}
 
   /* ── LENS BAR ─────────────────────────────────────── */
+  /* Left edge stays on the shared content column; the bar is free to run to the
+     right edge so the pills never need a scrollbar. */
   .lens{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;
-    padding-block:12px;background:color-mix(in srgb, var(--bg) 92%, transparent);
-    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);overflow-x:auto}
+    padding-block:12px;padding-right:32px;background:color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+    overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+  .lens::-webkit-scrollbar{display:none}
   .vchip{display:flex;align-items:center;gap:8px;flex:none;
     font-family:'Barlow Condensed';font-weight:700;font-size:16px;letter-spacing:.06em;
     padding:6px 13px;border:1px solid var(--line2);border-radius:8px;margin-right:6px}
@@ -96,7 +100,8 @@
   [data-theme="light"] .lens .pill[aria-selected="true"]{color:var(--accent-ink);background:var(--accent)}
   .lens .gap{flex:1;min-width:12px}
   .lens .stats-pill{border-left:1px solid var(--line2);padding-left:16px;margin-left:4px}
-  .lens .search{color:var(--dim);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;flex:none}
+  .lens .search{color:var(--dim);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;
+    flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lens .search:hover{color:var(--text)}
 
   /* ── LAYOUT ───────────────────────────────────────── */
@@ -273,15 +278,24 @@
   .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
   .toast b{color:var(--accent);font-weight:600;cursor:pointer}
 
+  /* search sheds its label before the pills ever run out of room */
+  @media (max-width:1240px){ .lens .search .stext{display:none} }
   @media (max-width:1000px){
     .shell{padding-inline:20px}
     .wrap{padding-inline:20px}
+    /* keep the 32px gutter between the spine line and card content */
     .spine{padding-left:118px}
-    .date-mark{left:-118px;width:76px}
+    .spine::before{left:86px}
+    .node{left:-38px}
+    .today .node-now{left:-40px}
+    .date-mark{left:-118px;width:70px}
     .date-mark .km{display:block}
     .hv h1{font-size:44px}
     .odo button.value{font-size:30px}
-    .lens .search .stext{display:none}
+    /* chip keeps the car glyph (vehicle identity) but drops its label; pills tighten */
+    .vchip .vlabel{display:none}
+    .lens .pill{padding-inline:10px}
+    .lens{padding-right:20px}
   }
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -321,7 +335,7 @@
 <nav class="lens shell" id="lens" role="tablist" aria-label="Views">
   <button class="vchip" onclick="openSheet('garage')" aria-label="Vehicle: D-Max. Open garage">
     <svg class="car" viewBox="0 0 100 44" aria-hidden="true"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
-    D-MAX ▾
+    <span class="vlabel">D-MAX</span> ▾
   </button>
   <button class="pill" role="tab" aria-selected="true" data-lens="all">ALL</button>
   <button class="pill" role="tab" aria-selected="false" data-lens="fuel">FUEL</button>
