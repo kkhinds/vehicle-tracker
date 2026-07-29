@@ -3,11 +3,13 @@ import { toast } from 'sonner'
 import Hero from './Hero'
 import LensBar, { type Lens } from './LensBar'
 import Spine from './Spine'
+import Sheet from './Sheet'
+import LogForm, { KIND_TO_LOG, type LogType } from './LogForm'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate } from '@/lib/utils'
 import type { DashboardSummary } from '@/types'
-import type { AheadItem, TimelineEntry } from '@/env'
+import type { AheadItem, EntryKind, TimelineEntry } from '@/env'
 
 /**
  * Driver's Log shell: hero + lens bar, no sidebar. Lens state lives here; the
@@ -15,7 +17,7 @@ import type { AheadItem, TimelineEntry } from '@/env'
  */
 export default function AppShell() {
   const { settings, refreshSettings } = useSettings()
-  const { vehicles, currentVehicle, currentVehicleId, switchVehicle } = useVehicles()
+  const { vehicles, currentVehicle, currentVehicleId, switchVehicle, refreshVehicles } = useVehicles()
   const [lens, setLens] = useState<Lens>('all')
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [alerting, setAlerting] = useState<Set<number>>(new Set())
@@ -23,6 +25,10 @@ export default function AppShell() {
   const [ahead, setAhead] = useState<AheadItem[]>([])
   const [loading, setLoading] = useState(true)
   const spineRef = useRef<HTMLDivElement>(null)
+  const [logOpen, setLogOpen] = useState(false)
+  const [logType, setLogType] = useState<LogType>('fuel')
+  const [detail, setDetail] = useState<TimelineEntry | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const reload = useCallback(async () => {
     const [s, e, a] = await Promise.all([
@@ -89,6 +95,42 @@ export default function AppShell() {
 
   const soon = () => toast.info('Lands in a later phase of the rebuild')
 
+  // Carried into the next fill-up so the weekly job is mostly pre-filled.
+  const lastFuel = useMemo(() => {
+    const e = entries.find(x => x.kind === 'fuel')
+    if (!e) return null
+    const station = e.title.startsWith('Fill-up — ') ? e.title.slice('Fill-up — '.length) : null
+    const price = e.subtitle.match(/\$([\d.]+)\/L/)?.[1]
+    return { station, pricePerLitre: price ? parseFloat(price) : null }
+  }, [entries])
+
+  function openLog(type: LogType) { setLogType(type); setLogOpen(true) }
+
+  const [table, id] = detail ? detail.id.split(':') : []
+  async function deleteEntry() {
+    if (!detail) return
+    const api = window.api as unknown as Record<string, { delete?: (id: number) => Promise<unknown> }>
+    const map: Record<string, string> = {
+      fuel: 'fuel', service: 'maintenance', fluid: 'fluids', insurance: 'insurance',
+      docs: 'documents', notes: 'notes', tireset: 'tires', rotation: 'tires', tires: 'tires',
+    }
+    const key = map[table]
+    try {
+      if (key === 'tires') {
+        if (table === 'tireset') await window.api.tires.deleteSet(Number(id))
+        else if (table === 'rotation') await window.api.tires.deleteRotation(Number(id))
+        else await window.api.tires.deleteInspection(Number(id))
+      } else {
+        await api[key]?.delete?.(Number(id))
+      }
+      setDetail(null); setConfirmDelete(false)
+      toast.success('Deleted')
+      reload()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   return (
     <>
       <Hero
@@ -126,13 +168,73 @@ export default function AppShell() {
             odometer={currentVehicle?.current_odometer ?? 0}
             distanceUnit={settings.distance_unit}
             lens={lens}
-            onOpenEntry={soon}
-            onOpenAhead={soon}
-            onLogFirst={soon}
+            onOpenEntry={setDetail}
+            onOpenAhead={a => openLog(KIND_TO_LOG[a.kind])}
+            onLogFirst={() => openLog(lens === 'all' ? 'fuel' : KIND_TO_LOG[lens])}
             onManageIntervals={soon}
           />
         )}
       </main>
+
+      <button
+        className="dl-fab"
+        onClick={() => openLog(lens === 'all' || lens === 'stats' ? 'fuel' : KIND_TO_LOG[lens as EntryKind])}
+        aria-label="Log an entry"
+      >
+        <span className="plus" aria-hidden="true">+</span> LOG
+      </button>
+
+      <Sheet
+        open={logOpen}
+        title={`Quick log — ${currentVehicle?.nickname ?? ''}`}
+        onClose={() => setLogOpen(false)}
+      >
+        <LogForm
+          initialType={logType}
+          odometer={currentVehicle?.current_odometer ?? 0}
+          distanceUnit={settings.distance_unit}
+          lastFuel={lastFuel}
+          onCancel={() => setLogOpen(false)}
+          onSaved={what => {
+            setLogOpen(false)
+            toast.success(what)
+            refreshVehicles()
+            reload()
+          }}
+        />
+      </Sheet>
+
+      <Sheet
+        open={detail !== null}
+        title={detail?.title ?? ''}
+        subtitle={detail ? `${currentVehicle?.nickname ?? ''} · ${formatDate(detail.date)}${detail.odometer != null ? ` · ${detail.odometer.toLocaleString()} ${settings.distance_unit}` : ''}` : ''}
+        onClose={() => { setDetail(null); setConfirmDelete(false) }}
+      >
+        {detail && (
+          <>
+            <div className="dl-kv">
+              <div><span>Type</span><b>{detail.kind}</b></div>
+              <div><span>Date</span><b className="mono">{formatDate(detail.date)}</b></div>
+              {detail.odometer != null && (
+                <div><span>Odometer</span><b className="mono">{detail.odometer.toLocaleString()} {settings.distance_unit}</b></div>
+              )}
+              {detail.value && <div><span>Amount</span><b className="mono">{detail.value}</b></div>}
+              {detail.valueSub && <div><span>Economy</span><b className="mono">{detail.valueSub}</b></div>}
+            </div>
+            <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
+            <div className="dl-btnrow">
+              <button className="dl-save dl-ghost" onClick={soon}>Edit</button>
+              <button
+                className="dl-save dl-danger"
+                onClick={() => confirmDelete ? deleteEntry() : setConfirmDelete(true)}
+              >
+                {confirmDelete ? 'Delete — click again' : 'Delete…'}
+              </button>
+            </div>
+            <p className="dl-microcopy">Editing lands next; delete asks twice</p>
+          </>
+        )}
+      </Sheet>
     </>
   )
 }
