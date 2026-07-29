@@ -15,8 +15,8 @@ Port its tokens verbatim. Decisions taken at the gate:
 | 2 | Spine | all record types on one timeline, lens filter, month grouping, road ahead | done |
 | 3 | Forms | 7-type quick-log, detail sheet, validation, two-step delete | done (edit + photos deferred) |
 | 4 | Management | intervals, tire set, garage, backups, settings, odometer correction | done |
-| 5 | Stats | charts, quarters/years, CSV export | next |
-| 6 | Ship | motion polish, a11y pass, help, v3.0.0 release | — |
+| 5 | Stats | charts, quarters/years, CSV export | done |
+| 6 | Ship | motion polish, a11y pass, help, v3.0.0 release | next |
 
 ## Phase 1 tasks
 - [x] Branch + bundle fonts locally (`@fontsource/*`) — the old app pulled Inter

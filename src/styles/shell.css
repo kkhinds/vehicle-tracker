@@ -342,3 +342,33 @@
 .dl-meter i.on{ background:var(--dim); opacity:.7 }
 .dl-meter.warn i.on{ background:var(--accent); opacity:1 }
 .dl-meter.bad i.on{ background:var(--red) }
+
+/* ── STATS ────────────────────────────────────────────── */
+.dl-stats-grid{ display:grid; grid-template-columns:1.35fr 1fr; gap:12px }
+.dl-panelbox{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px }
+.dl-panelbox h3{
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.14em; color:var(--dim); margin:0 0 12px;
+}
+.dl-bars{ display:flex; align-items:stretch; gap:14px; height:150px; padding:0 4px }
+.dl-bar{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100% }
+.dl-col{ width:100%; display:flex; flex-direction:column-reverse; gap:2px }
+.dl-col .f{ background:var(--dim); border-radius:3px 3px 0 0 }
+.dl-col .m{ background:var(--faint); border-radius:3px; opacity:.55 }
+.dl-bar-lbl{ font-size:11px; color:var(--dim) }
+.dl-kvrows > div{
+  display:flex; justify-content:space-between; padding:8px 0;
+  border-bottom:1px solid var(--line); font-size:13px;
+}
+.dl-kvrows > div:last-child{ border-bottom:none }
+.dl-kvrows span{ color:var(--dim) }
+.dl-legend > div{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--dim); padding:3px 0 }
+.dl-legend i{ width:9px; height:9px; border-radius:3px; flex:none }
+.dl-track{ height:6px; border-radius:3px; background:var(--line); margin-top:5px; overflow:hidden }
+.dl-track > div{ height:100%; border-radius:3px }
+.dl-export-btn{
+  margin-top:12px; width:100%; border:1px solid var(--line2); border-radius:8px;
+  padding:8px 0; color:var(--dim); font-size:13px;
+}
+.dl-export-btn:hover{ color:var(--text); background:var(--hover) }
+@media (max-width:1000px){ .dl-stats-grid{ grid-template-columns:1fr } }

@@ -4,6 +4,7 @@ import Hero from './Hero'
 import LensBar, { type Lens } from './LensBar'
 import Spine from './Spine'
 import Sheet from './Sheet'
+import Stats from './Stats'
 import LogForm, { KIND_TO_LOG, type LogType } from './LogForm'
 import {
   IntervalsSheet, GarageSheet, BackupsSheet, SettingsSheet, OdometerSheet, TireSetSheet,
@@ -163,9 +164,12 @@ export default function AppShell() {
         {loading ? (
           <p style={{ color: 'var(--dim)', fontSize: 13 }}>Loading…</p>
         ) : lens === 'stats' ? (
-          <p style={{ color: 'var(--dim)', fontSize: 13 }}>
-            Charts, quarters and CSV export land in phase 5.
-          </p>
+          <Stats
+            summary={summary}
+            currency={settings.currency}
+            distanceUnit={settings.distance_unit}
+            economyUnit={settings.economy_unit}
+          />
         ) : (
           <Spine
             entries={entries}

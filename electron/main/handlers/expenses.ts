@@ -55,26 +55,33 @@ export function registerExpensesHandlers(): void {
       })
     }
 
+    /**
+     * Spend for a window, across the same four categories the pie uses.
+     * Quarterly and yearly previously counted only fuel and maintenance, so a
+     * year total could read far lower than the category breakdown beside it.
+     */
+    const spendBetween = (from: string, to: string): number => {
+      const one = (sql: string) => (db.prepare(sql).get(vehicleId, from, to) as SumRow).total ?? 0
+      return one("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?")
+        + one("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?")
+        + one("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date >= ? AND start_date <= ?")
+        + one("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ? AND COALESCE(issued_date, expiry_date) >= ? AND COALESCE(issued_date, expiry_date) <= ?")
+    }
+
     // Quarterly (last 8 quarters)
     const quarterly = []
     for (let i = 7; i >= 0; i--) {
       const d = subQuarters(now, i)
-      const qs = format(startOfQuarter(d), 'yyyy-MM-dd')
-      const qe = format(endOfQuarter(d), 'yyyy-MM-dd')
-      const f = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, qs, qe) as SumRow).total ?? 0
-      const m = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, qs, qe) as SumRow).total ?? 0
-      quarterly.push({ quarter: `Q${Math.ceil((d.getMonth() + 1) / 3)} ${d.getFullYear()}`, amount: Math.round((f + m) * 100) / 100 })
+      const amount = spendBetween(format(startOfQuarter(d), 'yyyy-MM-dd'), format(endOfQuarter(d), 'yyyy-MM-dd'))
+      quarterly.push({ quarter: `Q${Math.ceil((d.getMonth() + 1) / 3)} ${d.getFullYear()}`, amount: Math.round(amount * 100) / 100 })
     }
 
     // Yearly (last 5 years)
     const yearly = []
     for (let i = 4; i >= 0; i--) {
       const year = now.getFullYear() - i
-      const ys = `${year}-01-01`
-      const ye = `${year}-12-31`
-      const f = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, ys, ye) as SumRow).total ?? 0
-      const m = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, ys, ye) as SumRow).total ?? 0
-      yearly.push({ year: String(year), amount: Math.round((f + m) * 100) / 100 })
+      const amount = spendBetween(`${year}-01-01`, `${year}-12-31`)
+      yearly.push({ year: String(year), amount: Math.round(amount * 100) / 100 })
     }
 
     const totalCost = byCategory.reduce((sum, c) => sum + c.amount, 0)
