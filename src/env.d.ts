@@ -132,12 +132,43 @@ interface ElectronAPI {
     chooseDir: () => Promise<{ dir: string; moved: number } | null>
     resetDir: () => Promise<BackupStatus>
   }
+  timeline: {
+    getEntries: () => Promise<TimelineEntry[]>
+    getAhead: () => Promise<{ items: AheadItem[]; ratePerDay: number | null }>
+  }
   updater: {
     check: () => Promise<UpdaterStatus>
     install: () => Promise<void>
     getStatus: () => Promise<UpdaterStatus>
     onStatus: (callback: (status: UpdaterStatus) => void) => () => void
   }
+}
+
+export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs' | 'notes'
+
+export interface TimelineEntry {
+  id: string
+  kind: EntryKind
+  date: string
+  odometer: number | null
+  title: string
+  subtitle: string
+  value: string | null
+  valueSub: string | null
+}
+
+export interface AheadItem {
+  id: string
+  kind: EntryKind
+  title: string
+  subtitle: string
+  dueDate: string | null
+  projectedDate: string | null
+  estimated: boolean
+  dueKm: number | null
+  kmRemaining: number | null
+  daysRemaining: number | null
+  status: 'ok' | 'due-soon' | 'overdue'
 }
 
 export type UpdaterPhase =

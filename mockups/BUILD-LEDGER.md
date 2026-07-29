@@ -12,8 +12,8 @@ Port its tokens verbatim. Decisions taken at the gate:
 | # | Phase | Ends with | State |
 |---|---|---|---|
 | 1 | Shell | tokens, fonts, hero, lens bar, theme, real vehicle/odometer from IPC | done |
-| 2 | Spine | all record types on one timeline, lens filter, month grouping, road ahead | next |
-| 3 | Forms | 7-type quick-log, detail/edit sheets, validation, photos | — |
+| 2 | Spine | all record types on one timeline, lens filter, month grouping, road ahead | done |
+| 3 | Forms | 7-type quick-log, detail/edit sheets, validation, photos | next |
 | 4 | Management | intervals, tire set, garage, backups, settings, odometer correction | — |
 | 5 | Stats | charts, quarters/years, CSV export | — |
 | 6 | Ship | motion polish, a11y pass, help, v3.0.0 release | — |

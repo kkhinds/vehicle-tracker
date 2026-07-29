@@ -19,6 +19,7 @@ import { registerBackupHandlers } from './handlers/backup'
 import { runStartupBackup } from './backups'
 import { registerFluidHandlers } from './handlers/fluids'
 import { registerUpdaterHandlers } from './handlers/updater'
+import { registerTimelineHandlers } from './handlers/timeline'
 import { initAutoUpdater } from './updater'
 
 // Resolve a resource shipped under /resources at both dev and production paths.
@@ -146,6 +147,7 @@ app.whenReady().then(async () => {
   registerBackupHandlers()
   registerFluidHandlers()
   registerUpdaterHandlers()
+  registerTimelineHandlers()
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
   createMainWindow()

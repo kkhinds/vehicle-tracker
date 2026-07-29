@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import Hero from './Hero'
 import LensBar, { type Lens } from './LensBar'
+import Spine from './Spine'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
 import { formatDate } from '@/lib/utils'
 import type { DashboardSummary } from '@/types'
+import type { AheadItem, TimelineEntry } from '@/env'
 
 /**
  * Driver's Log shell: hero + lens bar, no sidebar. Lens state lives here; the
@@ -17,10 +19,29 @@ export default function AppShell() {
   const [lens, setLens] = useState<Lens>('all')
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [alerting, setAlerting] = useState<Set<number>>(new Set())
+  const [entries, setEntries] = useState<TimelineEntry[]>([])
+  const [ahead, setAhead] = useState<AheadItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const spineRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    window.api.dashboard.getSummary().then(setSummary)
-  }, [currentVehicleId])
+  const reload = useCallback(async () => {
+    const [s, e, a] = await Promise.all([
+      window.api.dashboard.getSummary(),
+      window.api.timeline.getEntries(),
+      window.api.timeline.getAhead(),
+    ])
+    setSummary(s); setEntries(e); setAhead(a.items); setLoading(false)
+  }, [])
+
+  useEffect(() => { setLoading(true); reload() }, [currentVehicleId, reload])
+
+  // The spine's accent segment runs from the top down to TODAY, so its length
+  // depends on how tall the rendered road-ahead block happens to be.
+  useLayoutEffect(() => {
+    const el = spineRef.current?.querySelector<HTMLElement>('.dl-spine')
+    const aheadEl = spineRef.current?.querySelector<HTMLElement>('.dl-ahead')
+    if (el) el.style.setProperty('--ahead-h', `${aheadEl?.offsetHeight ?? 0}px`)
+  }, [entries, ahead, lens])
 
   // Which vehicles need attention — drives the dot on the switcher. Cheap enough
   // to ask per vehicle; a single household query lands in Phase 4.
@@ -91,11 +112,26 @@ export default function AppShell() {
         onOpenGarage={soon}
         onSearch={soon}
       />
-      <main className="shell" style={{ paddingBlock: 32, minHeight: 240 }}>
-        <p style={{ color: 'var(--dim)', fontSize: 13 }}>
-          Lens: <b className="mono" style={{ color: 'var(--text)' }}>{lens}</b> — the spine,
-          context strips and sheets arrive in the next phases.
-        </p>
+      <main className="shell" style={{ paddingBlock: 32, paddingBottom: 130 }} ref={spineRef}>
+        {loading ? (
+          <p style={{ color: 'var(--dim)', fontSize: 13 }}>Loading…</p>
+        ) : lens === 'stats' ? (
+          <p style={{ color: 'var(--dim)', fontSize: 13 }}>
+            Charts, quarters and CSV export land in phase 5.
+          </p>
+        ) : (
+          <Spine
+            entries={entries}
+            ahead={ahead}
+            odometer={currentVehicle?.current_odometer ?? 0}
+            distanceUnit={settings.distance_unit}
+            lens={lens}
+            onOpenEntry={soon}
+            onOpenAhead={soon}
+            onLogFirst={soon}
+            onManageIntervals={soon}
+          />
+        )}
       </main>
     </>
   )
