@@ -3,29 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vehicle Tracker — Driver's Log · Phase 0 reference</title>
+<title>Vehicle Tracker — Driver's Log · Phase 0 reference v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  /* ── TOKENS ──────────────────────────────────────────
+     Type scale: 11 / 12 / 13 / 14 / 16 / 21 / 25 / 38 / 58
+     Tracking:   .28em hero micro-labels · .14em caps labels · .06em pills
+     Space grid: 4px (12 / 16 / 20 / 24 / 32)                          */
   :root{
     --bg:#0A0E14; --panel:#111722; --panel2:#161E2B; --hover:#1A2332;
     --line:#1E2735; --line2:#2A3547;
-    --text:#EDF1F7; --dim:#7E8A9C; --faint:#4E5A6E;
+    --text:#EDF1F7; --dim:#7E8A9C; --faint:#78879E;
     --accent:#FFAA2B; --accent-ink:#131313; --accent-soft:rgba(255,170,43,.12);
-    --red:#FF3B30; --red-soft:rgba(255,59,48,.12);
+    --red:#FF554B; --red-soft:rgba(255,59,48,.06);
     --green:#2BD98F; --green-soft:rgba(43,217,143,.10);
     --hero-a:#0A0E14; --hero-b:#0D1420; --hero-c:#101A29;
     --glow:rgba(255,170,43,.16); --scrim:rgba(5,8,12,.6);
+    --shadow:none;
   }
   [data-theme="light"]{
     --bg:#F2F4F8; --panel:#FFFFFF; --panel2:#FFFFFF; --hover:#F5F7FB;
     --line:#E2E7EF; --line2:#CBD4E1;
-    --text:#16202E; --dim:#5B6878; --faint:#94A0B2;
-    --accent:#D97E00; --accent-ink:#FFFFFF; --accent-soft:rgba(217,126,0,.12);
-    --red:#D92B20; --red-soft:rgba(217,43,32,.10);
-    --green:#0FA968; --green-soft:rgba(15,169,104,.10);
+    --text:#16202E; --dim:#5B6878; --faint:#5F6C7D;
+    --accent:#A15D00; --accent-ink:#FFFFFF; --accent-soft:rgba(161,93,0,.08);
+    --red:#C6281E; --red-soft:rgba(198,40,30,.08);
+    --green:#097A4C; --green-soft:rgba(9,122,76,.08);
     --hero-a:#E8ECF4; --hero-b:#DFE6F1; --hero-c:#D6E0EF;
-    --glow:rgba(217,126,0,.18); --scrim:rgba(22,32,46,.4);
+    --glow:rgba(161,93,0,.18); --scrim:rgba(22,32,46,.4);
+    --shadow:0 -12px 40px rgba(22,32,46,.22);
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--bg);color:var(--text);font:14px/1.5 'Barlow',system-ui,sans-serif;transition:background .3s,color .3s}
@@ -33,201 +39,250 @@
   button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
   .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
-  .cond{font-family:'Barlow Condensed',sans-serif}
   .hide{display:none!important}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  /* aligned left edge: hero, lens, wrap share one content column */
+  .shell{padding-inline:max(32px,calc((100% - 948px)/2))}
 
   /* ── HERO ─────────────────────────────────────────── */
-  .hero{position:relative;height:250px;overflow:hidden;border-bottom:1px solid var(--line);
+  .hero{position:relative;height:clamp(220px,28vh,290px);overflow:hidden;border-bottom:1px solid var(--line);
     background:radial-gradient(120% 90% at 50% 115%, var(--glow), transparent 55%),
       linear-gradient(180deg, var(--hero-a) 0%, var(--hero-b) 60%, var(--hero-c) 100%);}
-  .road{position:absolute;inset:auto 0 0 0;height:140px;opacity:.5}
+  .road{position:absolute;inset:auto 0 0 0;height:140px;opacity:.5;
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 60%);mask-image:linear-gradient(180deg,transparent 0,#000 60%)}
+  [data-theme="light"] .road{opacity:.9}
   .road line{stroke:var(--line2);stroke-width:1}
-  .road .mid{stroke:var(--accent);stroke-width:2;stroke-dasharray:14 22;opacity:.5;animation:drive 1.4s linear infinite}
-  @keyframes drive{to{stroke-dashoffset:-36}}
-  .hero-in{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 56px}
-  .hv .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--faint);font-weight:600}
+  .road .mid{stroke:var(--accent);stroke-width:2;stroke-dasharray:14 22;opacity:.5}
+  .hero-in{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:space-between}
+  .hv .eyebrow{font-size:12px;letter-spacing:.28em;color:var(--dim);font-weight:600}
   .hv h1{font-family:'Barlow Condensed';font-weight:700;font-size:58px;line-height:.95;letter-spacing:.01em}
   .hv .plate{color:var(--dim);font-size:14px;margin-top:4px}
   .hv .plate b{color:var(--accent);font-weight:600}
   .vswitch{display:flex;align-items:center;gap:8px;margin-top:12px}
-  .vswitch button{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.06em;
+  .vswitch button{font-family:'Barlow Condensed';font-weight:600;font-size:16px;letter-spacing:.06em;
     color:var(--dim);padding:4px 12px;border:1px solid var(--line2);border-radius:999px;transition:all .2s}
-  .vswitch button.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
-  .vswitch button:not(.on):hover{color:var(--text);border-color:var(--dim)}
+  .vswitch button[aria-pressed="true"]{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+  .vswitch button[aria-pressed="false"]:hover{color:var(--text);border-color:var(--dim)}
   .valert{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:6px;vertical-align:1px;animation:pulse 1.6s infinite}
   @keyframes pulse{50%{opacity:.3}}
-  .garage-btn{color:var(--faint);font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px dashed var(--line2)}
+  .garage-btn{color:var(--dim);font-size:12px;padding:5px 12px;border-radius:999px;border:1px dashed var(--line2)}
   .garage-btn:hover{color:var(--text);border-color:var(--dim)}
   .odo{text-align:right}
-  .odo .label{font-size:11px;letter-spacing:.34em;color:var(--faint);font-weight:600}
-  .odo .value{font-family:'JetBrains Mono';font-weight:700;font-size:54px;letter-spacing:.02em;line-height:1.05}
-  .odo .value small{font-size:19px;color:var(--dim);font-weight:400}
-  .next{margin-top:6px;font-size:13.5px;color:var(--dim)}
+  .odo .label{font-size:11px;letter-spacing:.28em;color:var(--dim);font-weight:600}
+  .odo button.value{font-family:'JetBrains Mono';font-weight:500;font-size:38px;letter-spacing:.02em;line-height:1.1;
+    padding:0 4px;border-radius:8px;transition:background .15s}
+  .odo button.value:hover{background:var(--accent-soft)}
+  .odo .value small{font-size:14px;color:var(--dim);font-weight:400}
+  .next{margin-top:6px;font-size:13px;color:var(--dim)}
   .next b{color:var(--accent);font-weight:600}
-  .hero-actions{position:absolute;top:16px;right:56px;z-index:3;display:flex;gap:8px}
-  .icon-btn{color:var(--faint);font-size:12.5px;padding:5px 12px;border:1px solid var(--line2);border-radius:8px;transition:all .18s}
+  .hero-actions{position:absolute;top:16px;right:32px;z-index:3;display:flex;gap:8px}
+  .icon-btn{color:var(--dim);font-size:12px;padding:8px 12px;border:1px solid var(--line2);border-radius:8px;transition:all .18s}
   .icon-btn:hover{color:var(--text);background:var(--hover)}
 
   /* ── LENS BAR ─────────────────────────────────────── */
   .lens{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;
-    padding:11px 56px;background:color-mix(in srgb, var(--bg) 92%, transparent);
-    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-  .lens button.pill{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.08em;
+    padding-block:12px;background:color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);overflow-x:auto}
+  .vchip{display:flex;align-items:center;gap:8px;flex:none;
+    font-family:'Barlow Condensed';font-weight:700;font-size:16px;letter-spacing:.06em;
+    padding:6px 13px;border:1px solid var(--line2);border-radius:8px;margin-right:6px}
+  .vchip:hover{background:var(--hover)}
+  .vchip .car{width:34px;height:16px}
+  .vchip .car path{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .lens .pill{font-family:'Barlow Condensed';font-weight:600;font-size:16px;letter-spacing:.06em;flex:none;
     padding:6px 13px;color:var(--dim);border-radius:8px;transition:all .18s}
-  .lens button.pill:hover{color:var(--text);background:var(--hover)}
-  .lens button.pill.on{color:var(--accent);background:var(--accent-soft)}
-  .lens .gap{flex:1}
-  .lens .search{color:var(--faint);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;background:none}
+  .lens .pill:hover{color:var(--text);background:var(--hover)}
+  .lens .pill[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
+  [data-theme="light"] .lens .pill[aria-selected="true"]{color:var(--accent-ink);background:var(--accent)}
+  .lens .gap{flex:1;min-width:12px}
+  .lens .stats-pill{border-left:1px solid var(--line2);padding-left:16px;margin-left:4px}
+  .lens .search{color:var(--dim);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;flex:none}
+  .lens .search:hover{color:var(--text)}
 
   /* ── LAYOUT ───────────────────────────────────────── */
-  .wrap{max-width:1060px;margin:0 auto;padding:30px 56px 130px}
-  .ctx{margin-bottom:26px;animation:fadein .35s ease backwards}
+  .wrap{max-width:1012px;margin:0 auto;padding:32px 32px 130px}
+  .ctx{margin-bottom:24px;animation:fadein .35s ease backwards}
   @keyframes fadein{from{opacity:0;transform:translateY(8px)}}
-
-  /* context strip cards */
+  .ctx-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .section-lbl{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;color:var(--dim)}
+  .manage-btn{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.06em;
+    color:var(--dim);border:1px solid var(--line2);border-radius:7px;padding:5px 12px}
+  .manage-btn:hover{color:var(--text);background:var(--hover)}
   .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .stat .k{font-size:11px;letter-spacing:.16em;color:var(--faint);font-weight:600}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:left}
+  button.stat{transition:border-color .2s,background .2s}
+  button.stat:hover{background:var(--hover);border-color:var(--line2)}
+  .stat .k{font-size:11px;letter-spacing:.14em;color:var(--dim);font-weight:600}
   .stat .v{font-family:'JetBrains Mono';font-size:21px;font-weight:600;margin-top:4px}
   .stat .v small{font-size:12px;color:var(--dim);font-weight:400}
   .stat .s{font-size:12px;color:var(--dim);margin-top:2px}
   .stat.warn{border-color:color-mix(in srgb, var(--accent) 45%, var(--line))}
   .stat.warn .v{color:var(--accent)}
-  .meter{display:flex;gap:2.5px;margin-top:8px}
+  .meter{display:flex;gap:2px;margin-top:8px}
   .meter i{flex:1;height:8px;border-radius:2px;background:var(--line)}
-  .meter i.on{background:var(--green);opacity:.8}
+  .meter i.on{background:var(--dim);opacity:.7}
   .meter.warn i.on{background:var(--accent);opacity:1}
   .meter.bad i.on{background:var(--red)}
 
   /* ── SPINE ────────────────────────────────────────── */
   .spine{position:relative;padding-left:150px}
   .spine::before{content:'';position:absolute;left:118px;top:0;bottom:0;width:2px;
-    background:linear-gradient(180deg,var(--accent) 0,var(--accent) var(--ahead-h,210px),var(--line2) calc(var(--ahead-h,210px) + 50px),var(--line2) 100%)}
-  .km-mark{position:absolute;left:-150px;width:104px;text-align:right;
-    font-family:'JetBrains Mono';font-size:11.5px;color:var(--faint);padding-top:18px}
-  .km-mark b{color:var(--dim);font-weight:500}
+    background:linear-gradient(180deg,var(--accent) 0,var(--accent) var(--ahead-h,300px),var(--line2) calc(var(--ahead-h,300px) + 50px),var(--line2) 100%)}
+  .date-mark{position:absolute;left:-150px;width:104px;text-align:right;
+    font-family:'JetBrains Mono';font-size:11px;color:var(--dim);padding-top:16px;line-height:1.5}
+  .date-mark b{color:var(--text);font-weight:500;font-size:12px}
+  .date-mark .km{color:var(--faint)}
   .node{position:absolute;left:-38px;top:22px;width:14px;height:14px;border-radius:50%;
     background:var(--bg);border:2.5px solid var(--faint)}
-  .entry{position:relative;margin:0 0 13px 0;animation:slide .45s cubic-bezier(.2,.9,.3,1) backwards}
+  .entry{position:relative;margin:0 0 12px 0;animation:slide .45s cubic-bezier(.2,.9,.3,1) backwards}
   @keyframes slide{from{opacity:0;transform:translateX(18px)}}
   .entry:nth-child(2){animation-delay:.04s}.entry:nth-child(3){animation-delay:.08s}
   .entry:nth-child(4){animation-delay:.12s}.entry:nth-child(5){animation-delay:.16s}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-    padding:13px 18px;display:flex;align-items:center;gap:16px;text-align:left;width:100%;
+    padding:12px 16px;display:flex;align-items:center;gap:16px;text-align:left;width:100%;
     transition:border-color .2s, background .2s, transform .2s}
   .card:hover{background:var(--hover);border-color:var(--line2);transform:translateX(3px)}
-  .tag{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;flex:none;width:78px;color:var(--faint)}
+  .tag{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;flex:none;width:78px;color:var(--dim)}
   .c-main{flex:1;min-width:0}
-  .c-title{font-weight:500;font-size:14.5px;display:block}
-  .c-sub{color:var(--dim);font-size:12.5px;margin-top:2px;display:block}
-  .c-val{font-family:'JetBrains Mono';font-size:13.5px;color:var(--text);flex:none;text-align:right}
-  .c-val small{color:var(--faint);font-size:11px}
+  .c-title{font-weight:500;font-size:14px;display:block}
+  .c-sub{color:var(--dim);font-size:12px;margin-top:2px;display:block}
+  .c-val{font-family:'JetBrains Mono';font-size:13px;color:var(--text);flex:none;text-align:right}
+  .c-val small{color:var(--dim);font-size:11px}
+  /* road ahead: neutral by default — chroma only when actually due/overdue */
   .ahead .card{background:transparent;border-style:dashed;border-color:var(--line2)}
-  .ahead .node{border-color:var(--accent)}
-  .ahead .tag{color:var(--accent)}
-  .ahead .km-mark b{color:var(--accent)}
   .entry.due .card{border-color:color-mix(in srgb, var(--accent) 50%, transparent)}
   .entry.due .node{background:var(--accent);border-color:var(--accent)}
+  .entry.due .c-title,.entry.due .c-val,.entry.due .tag{color:var(--accent)}
   .entry.overdue .card{border-color:color-mix(in srgb, var(--red) 55%, transparent)}
   .entry.overdue .node{background:var(--red);border-color:var(--red)}
   .entry.overdue .tag,.entry.overdue .c-title,.entry.overdue .c-val{color:var(--red)}
+  .more-row{border:1px dashed var(--line2);border-radius:12px;padding:10px 16px;width:100%;
+    color:var(--dim);font-size:13px;text-align:center;margin-bottom:12px}
+  .more-row:hover{color:var(--text);background:var(--hover)}
   .today{position:relative;margin:24px 0 28px;display:flex;align-items:center;gap:14px}
   .today .line{flex:1;height:1px;background:var(--line2)}
-  .today .lbl{font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;letter-spacing:.18em;color:var(--accent)}
+  .today .lbl{font-family:'JetBrains Mono';font-weight:700;font-size:12px;letter-spacing:.14em;color:var(--accent)}
   .today .node-now{position:absolute;left:-40px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;
     background:var(--accent);box-shadow:0 0 0 6px var(--accent-soft),0 0 24px var(--glow)}
-  .section-lbl{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.22em;color:var(--faint);margin:0 0 12px}
-  .empty{border:1px dashed var(--line2);border-radius:12px;padding:34px;text-align:center;color:var(--dim)}
-  .empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
-  .empty button{margin-top:14px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:8px 18px;border-radius:8px}
+  .month-h{position:relative;font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;
+    color:var(--dim);margin:20px 0 12px;display:flex;align-items:center;gap:12px}
+  .month-h .rule{flex:1;height:1px;background:var(--line)}
+  .month-h .sum{font-family:'JetBrains Mono';font-size:11px;color:var(--faint)}
+  .empty{border:1px dashed var(--line2);border-radius:12px;padding:32px;text-align:center;color:var(--dim)}
+  .empty b{display:block;color:var(--text);font-size:14px;margin-bottom:4px}
+  .empty button{margin-top:16px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:8px 20px;border-radius:8px}
 
   /* ── STATS VIEW ───────────────────────────────────── */
-  .stats-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
-  .panelbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-  .panelbox h3{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.2em;color:var(--faint);margin-bottom:14px}
+  .stats-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:12px}
+  .panelbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .panelbox h3{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:12px}
   .bars{display:flex;align-items:stretch;gap:14px;height:150px;padding:0 4px}
   .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
   .bar .col{width:100%;display:flex;flex-direction:column-reverse;gap:2px}
-  .bar .f{background:var(--accent);border-radius:3px 3px 0 0;opacity:.9}
-  .bar .m{background:var(--dim);border-radius:3px}
-  .bar .lbl{font-family:'JetBrains Mono';font-size:10.5px;color:var(--faint)}
-  .kvrows div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .bar .f{background:var(--dim);border-radius:3px 3px 0 0}
+  .bar .m{background:var(--faint);border-radius:3px;opacity:.55}
+  .bar .lbl{font-family:'JetBrains Mono';font-size:11px;color:var(--dim)}
+  .kvrows div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
   .kvrows div:last-child{border-bottom:none}
   .kvrows span{color:var(--dim)}
   .kvrows b{font-family:'JetBrains Mono';font-weight:500}
   .donut{display:flex;align-items:center;gap:20px}
   .donut svg{flex:none}
-  .legend div{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);padding:3px 0}
+  .legend div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);padding:3px 0}
   .legend i{width:9px;height:9px;border-radius:3px}
+  .export-btn{margin-top:12px;width:100%;border:1px solid var(--line2);border-radius:8px;padding:8px 0;color:var(--dim);font-size:13px}
+  .export-btn:hover{color:var(--text);background:var(--hover)}
 
-  /* ── MINIMAP ──────────────────────────────────────── */
-  .minimap{position:fixed;right:18px;top:310px;bottom:120px;width:34px;z-index:20;display:flex;flex-direction:column;align-items:center}
-  .mm-track{position:relative;flex:1;width:3px;background:var(--line);border-radius:2px}
-  .mm-track i{position:absolute;left:-2.5px;width:8px;height:2.5px;border-radius:2px;background:var(--faint)}
-  .mm-track i.a{background:var(--accent)}
-  .mm-win{position:absolute;left:-6px;width:15px;height:64px;border:1.5px solid var(--accent);border-radius:6px;background:var(--accent-soft)}
-  .mm-lbl{font-family:'JetBrains Mono';font-size:9.5px;color:var(--faint);padding:6px 0;writing-mode:vertical-rl}
-
-  /* ── FAB + RADIAL ─────────────────────────────────── */
-  .fab{position:fixed;right:46px;bottom:40px;z-index:50;width:58px;height:58px;border-radius:50%;
-    background:var(--accent);color:var(--accent-ink);font-size:26px;font-weight:600;
+  /* ── FAB ──────────────────────────────────────────── */
+  .fab{position:fixed;right:40px;bottom:36px;z-index:50;height:56px;border-radius:999px;padding:0 24px;
+    display:flex;align-items:center;gap:10px;background:var(--accent);color:var(--accent-ink);
+    font-family:'Barlow Condensed';font-weight:700;font-size:16px;letter-spacing:.06em;
     box-shadow:0 6px 30px var(--glow);transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
-  .fab:hover{transform:scale(1.08)}
-  .radial{position:fixed;right:46px;bottom:40px;z-index:49;width:58px;height:58px;pointer-events:none}
-  .radial button{position:absolute;right:0;bottom:0;width:54px;height:54px;border-radius:50%;
-    background:var(--panel2);border:1px solid var(--line2);color:var(--text);
-    font-family:'Barlow Condensed';font-weight:600;font-size:11px;letter-spacing:.04em;
-    opacity:0;transition:all .3s cubic-bezier(.2,.9,.3,1.3);pointer-events:none}
-  .radial.open button{opacity:1;pointer-events:auto}
-  .radial.open .r1{transform:translate(-88px,8px)}
-  .radial.open .r2{transform:translate(-72px,-58px)}
-  .radial.open .r3{transform:translate(-6px,-90px)}
-  .radial button:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .fab:hover{transform:scale(1.05)}
+  .fab .plus{font-size:21px;font-weight:600}
 
   /* ── SHEETS ───────────────────────────────────────── */
   .scrim{position:fixed;inset:0;background:var(--scrim);z-index:60;opacity:0;pointer-events:none;transition:opacity .25s}
   .scrim.open{opacity:1;pointer-events:auto}
-  .sheet{position:fixed;left:50%;bottom:0;z-index:61;width:580px;max-height:82vh;overflow:auto;
+  .sheet{position:fixed;left:50%;bottom:0;z-index:61;width:580px;max-height:84vh;overflow:auto;
     transform:translate(-50%,105%);background:var(--panel2);border:1px solid var(--line2);border-bottom:none;
-    border-radius:18px 18px 0 0;padding:24px 30px 34px;transition:transform .35s cubic-bezier(.2,.9,.3,1)}
+    border-radius:16px 16px 0 0;padding:24px 32px 32px;transition:transform .35s cubic-bezier(.2,.9,.3,1);
+    box-shadow:var(--shadow)}
   .sheet.open{transform:translate(-50%,0)}
   .grab{width:44px;height:4px;border-radius:3px;background:var(--line2);margin:0 auto 16px}
   .sheet h2{font-family:'Barlow Condensed';font-weight:700;font-size:25px;letter-spacing:.02em}
+  .sheet h2:focus{outline:none}
   .sheet .meta{color:var(--dim);margin-top:2px;font-size:13px}
-  .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 26px;margin-top:18px}
-  .kv div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0;font-size:13.5px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:16px}
+  .kv div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:8px 0;font-size:13px}
   .kv span{color:var(--dim)}
-  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;margin:16px 0 4px}
-  .seg button{flex:1;padding:7px 0;font-size:12.5px;color:var(--dim);border-radius:6px}
-  .seg button.on{background:var(--panel);color:var(--text);border:1px solid var(--line2)}
+  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;margin:16px 0 4px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:60px;padding:7px 0;font-size:12px;color:var(--dim);border-radius:6px}
+  .seg button[aria-pressed="true"]{background:var(--panel);color:var(--text);border:1px solid var(--line2)}
   .field{margin-top:12px}
   .field label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
-  .field input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--text);font:inherit}
-  .field input:focus{outline:none;border-color:var(--accent)}
-  .frow{display:flex;gap:10px}.frow .field{flex:1}
-  .save{margin-top:20px;width:100%;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:11px 0;border-radius:9px;text-align:center}
-  .setrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--dim);border-radius:8px;padding:9px 12px;color:var(--text);font:inherit}
+  .field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+  .field .hint{font-size:11px;color:var(--faint);margin-top:4px}
+  .frow{display:flex;gap:12px}.frow .field{flex:1}
+  .attach{display:flex;gap:8px;margin-top:12px}
+  .attach button{border:1px dashed var(--line2);border-radius:8px;padding:8px 14px;color:var(--dim);font-size:12px}
+  .attach button:hover{color:var(--text);background:var(--hover)}
+  .save{margin-top:20px;width:100%;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:12px 0;border-radius:9px;text-align:center}
+  .btnrow{display:flex;gap:12px;margin-top:20px}
+  .btnrow .save{margin:0}
+  .ghost{background:var(--panel);color:var(--text);border:1px solid var(--line2)}
+  .danger{background:var(--panel);color:var(--red);border:1px solid var(--line2)}
+  .microcopy{font-size:11px;color:var(--faint);text-align:center;margin-top:12px}
+  .setrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px}
   .setrow:last-of-type{border-bottom:none}
-  .setrow .lab b{display:block;font-weight:500}
+  .setrow .lab b{display:block;font-weight:500;font-size:14px}
   .setrow .lab span{color:var(--dim);font-size:12px}
-  .setrow .ctl{color:var(--dim);font-size:12.5px;border:1px solid var(--line2);padding:5px 12px;border-radius:7px}
+  .setrow .ctl{color:var(--dim);font-size:12px;border:1px solid var(--line2);padding:8px 12px;border-radius:7px}
   .setrow .ctl:hover{color:var(--text)}
-  .vrow{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
-  .vrow:last-child{border-bottom:none}
-  .vrow .car{width:60px;height:28px}
+  .vrow{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+  .vrow:last-of-type{border-bottom:none}
+  .vrow:hover{background:var(--hover)}
+  .vrow .car{width:60px;height:28px;flex:none}
   .vrow .car path{fill:none;stroke:var(--dim);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   .vrow.on .car path{stroke:var(--accent)}
   .vrow .nm{flex:1}
-  .vrow .nm b{font-family:'Barlow Condensed';font-size:17px;font-weight:600;letter-spacing:.03em}
+  .vrow .nm b{font-family:'Barlow Condensed';font-size:16px;font-weight:600;letter-spacing:.03em}
   .vrow .nm span{display:block;color:var(--dim);font-size:12px}
+  .vrow .chev{color:var(--faint)}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:6px}
   .chip .dot{width:6px;height:6px;border-radius:50%}
-  .chip.ok{color:var(--faint);background:var(--green-soft)}
+  .chip.ok{color:var(--dim);background:var(--green-soft)}
   .chip.ok .dot{background:var(--green);opacity:.7}
   .chip.warn{color:var(--accent);background:var(--accent-soft)}
   .chip.warn .dot{background:var(--accent)}
   .chip.bad{color:var(--red);background:var(--red-soft)}
   .chip.bad .dot{background:var(--red);animation:pulse 1.6s infinite}
+  .irow{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);width:100%;text-align:left;font-size:13px}
+  .irow:last-of-type{border-bottom:none}
+  .irow:hover{background:var(--hover)}
+  .irow .nm{flex:1;font-weight:500}
+  .irow .iv{font-family:'JetBrains Mono';font-size:12px;color:var(--dim);flex:none}
+  .irow .meter{width:92px;margin:0;flex:none}
+
+  /* ── TOAST ────────────────────────────────────────── */
+  .toast{position:fixed;left:50%;bottom:110px;transform:translate(-50%,20px);z-index:70;
+    background:var(--panel2);border:1px solid var(--line2);border-radius:999px;box-shadow:var(--shadow);
+    padding:10px 20px;font-size:13px;display:flex;gap:14px;align-items:center;opacity:0;pointer-events:none;
+    transition:all .3s cubic-bezier(.2,.9,.3,1)}
+  .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .toast b{color:var(--accent);font-weight:600;cursor:pointer}
+
+  @media (max-width:1000px){
+    .shell{padding-inline:20px}
+    .wrap{padding-inline:20px}
+    .spine{padding-left:118px}
+    .date-mark{left:-118px;width:76px}
+    .date-mark .km{display:block}
+    .hv h1{font-size:44px}
+    .odo button.value{font-size:30px}
+    .lens .search .stext{display:none}
+  }
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -235,52 +290,57 @@
 
 <!-- ══ HERO ══ -->
 <section class="hero">
-  <svg class="road" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 1200 140">
-    <line x1="0" y1="140" x2="470" y2="0"/><line x1="1200" y1="140" x2="730" y2="0"/>
+  <svg class="road" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 1200 140" aria-hidden="true">
+    <line x1="0" y1="140" x2="560" y2="0"/><line x1="1200" y1="140" x2="640" y2="0"/>
     <line class="mid" x1="600" y1="140" x2="600" y2="0"/>
   </svg>
   <div class="hero-actions">
     <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">☾ Dark</button>
     <button class="icon-btn" onclick="openSheet('settings')">Settings</button>
   </div>
-  <div class="hero-in">
+  <div class="hero-in shell">
     <div class="hv">
       <div class="eyebrow">DRIVER'S LOG</div>
       <h1>D-MAX</h1>
       <div class="plate">2022 Isuzu D-Max 3.0TD · <b>BM-4821</b></div>
       <div class="vswitch">
-        <button class="on">D-MAX</button>
-        <button>SWIFT<span class="valert"></span></button>
+        <button aria-pressed="true">D-MAX</button>
+        <button aria-pressed="false">SWIFT<span class="valert" aria-hidden="true"></span><span class="sr-only">— attention needed</span></button>
         <button class="garage-btn" onclick="openSheet('garage')">+ Garage</button>
       </div>
     </div>
     <div class="odo">
       <div class="label">ODOMETER</div>
-      <div class="value" id="odo">15,148<small> km</small></div>
-      <div class="next">Next: Oil &amp; filter — <b class="mono">7,112 km</b> or <b>18 Nov</b> · <span class="mono" style="color:var(--dim)">$0.61/km lifetime</span></div>
+      <button class="value mono" id="odo" onclick="openSheet('odo')" title="Correct odometer">15,148<small> km</small></button>
+      <div class="next">Next: Oil &amp; filter — <b class="mono">7,112 km</b> or <b class="mono">18 Nov</b></div>
     </div>
   </div>
 </section>
 
 <!-- ══ LENS BAR ══ -->
-<nav class="lens" id="lens">
-  <button class="pill on" data-lens="all">ALL</button>
-  <button class="pill" data-lens="fuel">FUEL</button>
-  <button class="pill" data-lens="service">SERVICE</button>
-  <button class="pill" data-lens="tires">TIRES</button>
-  <button class="pill" data-lens="fluid">FLUIDS</button>
-  <button class="pill" data-lens="insurance">INSURANCE</button>
-  <button class="pill" data-lens="docs">DOCS</button>
-  <button class="pill" data-lens="notes">NOTES</button>
-  <button class="pill" data-lens="stats">STATS</button>
+<nav class="lens shell" id="lens" role="tablist" aria-label="Views">
+  <button class="vchip" onclick="openSheet('garage')" aria-label="Vehicle: D-Max. Open garage">
+    <svg class="car" viewBox="0 0 100 44" aria-hidden="true"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
+    D-MAX ▾
+  </button>
+  <button class="pill" role="tab" aria-selected="true" data-lens="all">ALL</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="fuel">FUEL</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="service">SERVICE</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="tires">TIRES</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="fluid">FLUIDS</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="insurance">INSURANCE</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="docs">DOCS</button>
+  <button class="pill" role="tab" aria-selected="false" data-lens="notes">NOTES</button>
   <span class="gap"></span>
-  <button class="search mono">⌘K — search the log…</button>
+  <button class="pill stats-pill" role="tab" aria-selected="false" data-lens="stats">📊 STATS</button>
+  <button class="search"><span class="mono">Ctrl K</span><span class="stext"> — search the log…</span></button>
 </nav>
 
 <div class="wrap">
 
-  <!-- ══ CONTEXT STRIPS (one per lens) ══ -->
+  <!-- ══ CONTEXT STRIPS ══ -->
   <div class="ctx" data-ctx="fuel" hidden>
+    <div class="ctx-head"><span class="section-lbl">FUEL — THIS VEHICLE</span><button class="manage-btn" onclick="openSheet('log')">+ FILL-UP</button></div>
     <div class="strip">
       <div class="stat"><div class="k">AVG ECONOMY</div><div class="v">10.2 <small>km/L</small></div><div class="s">full-tank method</div></div>
       <div class="stat"><div class="k">JULY SPEND</div><div class="v">$355.14</div><div class="s">2 fill-ups</div></div>
@@ -290,21 +350,22 @@
   </div>
 
   <div class="ctx" data-ctx="service" hidden>
-    <p class="section-lbl">INTERVAL HEALTH — 18 TRACKED</p>
+    <div class="ctx-head"><span class="section-lbl">INTERVAL HEALTH — 18 TRACKED</span><button class="manage-btn" onclick="openSheet('intervals')">MANAGE</button></div>
     <div class="strip">
       <div class="stat"><div class="k">OIL &amp; FILTER</div><div class="v">7,112 <small>km · 112 d</small></div>
-        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <div class="stat warn"><div class="k">CABIN FILTER</div><div class="v">4,852 <small>km</small></div>
-        <div class="meter warn"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="meter" role="img" aria-label="29% of interval used"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat warn"><div class="k">CABIN FILTER</div><div class="v">4,852 <small>km</small></div><div class="s">due soon</div>
+        <div class="meter warn" role="img" aria-label="76% of interval used — due soon"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="stat"><div class="k">TIRE ROTATION</div><div class="v">7,112 <small>km</small></div>
-        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <div class="stat"><div class="k">13 MORE</div><div class="v" style="color:var(--green)">ALL OK</div><div class="s">nearest: brake fluid 24,852 km</div></div>
+        <div class="meter" role="img" aria-label="29% of interval used"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <button class="stat" onclick="openSheet('intervals')"><div class="k">15 MORE</div><div class="v">ALL OK</div><div class="s">nearest: brake fluid 24,852 km · view all ›</div></button>
     </div>
   </div>
 
   <div class="ctx" data-ctx="tires" hidden>
+    <div class="ctx-head"><span class="section-lbl">TIRES — ACTIVE SET</span><button class="manage-btn" onclick="openSheet('tireset')">MANAGE SET</button></div>
     <div class="strip">
-      <div class="stat"><div class="k">ACTIVE SET</div><div class="v" style="font-family:'Barlow';font-size:16px">Dunlop AT25 · 265/65R17</div><div class="s mono">fitted 18 May 2026 · 8,400 km on set</div></div>
+      <button class="stat" onclick="openSheet('tireset')"><div class="k">ACTIVE SET</div><div class="v" style="font-family:'Barlow';font-size:16px">Dunlop AT25 · 265/65R17</div><div class="s mono">fitted 18 May 2026 · 2,888 km on set ›</div></button>
       <div class="stat"><div class="k">MIN TREAD</div><div class="v">6.5 <small>mm</small></div><div class="s">rear-left · replace at 2 mm</div></div>
       <div class="stat"><div class="k">PRESSURES</div><div class="v">35 / 38 <small>psi</small></div><div class="s">front / rear recommended</div></div>
       <div class="stat"><div class="k">SET AGE</div><div class="v">0.2 <small>yr</small></div><div class="s">rubber limit 6 yr</div></div>
@@ -312,15 +373,17 @@
   </div>
 
   <div class="ctx" data-ctx="fluid" hidden>
+    <div class="ctx-head"><span class="section-lbl">FLUIDS — CONSUMPTION</span><button class="manage-btn" onclick="openSheet('log')">+ TOP-UP</button></div>
     <div class="strip">
-      <div class="stat"><div class="k">ENGINE OIL</div><div class="v" style="color:var(--green)">NORMAL</div><div class="s">no top-ups this interval</div></div>
-      <div class="stat"><div class="k">COOLANT</div><div class="v">86 <small>ml/1000km</small></div><div class="s">threshold 50 — watch</div></div>
-      <div class="stat"><div class="k">BRAKE FLUID</div><div class="v" style="color:var(--green)">NORMAL</div><div class="s">level steady</div></div>
+      <div class="stat"><div class="k">ENGINE OIL</div><div class="v">OK</div><div class="s">no top-ups this interval</div></div>
+      <div class="stat warn"><div class="k">COOLANT</div><div class="v">86 <small>ml/1000km</small></div><div class="s">above 50 threshold — watch</div></div>
+      <div class="stat"><div class="k">BRAKE FLUID</div><div class="v">OK</div><div class="s">level steady</div></div>
       <div class="stat"><div class="k">DEF / ADBLUE</div><div class="v">1.1 <small>L/1000km</small></div><div class="s">typical for 3.0TD</div></div>
     </div>
   </div>
 
   <div class="ctx" data-ctx="insurance" hidden>
+    <div class="ctx-head"><span class="section-lbl">INSURANCE — ACTIVE POLICY</span><button class="manage-btn" onclick="openSheet('log')">+ RENEWAL</button></div>
     <div class="strip">
       <div class="stat"><div class="k">ACTIVE POLICY</div><div class="v" style="font-family:'Barlow';font-size:16px">ICBL · comprehensive</div><div class="s mono">POL-88214 · renews 15 Mar 2027</div></div>
       <div class="stat"><div class="k">RENEWAL IN</div><div class="v">229 <small>days</small></div><div class="s">no action needed</div></div>
@@ -329,19 +392,21 @@
   </div>
 
   <div class="ctx" data-ctx="docs" hidden>
+    <div class="ctx-head"><span class="section-lbl">DOCUMENTS — EXPIRY</span><button class="manage-btn" onclick="openSheet('log')">+ DOCUMENT</button></div>
     <div class="strip">
-      <div class="stat warn"><div class="k">ROAD TAX</div><div class="v">14 <small>days</small></div>
-        <div class="meter warn"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+      <div class="stat warn"><div class="k">ROAD TAX</div><div class="v">14 <small>days</small></div><div class="s">due soon — renew by 12 Aug</div>
+        <div class="meter warn" role="img" aria-label="Validity 96% elapsed — due soon"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
       <div class="stat"><div class="k">REGISTRATION</div><div class="v">63 <small>days</small></div>
-        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <div class="stat"><div class="k">WARRANTY</div><div class="v" style="color:var(--green)">NO EXPIRY</div><div class="s">5yr/100,000 km — booklet scanned</div></div>
+        <div class="meter" role="img" aria-label="Validity 65% elapsed"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat"><div class="k">WARRANTY</div><div class="v">NO EXPIRY</div><div class="s">5yr/100,000 km — booklet scanned</div></div>
     </div>
   </div>
 
   <div class="ctx" data-ctx="notes" hidden>
+    <div class="ctx-head"><span class="section-lbl">NOTES</span><button class="manage-btn" onclick="openSheet('log')">+ NOTE</button></div>
     <div class="strip">
       <div class="stat" style="grid-column:1/-1"><div class="k">PINNED</div>
-        <div class="s" style="font-size:13.5px;color:var(--text);margin-top:6px">“Rattle from rear left over bumps — check bushing at next service”</div>
+        <div class="s" style="font-size:13px;color:var(--text);margin-top:6px">“Rattle from rear left over bumps — check bushing at next service”</div>
         <div class="s mono">12 Jul 2026 · D-Max</div></div>
     </div>
   </div>
@@ -351,23 +416,23 @@
     <div class="stats-grid">
       <div class="panelbox">
         <h3>MONTHLY SPEND — LAST 4</h3>
-        <div class="bars">
-          <div class="bar"><div class="col" style="height:22%"><div class="f" style="height:100%"></div></div><span class="lbl">APR</span></div>
-          <div class="bar"><div class="col" style="height:100%"><div class="f" style="height:46%"></div><div class="m" style="height:54%"></div></div><span class="lbl">MAY</span></div>
-          <div class="bar"><div class="col" style="height:24%"><div class="f" style="height:100%"></div></div><span class="lbl">JUN</span></div>
-          <div class="bar"><div class="col" style="height:48%"><div class="f" style="height:100%"></div></div><span class="lbl">JUL</span></div>
+        <div class="bars" role="img" aria-label="Monthly spend: April $176, May $758 including service, June $166, July $355">
+          <div class="bar"><div class="col" style="height:23%"><div class="f" style="height:100%"></div></div><span class="lbl">APR $176</span></div>
+          <div class="bar"><div class="col" style="height:100%"><div class="f" style="height:46%"></div><div class="m" style="height:54%"></div></div><span class="lbl">MAY $758</span></div>
+          <div class="bar"><div class="col" style="height:22%"><div class="f" style="height:100%"></div></div><span class="lbl">JUN $166</span></div>
+          <div class="bar"><div class="col" style="height:47%"><div class="f" style="height:100%"></div></div><span class="lbl">JUL $355</span></div>
         </div>
         <div class="legend" style="display:flex;gap:18px;margin-top:12px">
-          <div><i style="background:var(--accent)"></i>Fuel</div>
-          <div><i style="background:var(--dim)"></i>Service</div>
+          <div><i style="background:var(--dim)"></i>Fuel</div>
+          <div><i style="background:var(--faint);opacity:.55"></i>Service</div>
         </div>
       </div>
       <div class="panelbox">
         <h3>COST OF OWNERSHIP</h3>
         <div class="kvrows">
           <div><span>Lifetime total</span><b>$9,240.18</b></div>
+          <div><span>Distance tracked</span><b>15,148 km</b></div>
           <div><span>Cost / km</span><b>$0.61</b></div>
-          <div><span>Fuel share</span><b>58%</b></div>
           <div><span>July total</span><b>$355.14</b></div>
           <div><span>Avg economy</span><b>10.2 km/L</b></div>
         </div>
@@ -375,317 +440,458 @@
       <div class="panelbox">
         <h3>SPEND BY CATEGORY — 12 MO</h3>
         <div class="donut">
-          <svg width="110" height="110" viewBox="0 0 42 42">
+          <svg width="110" height="110" viewBox="0 0 42 42" aria-hidden="true">
             <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line)" stroke-width="6"/>
-            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="58 42" stroke-dashoffset="25" stroke-linecap="round"/>
-            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--dim)" stroke-width="6" stroke-dasharray="26 74" stroke-dashoffset="67" stroke-linecap="round"/>
-            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--green)" stroke-width="6" stroke-dasharray="16 84" stroke-dashoffset="41" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--text)" stroke-width="6" stroke-dasharray="42 58" stroke-dashoffset="25" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--dim)" stroke-width="6" stroke-dasharray="46 54" stroke-dashoffset="83" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--faint)" stroke-width="6" stroke-dasharray="12 88" stroke-dashoffset="37" stroke-linecap="round"/>
           </svg>
           <div class="legend">
-            <div><i style="background:var(--accent)"></i>Fuel — $2,140 · 58%</div>
-            <div><i style="background:var(--dim)"></i>Insurance — $960 · 26%</div>
-            <div><i style="background:var(--green)"></i>Service — $590 · 16%</div>
+            <div><i style="background:var(--text)"></i>Fuel — $2,140 · 42%</div>
+            <div><i style="background:var(--dim)"></i>Insurance — $2,340 · 46%</div>
+            <div><i style="background:var(--faint)"></i>Service — $590 · 12%</div>
           </div>
         </div>
       </div>
       <div class="panelbox">
+        <h3>QUARTERS &amp; YEARS</h3>
+        <div class="kvrows">
+          <div><span>Q3 2026 (to date)</span><b>$355.14</b></div>
+          <div><span>Q2 2026</span><b>$1,100.04</b></div>
+          <div><span>Q1 2026</span><b>$2,340.00</b></div>
+          <div><span>2026 to date</span><b>$3,795.18</b></div>
+          <div><span>2025</span><b>$5,445.00</b></div>
+        </div>
+        <button class="export-btn">⤓ Export CSV — this range</button>
+      </div>
+      <div class="panelbox" style="grid-column:1/-1">
         <h3>EFFICIENCY TREND — 6 TANKS</h3>
-        <svg width="100%" height="110" viewBox="0 0 300 110" preserveAspectRatio="none">
-          <polyline points="10,62 68,48 126,58 184,28 242,40 290,34" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="100%" height="110" viewBox="0 0 300 110" preserveAspectRatio="none" role="img" aria-label="Efficiency, last 6 tanks: 9.8 to 10.5 kilometres per litre, trending up">
+          <polyline points="10,62 68,48 126,58 184,28 242,40 290,34" fill="none" stroke="var(--dim)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
     </div>
   </div>
 
-  <!-- ══ SPINE ══ -->
+  <!-- ══ SPINE (date-primary axis; km is the annotation) ══ -->
   <div class="spine" id="spine">
 
-    <!-- ROAD AHEAD -->
+    <!-- ROAD AHEAD — neutral until due; sorted farthest-first down to TODAY -->
     <div class="ahead" id="ahead">
-      <p class="section-lbl" style="margin-left:0">ROAD AHEAD</p>
+      <p class="section-lbl" id="aheadLbl" style="margin-bottom:12px">ROAD AHEAD</p>
       <div class="entry" data-kind="service">
-        <span class="km-mark mono"><b>22,260</b><br>km</span><span class="node"></span>
+        <span class="date-mark mono" id="dm1" aria-hidden="true"><b>EST FEB 27</b><br><span class="km">~20,000 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">SERVICE</span>
-          <span class="c-main"><span class="c-title">Oil &amp; Filter Change</span>
-          <span class="c-sub">in 7,112 km — or 18 Nov 2026, whichever first</span></span>
-          <span class="c-val">112 <small>d</small></span>
-        </button>
-      </div>
-      <div class="entry" data-kind="service">
-        <span class="km-mark mono"><b>20,000</b><br>km</span><span class="node"></span>
-        <button class="card" onclick="openSheet('detail')">
-          <span class="tag">SERVICE</span>
+          <span class="sr-only">Projected February 2027, around 20,000 kilometres:</span>
+          <span class="tag" aria-hidden="true">SERVICE</span>
           <span class="c-main"><span class="c-title">Cabin Air Filter</span>
-          <span class="c-sub">in 4,852 km</span></span>
+          <span class="c-sub">in 4,852 km — projected from your driving rate</span></span>
           <span class="c-val">4,852 <small>km</small></span>
         </button>
       </div>
-      <div class="entry due" data-kind="docs">
-        <span class="km-mark mono"><b>12 AUG</b></span><span class="node"></span>
+      <div class="entry" data-kind="service">
+        <span class="date-mark mono" aria-hidden="true"><b>18 NOV</b><br><span class="km">22,260 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">DOCS</span>
-          <span class="c-main"><span class="c-title" style="color:var(--accent)">Road Tax renewal</span>
-          <span class="c-sub">expires 12 Aug 2026 — renew at licensing office</span></span>
-          <span class="c-val" style="color:var(--accent)">14 <small>d</small></span>
+          <span class="sr-only">Due 18 November 2026, at 22,260 kilometres:</span>
+          <span class="tag" aria-hidden="true">SERVICE</span>
+          <span class="c-main"><span class="c-title">Oil &amp; Filter Change</span>
+          <span class="c-sub">in 7,112 km — or 18 Nov, whichever first</span></span>
+          <span class="c-val">112 <small>days</small></span>
         </button>
       </div>
+      <div class="entry due" data-kind="docs">
+        <span class="date-mark mono" aria-hidden="true"><b>12 AUG</b></span><span class="node" aria-hidden="true"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="sr-only">Due soon — 12 August 2026, 14 days away:</span>
+          <span class="tag" aria-hidden="true">DOCS</span>
+          <span class="c-main"><span class="c-title">Road Tax renewal</span>
+          <span class="c-sub">expires 12 Aug — renew at licensing office</span></span>
+          <span class="c-val">14 <small>days</small></span>
+        </button>
+      </div>
+      <button class="more-row" data-kind="service" onclick="openSheet('intervals')">15 more intervals beyond this horizon — view all</button>
     </div>
 
     <!-- TODAY -->
     <div class="today">
-      <span class="node-now"></span>
+      <span class="node-now" aria-hidden="true"></span>
       <span class="lbl">TODAY · 15,148 KM</span>
       <span class="line"></span>
     </div>
 
-    <!-- HISTORY -->
+    <!-- HISTORY — strictly date-descending; km strictly decreasing -->
     <div id="history">
+      <div class="month-h" data-kind="all"><span>JULY 2026</span><span class="rule"></span><span class="sum">2 fill-ups · $355.14</span></div>
+
       <div class="entry" data-kind="fuel">
-        <span class="km-mark mono"><b>15,102</b><br>24 JUL</span><span class="node"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>24 JUL</b><br><span class="km">15,102 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">FUEL</span>
+          <span class="sr-only">24 July 2026, 15,102 kilometres:</span>
+          <span class="tag" aria-hidden="true">FUEL</span>
           <span class="c-main"><span class="c-title">Fill-up — Rubis Warrens</span>
           <span class="c-sub">42.3 L @ $4.31/L · full tank</span></span>
           <span class="c-val">$182.31<br><small>10.2 km/L</small></span>
         </button>
       </div>
       <div class="entry" data-kind="notes">
-        <span class="km-mark mono"><b>12 JUL</b></span><span class="node" style="border-color:var(--line2)"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>12 JUL</b></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">NOTE</span>
+          <span class="sr-only">12 July 2026:</span>
+          <span class="tag" aria-hidden="true">NOTE</span>
           <span class="c-main"><span class="c-title">Rattle from rear left over bumps</span>
           <span class="c-sub">check bushing at next service · pinned</span></span>
         </button>
       </div>
       <div class="entry" data-kind="fuel">
-        <span class="km-mark mono"><b>14,671</b><br>08 JUL</span><span class="node"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>08 JUL</b><br><span class="km">14,671 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">FUEL</span>
+          <span class="sr-only">8 July 2026, 14,671 kilometres:</span>
+          <span class="tag" aria-hidden="true">FUEL</span>
           <span class="c-main"><span class="c-title">Fill-up — Sol Black Rock</span>
           <span class="c-sub">40.1 L @ $4.31/L · full tank</span></span>
           <span class="c-val">$172.83<br><small>10.2 km/L</small></span>
         </button>
       </div>
-      <div class="entry" data-kind="tires">
-        <span class="km-mark mono"><b>14,900</b><br>10 JUN</span><span class="node" style="border-color:var(--green)"></span>
+
+      <div class="month-h" data-kind="all"><span>JUNE 2026</span><span class="rule"></span><span class="sum">1 fill-up · 1 inspection · 1 top-up</span></div>
+
+      <div class="entry" data-kind="fuel">
+        <span class="date-mark mono" aria-hidden="true"><b>19 JUN</b><br><span class="km">14,262 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">TIRES</span>
+          <span class="sr-only">19 June 2026, 14,262 kilometres:</span>
+          <span class="tag" aria-hidden="true">FUEL</span>
+          <span class="c-main"><span class="c-title">Fill-up — Rubis Warrens</span>
+          <span class="c-sub">38.6 L @ $4.31/L · full tank</span></span>
+          <span class="c-val">$166.37<br><small>9.8 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="tires">
+        <span class="date-mark mono" aria-hidden="true"><b>10 JUN</b><br><span class="km">14,150 km</span></span><span class="node" aria-hidden="true"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="sr-only">10 June 2026, 14,150 kilometres:</span>
+          <span class="tag" aria-hidden="true">TIRES</span>
           <span class="c-main"><span class="c-title">Inspection — all corners</span>
           <span class="c-sub">tread 7.0 / 6.9 / 6.5 / 6.6 mm · pressures set 35/38</span></span>
           <span class="c-val">6.5 <small>mm min</small></span>
         </button>
       </div>
       <div class="entry" data-kind="fluid">
-        <span class="km-mark mono"><b>14,100</b><br>07 JUN</span><span class="node" style="border-color:var(--green)"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>07 JUN</b><br><span class="km">14,100 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">FLUID</span>
+          <span class="sr-only">7 June 2026, 14,100 kilometres:</span>
+          <span class="tag" aria-hidden="true">FLUID</span>
           <span class="c-main"><span class="c-title">Coolant top-up</span>
           <span class="c-sub">250 ml · rate 86 ml/1000km — watch</span></span>
           <span class="c-val">250 <small>ml</small></span>
         </button>
       </div>
+
+      <div class="month-h" data-kind="all"><span>MAY 2026</span><span class="rule"></span><span class="sum">2 fill-ups · 10k service · $758.67</span></div>
+
       <div class="entry" data-kind="fuel">
-        <span class="km-mark mono"><b>14,262</b><br>19 JUN</span><span class="node"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>30 MAY</b><br><span class="km">13,884 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">FUEL</span>
-          <span class="c-main"><span class="c-title">Fill-up — Rubis Warrens</span>
-          <span class="c-sub">38.6 L @ $4.31/L · full tank</span></span>
-          <span class="c-val">$166.37<br><small>9.8 km/L</small></span>
-        </button>
-      </div>
-      <div class="entry" data-kind="fuel">
-        <span class="km-mark mono"><b>13,884</b><br>30 MAY</span><span class="node"></span>
-        <button class="card" onclick="openSheet('detail')">
-          <span class="tag">FUEL</span>
+          <span class="sr-only">30 May 2026, 13,884 kilometres:</span>
+          <span class="tag" aria-hidden="true">FUEL</span>
           <span class="c-main"><span class="c-title">Fill-up — Esso Wildey</span>
           <span class="c-sub">41.0 L @ $4.31/L · full tank</span></span>
           <span class="c-val">$176.71<br><small>10.5 km/L</small></span>
         </button>
       </div>
       <div class="entry" data-kind="service tires">
-        <span class="km-mark mono"><b>12,260</b><br>18 MAY</span><span class="node" style="border-color:var(--text)"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>18 MAY</b><br><span class="km">12,260 km</span></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">SERVICE</span>
+          <span class="sr-only">18 May 2026, 12,260 kilometres:</span>
+          <span class="tag" aria-hidden="true">SERVICE</span>
           <span class="c-main"><span class="c-title">10k service — Nassco Ltd</span>
-          <span class="c-sub">oil + filter, water-separator drain, tire rotation, new Dunlop AT25 set</span></span>
+          <span class="c-sub">oil + filter, water-separator drain, rotation, new Dunlop AT25 set fitted</span></span>
           <span class="c-val">$412.00</span>
         </button>
       </div>
+
+      <div class="month-h" data-kind="all"><span>EARLIER</span><span class="rule"></span><span class="sum">load previous months</span></div>
+
       <div class="entry" data-kind="insurance">
-        <span class="km-mark mono"><b>15 MAR</b></span><span class="node" style="border-color:var(--dim)"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>15 MAR</b></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">INSUR</span>
+          <span class="sr-only">15 March 2026:</span>
+          <span class="tag" aria-hidden="true">INSUR</span>
           <span class="c-main"><span class="c-title">Policy renewed — ICBL comprehensive</span>
           <span class="c-sub">POL-88214 · 12 months</span></span>
           <span class="c-val">$2,340</span>
         </button>
       </div>
       <div class="entry" data-kind="docs">
-        <span class="km-mark mono"><b>12 AUG 25</b></span><span class="node" style="border-color:var(--dim)"></span>
+        <span class="date-mark mono" aria-hidden="true"><b>12 AUG 25</b></span><span class="node" aria-hidden="true"></span>
         <button class="card" onclick="openSheet('detail')">
-          <span class="tag">DOCS</span>
+          <span class="sr-only">12 August 2025:</span>
+          <span class="tag" aria-hidden="true">DOCS</span>
           <span class="c-main"><span class="c-title">Road tax paid</span>
           <span class="c-sub">valid 12 months</span></span>
           <span class="c-val">$400</span>
         </button>
       </div>
+      <button class="more-row" data-kind="all">Load earlier — 2025 · 14 entries</button>
     </div>
 
-    <!-- EMPTY STATE (shown when a lens has no items) -->
+    <!-- EMPTY STATE -->
     <div class="empty hide" id="emptyState">
       <b>Nothing here yet</b>
-      This vehicle has no entries under this lens.
+      <span id="emptyCopy">This vehicle has no entries under this lens.</span>
       <br><button onclick="openSheet('log')">+ Log the first one</button>
     </div>
   </div>
 </div>
 
-<!-- ══ MINIMAP ══ -->
-<aside class="minimap" aria-hidden="true">
-  <span class="mm-lbl">22,260</span>
-  <div class="mm-track">
-    <i class="a" style="top:4%"></i><i class="a" style="top:10%"></i><i class="a" style="top:16%"></i>
-    <span class="mm-win" style="top:22%"></span>
-    <i style="top:28%"></i><i style="top:34%"></i><i style="top:40%"></i><i style="top:47%"></i>
-    <i style="top:54%"></i><i style="top:63%"></i><i style="top:74%"></i><i style="top:86%"></i>
-  </div>
-  <span class="mm-lbl">0 KM</span>
-</aside>
-
-<!-- ══ FAB + RADIAL ══ -->
-<div class="radial" id="radial">
-  <button class="r1" onclick="openSheet('log')">FUEL</button>
-  <button class="r2" onclick="openSheet('log')">SERVICE</button>
-  <button class="r3" onclick="openSheet('log')">FLUID</button>
-</div>
-<button class="fab" id="fab" onclick="toggleRadial()" aria-label="Quick log">+</button>
+<!-- ══ FAB — one tap = quick log (fuel first, it's the weekly action) ══ -->
+<button class="fab" onclick="openSheet('log')" aria-label="Quick log — opens the log form, fuel selected"><span class="plus">+</span> LOG</button>
 
 <!-- ══ SHEETS ══ -->
 <div class="scrim" id="scrim" onclick="closeSheets()"></div>
 
-<div class="sheet" id="sheet-detail" role="dialog" aria-modal="true">
-  <div class="grab"></div>
-  <h2>Fill-up — Rubis Warrens</h2>
-  <div class="meta mono">24 Jul 2026 · 15,102 km</div>
+<div class="sheet" id="sheet-detail" role="dialog" aria-modal="true" aria-labelledby="h-detail">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-detail" tabindex="-1">Fill-up — Rubis Warrens</h2>
+  <div class="meta mono">D-MAX · 24 Jul 2026 · 15,102 km</div>
   <div class="kv">
     <div><span>Litres</span><b class="mono">42.3 L</b></div>
     <div><span>Price / L</span><b class="mono">$4.31</b></div>
     <div><span>Total</span><b class="mono">$182.31</b></div>
-    <div><span>Economy</span><b class="mono" style="color:var(--green)">10.2 km/L</b></div>
+    <div><span>Economy</span><b class="mono">10.2 km/L</b></div>
     <div><span>Tank</span><b>Full</b></div>
-    <div><span>Receipt</span><b style="color:var(--accent)">photo.jpg</b></div>
+    <div><span>Receipt</span><b style="color:var(--accent)">view photo ›</b></div>
   </div>
-  <div style="display:flex;gap:10px;margin-top:20px">
-    <button class="save" style="margin:0;background:var(--panel);color:var(--text);border:1px solid var(--line2)">Edit</button>
-    <button class="save" style="margin:0;background:var(--panel);color:var(--red);border:1px solid var(--line2)">Delete</button>
+  <div class="btnrow">
+    <button class="save" onclick="toast('Saved — ')">Mark done / Save</button>
+    <button class="save ghost">Edit</button>
+    <button class="save danger">Delete…</button>
   </div>
+  <p class="microcopy">Deletes ask twice · every save shows an Undo toast · service items show “Mark done” here</p>
 </div>
 
-<div class="sheet" id="sheet-log" role="dialog" aria-modal="true">
-  <div class="grab"></div>
-  <h2>Quick log</h2>
-  <div class="seg">
-    <button class="on">Fuel</button><button>Service</button><button>Fluid</button><button>Expense</button><button>Note</button>
+<div class="sheet" id="sheet-log" role="dialog" aria-modal="true" aria-labelledby="h-log">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-log" tabindex="-1">Quick log — D-MAX</h2>
+  <div class="seg" role="group" aria-label="Record type">
+    <button aria-pressed="true">Fuel</button><button aria-pressed="false">Service</button>
+    <button aria-pressed="false">Fluid</button><button aria-pressed="false">Tires</button>
+    <button aria-pressed="false">Insurance</button><button aria-pressed="false">Doc</button>
+    <button aria-pressed="false">Note</button>
   </div>
   <div class="frow">
-    <div class="field"><label>Odometer (km)</label><input class="mono" value="15148"></div>
-    <div class="field"><label>Date</label><input class="mono" value="29 Jul 2026"></div>
+    <div class="field"><label for="f-odo">Odometer (km)</label><input id="f-odo" class="mono" placeholder="last: 15,148" autofocus>
+      <div class="hint">must be ≥ 15,148 — checked as you type</div></div>
+    <div class="field"><label for="f-date">Date</label><input id="f-date" class="mono" value="29 Jul 2026"></div>
   </div>
   <div class="frow">
-    <div class="field"><label>Litres</label><input class="mono" placeholder="0.0"></div>
-    <div class="field"><label>Price / L</label><input class="mono" value="4.31"></div>
-    <div class="field"><label>Total</label><input class="mono" placeholder="$0.00"></div>
+    <div class="field"><label for="f-litres">Litres</label><input id="f-litres" class="mono" placeholder="0.0"></div>
+    <div class="field"><label for="f-price">Price / L</label><input id="f-price" class="mono" value="4.31"></div>
+    <div class="field"><label for="f-total">Total</label><input id="f-total" class="mono" placeholder="auto">
+      <div class="hint">litres × price — editable</div></div>
   </div>
-  <div class="field"><label>Station</label><input placeholder="Rubis Warrens"></div>
-  <button class="save">Save fill-up</button>
+  <div class="frow">
+    <div class="field"><label for="f-station">Station</label><input id="f-station" value="Rubis Warrens">
+      <div class="hint">pre-filled from your last fill-up</div></div>
+    <div class="field"><label>Tank</label>
+      <div class="seg" style="margin:0" role="group" aria-label="Tank"><button aria-pressed="true">Full</button><button aria-pressed="false">Partial</button></div>
+      <div class="hint">full tanks drive the economy math</div></div>
+  </div>
+  <div class="attach"><button>+ Receipt photo</button><button>+ Note</button></div>
+  <button class="save" onclick="toast('Fill-up saved — ')">Save fill-up <span class="mono" style="font-weight:400">· Enter</span></button>
 </div>
 
-<div class="sheet" id="sheet-settings" role="dialog" aria-modal="true">
-  <div class="grab"></div>
-  <h2>Settings</h2>
-  <div style="margin-top:14px">
+<div class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="h-settings">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-settings" tabindex="-1">Settings</h2>
+  <div style="margin-top:12px">
     <div class="setrow"><div class="lab"><b>Theme</b><span>dark cockpit / light</span></div><button class="ctl" onclick="toggleTheme()">Toggle</button></div>
     <div class="setrow"><div class="lab"><b>Distance unit</b><span>applies everywhere</span></div><button class="ctl">km ▾</button></div>
     <div class="setrow"><div class="lab"><b>Fuel economy</b><span>km/L · L/100km · MPG</span></div><button class="ctl">km/L ▾</button></div>
     <div class="setrow"><div class="lab"><b>Currency</b><span>display only</span></div><button class="ctl">BBD ▾</button></div>
-    <div class="setrow"><div class="lab"><b>Backups</b><span>daily · keep 10 · D:\Backups\vehicle</span></div><button class="ctl">Open folder</button></div>
+    <div class="setrow"><div class="lab"><b>Odometer correction</b><span class="mono">D-MAX · 15,148 km</span></div><button class="ctl" onclick="openSheet('odo')">Edit</button></div>
+    <div class="setrow"><div class="lab"><b>Backups</b><span>daily · keep 10 · last: today 09:14</span></div><button class="ctl" onclick="openSheet('backups')">Manage</button></div>
     <div class="setrow"><div class="lab"><b>Notifications</b><span>service · insurance · documents</span></div><button class="ctl">On ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Reduce motion</b><span>disable animations in-app</span></div><button class="ctl">Off ▾</button></div>
     <div class="setrow"><div class="lab"><b>Software update</b><span class="mono">v3.0.0 — up to date</span></div><button class="ctl">Check</button></div>
     <div class="setrow"><div class="lab"><b>Help</b><span>workflow &amp; features guide</span></div><button class="ctl">Open</button></div>
   </div>
-  <div style="text-align:center;color:var(--faint);font-size:12px;margin-top:18px">Built by Kemar Hinds</div>
+  <div style="text-align:center;color:var(--faint);font-size:12px;margin-top:16px">Built by Kemar Hinds</div>
 </div>
 
-<div class="sheet" id="sheet-garage" role="dialog" aria-modal="true">
-  <div class="grab"></div>
-  <h2>Garage</h2>
-  <div class="meta">Every vehicle, most urgent item first</div>
-  <div style="margin-top:10px">
-    <div class="vrow on">
-      <svg class="car" viewBox="0 0 100 44"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
-      <div class="nm"><b>D-MAX</b><span class="mono">15,148 km · 2022 Isuzu D-Max</span></div>
-      <span class="chip warn"><span class="dot"></span>ROAD TAX · 14 D</span>
-    </div>
-    <div class="vrow">
-      <svg class="car" viewBox="0 0 100 44"><path d="M8 32 h4 l8 -10 q10 -10 24 -10 h14 q12 0 20 8 l6 6 h8 v6 h-6 M24 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M64 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M38 32 h26"/></svg>
-      <div class="nm"><b>SWIFT</b><span class="mono">84,210 km · 2019 Suzuki Swift</span></div>
-      <span class="chip bad"><span class="dot"></span>BRAKE FLUID · OVERDUE 320 KM</span>
-    </div>
+<div class="sheet" id="sheet-garage" role="dialog" aria-modal="true" aria-labelledby="h-garage">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-garage" tabindex="-1">Garage</h2>
+  <div class="meta">Every vehicle, most urgent item first · click to switch or edit</div>
+  <div style="margin-top:8px">
+    <button class="vrow on">
+      <svg class="car" viewBox="0 0 100 44" aria-hidden="true"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
+      <span class="nm"><b>D-MAX</b><span class="mono">15,148 km · 2022 Isuzu D-Max</span></span>
+      <span class="chip warn"><span class="dot" aria-hidden="true"></span>ROAD TAX · 14 D</span>
+      <span class="chev" aria-hidden="true">›</span>
+    </button>
+    <button class="vrow">
+      <svg class="car" viewBox="0 0 100 44" aria-hidden="true"><path d="M8 32 h4 l8 -10 q10 -10 24 -10 h14 q12 0 20 8 l6 6 h8 v6 h-6 M24 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M64 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M38 32 h26"/></svg>
+      <span class="nm"><b>SWIFT</b><span class="mono">84,210 km · 2019 Suzuki Swift</span></span>
+      <span class="chip bad"><span class="dot" aria-hidden="true"></span>BRAKE FLUID · OVERDUE 320 KM</span>
+      <span class="chev" aria-hidden="true">›</span>
+    </button>
   </div>
-  <button class="save" style="background:var(--panel);color:var(--text);border:1px dashed var(--line2)">+ Add vehicle</button>
+  <button class="save ghost" style="border-style:dashed">+ Add vehicle</button>
 </div>
+
+<div class="sheet" id="sheet-intervals" role="dialog" aria-modal="true" aria-labelledby="h-intervals">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-intervals" tabindex="-1">Service intervals — D-MAX</h2>
+  <div class="meta">18 tracked · click a row to edit or mark done</div>
+  <div style="margin-top:8px">
+    <button class="irow"><span class="nm">Oil &amp; Filter Change</span><span class="iv">10,000 km · 6 mo</span>
+      <span class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+    <button class="irow"><span class="nm">Cabin Air Filter</span><span class="iv">20,000 km · 12 mo</span>
+      <span class="meter warn" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span></button>
+    <button class="irow"><span class="nm">Tire Rotation</span><span class="iv">10,000 km</span>
+      <span class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+    <button class="irow"><span class="nm">Brake Fluid</span><span class="iv">40,000 km · 24 mo</span>
+      <span class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+    <div class="microcopy" style="text-align:left;padding:8px 0">… 14 more rows · each opens edit (name, km, months, last done) with “why this matters”</div>
+  </div>
+  <button class="save ghost" style="border-style:dashed">+ Add custom interval</button>
+</div>
+
+<div class="sheet" id="sheet-tireset" role="dialog" aria-modal="true" aria-labelledby="h-tireset">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-tireset" tabindex="-1">Tire set — D-MAX</h2>
+  <div class="meta mono">Dunlop AT25 · 265/65R17 · fitted 18 May 2026 @ 12,260 km</div>
+  <div class="kv">
+    <div><span>Distance on set</span><b class="mono">2,888 km</b></div>
+    <div><span>Min tread</span><b class="mono">6.5 mm</b></div>
+    <div><span>Recommended psi</span><b class="mono">35 F / 38 R</b></div>
+    <div><span>DOT date</span><b class="mono">2025-W14</b></div>
+  </div>
+  <div class="btnrow">
+    <button class="save ghost">+ Inspection</button>
+    <button class="save ghost">+ Rotation</button>
+    <button class="save danger">Retire &amp; fit new set…</button>
+  </div>
+  <p class="microcopy">Past sets stay in history with their full inspection record</p>
+</div>
+
+<div class="sheet" id="sheet-backups" role="dialog" aria-modal="true" aria-labelledby="h-backups">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-backups" tabindex="-1">Backups &amp; data</h2>
+  <div class="meta">Last backup: today 09:14 · 10 kept</div>
+  <div style="margin-top:8px">
+    <div class="setrow"><div class="lab"><b>Frequency</b><span>on open · daily · weekly · manual</span></div><button class="ctl">Daily ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Keep last</b></div><button class="ctl">10 ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Folder</b><span class="mono">D:\Backups\vehicle</span></div><button class="ctl">Change…</button></div>
+  </div>
+  <div class="btnrow">
+    <button class="save">Back up now</button>
+    <button class="save ghost">Restore…</button>
+    <button class="save ghost">Export CSV</button>
+  </div>
+  <p class="microcopy">Restore takes a safety snapshot of current data first</p>
+</div>
+
+<div class="sheet" id="sheet-odo" role="dialog" aria-modal="true" aria-labelledby="h-odo">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="h-odo" tabindex="-1">Correct odometer — D-MAX</h2>
+  <div class="meta">Fixes a wrong reading; service due points recalculate</div>
+  <div class="field"><label for="odo-in">Odometer (km)</label><input id="odo-in" class="mono" value="15148"></div>
+  <button class="save" onclick="toast('Odometer corrected — ')">Save</button>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toastEl" role="status"><span id="toastMsg">Saved — </span><b onclick="this.parentElement.classList.remove('show')">Undo</b></div>
 
 <script>
-  // odometer count-up
+  // odometer count-up (reduced-motion fallback below)
   const odoEl = document.getElementById('odo'), target = 15148; let t0;
-  function tick(t){ if(!t0) t0=t; const p=Math.min((t-t0)/900,1), e=1-Math.pow(1-p,3);
+  function tickOdo(t){ if(!t0) t0=t; const p=Math.min((t-t0)/900,1), e=1-Math.pow(1-p,3);
     odoEl.innerHTML = Math.round(target*e).toLocaleString()+'<small> km</small>';
-    if(p<1) requestAnimationFrame(tick); }
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
+    if(p<1) requestAnimationFrame(tickOdo); }
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tickOdo);
   else odoEl.innerHTML = target.toLocaleString()+'<small> km</small>';
 
-  // lens switching
+  // lens switching — road-ahead entries filter too; label hides when ahead is empty
   const lensBar = document.getElementById('lens');
+  const EMPTY_COPY = {
+    fuel:'No fill-ups yet — log the first one and economy starts computing.',
+    service:'No services logged. The road ahead is already planned from your drivetrain.',
+    tires:'No tire records. Add the current set to start tread tracking.',
+    fluid:'No top-ups logged. A steady top-up pattern is worth knowing about.',
+    insurance:'No policy on file. Add one to get renewal reminders.',
+    docs:'No documents. Add road tax or registration to track expiry.',
+    notes:'No notes for this vehicle.'
+  };
   lensBar.addEventListener('click', e=>{
     const b = e.target.closest('[data-lens]'); if(!b) return;
-    lensBar.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
-    b.classList.add('on');
+    lensBar.querySelectorAll('.pill').forEach(p=>p.setAttribute('aria-selected','false'));
+    b.setAttribute('aria-selected','true');
     const lens = b.dataset.lens;
-    // context strips
     document.querySelectorAll('[data-ctx]').forEach(c=>c.hidden = c.dataset.ctx !== lens);
-    // spine visibility
     const spine = document.getElementById('spine');
     spine.classList.toggle('hide', lens==='stats');
     if(lens==='stats') return;
-    // filter entries
     let any=false;
-    document.querySelectorAll('#spine .entry').forEach(en=>{
-      const show = lens==='all' || (en.dataset.kind||'').split(' ').includes(lens);
-      en.classList.toggle('hide', !show); if(show) any=true;
-      en.style.animation='none'; void en.offsetHeight; en.style.animation='';
+    document.querySelectorAll('#spine .entry, #spine .more-row').forEach(el=>{
+      const kinds=(el.dataset.kind||'').split(' ');
+      const show = lens==='all' ? true : kinds.includes(lens);
+      el.classList.toggle('hide', !show);
+      if(show && el.classList.contains('entry')) any=true;
+      el.style.animation='none'; void el.offsetHeight; el.style.animation='';
     });
-    document.getElementById('ahead').querySelector('.section-lbl').classList.toggle('hide', lens==='notes');
-    document.getElementById('emptyState').classList.toggle('hide', any);
+    // month headers survive filtering — shown only when entries remain under them
+    document.querySelectorAll('#history .month-h').forEach(h=>{
+      let n=0;
+      for(let el=h.nextElementSibling; el && !el.classList.contains('month-h'); el=el.nextElementSibling){
+        if(el.classList.contains('entry') && !el.classList.contains('hide')) n++;
+      }
+      h.classList.toggle('hide', n===0);
+    });
+    // hide ROAD AHEAD label when no ahead entries visible; recompute accent length
+    const ahead=document.getElementById('ahead');
+    const aheadVisible=ahead.querySelectorAll('.entry:not(.hide)').length>0;
+    document.getElementById('aheadLbl').classList.toggle('hide', !aheadVisible);
+    requestAnimationFrame(()=>{
+      spine.style.setProperty('--ahead-h', (aheadVisible? ahead.offsetHeight : 0)+'px');
+    });
+    const empty=document.getElementById('emptyState');
+    empty.classList.toggle('hide', any);
+    if(!any) document.getElementById('emptyCopy').textContent = EMPTY_COPY[lens] ?? 'No entries under this lens.';
   });
+  // initial accent length
+  requestAnimationFrame(()=>{ document.getElementById('spine').style.setProperty('--ahead-h', document.getElementById('ahead').offsetHeight+'px'); });
 
-  // radial + sheets
-  function toggleRadial(){
-    const r=document.getElementById('radial'); r.classList.toggle('open');
-    document.getElementById('fab').style.transform = r.classList.contains('open')?'rotate(45deg)':'';
-  }
+  // sheets — with inert management + focus handling
+  let lastFocus=null;
+  const appRoots=[document.querySelector('.hero'),document.getElementById('lens'),document.querySelector('.wrap'),document.querySelector('.fab')];
   function openSheet(name){
     closeSheets(false);
-    document.getElementById('radial').classList.remove('open');
-    document.getElementById('fab').style.transform='';
+    lastFocus=document.activeElement;
     document.getElementById('scrim').classList.add('open');
-    document.getElementById('sheet-'+name).classList.add('open');
+    const sh=document.getElementById('sheet-'+name);
+    sh.classList.add('open'); sh.inert=false;
+    appRoots.forEach(el=>el && (el.inert=true));
+    sh.querySelector('h2').focus();
   }
-  function closeSheets(hideScrim=true){
-    document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
-    if(hideScrim) document.getElementById('scrim').classList.remove('open');
+  function closeSheets(restore=true){
+    document.querySelectorAll('.sheet').forEach(s=>{s.classList.remove('open'); s.inert=true;});
+    document.getElementById('scrim').classList.remove('open');
+    appRoots.forEach(el=>el && (el.inert=false));
+    if(restore && lastFocus){ lastFocus.focus(); lastFocus=null; }
   }
-  addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeSheets(); document.getElementById('radial').classList.remove('open'); document.getElementById('fab').style.transform=''; }});
+  document.querySelectorAll('.sheet').forEach(s=>s.inert=true);
+  addEventListener('keydown',e=>{ if(e.key==='Escape') closeSheets(); });
+
+  // toast
+  let toastT;
+  function toast(msg){
+    closeSheets();
+    const t=document.getElementById('toastEl');
+    document.getElementById('toastMsg').textContent=msg;
+    t.classList.add('show');
+    clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 5000);
+  }
 
   // theme
   function toggleTheme(){
