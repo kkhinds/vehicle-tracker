@@ -196,8 +196,8 @@ export function BackupsSheet() {
 }
 
 /* ── Settings ─────────────────────────────────────────────────────────────── */
-export function SettingsSheet({ onOpenBackups, onOpenOdometer, onChanged }: {
-  onOpenBackups: () => void; onOpenOdometer: () => void; onChanged: () => Promise<void>
+export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onChanged }: {
+  onOpenBackups: () => void; onOpenOdometer: () => void; onOpenHelp: () => void; onChanged: () => Promise<void>
 }) {
   const [s, setS] = useState<Record<string, unknown> | null>(null)
   const [upd, setUpd] = useState<UpdaterStatus | null>(null)
@@ -260,6 +260,14 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onChanged }: {
           <button className="dl-ctl" onClick={() => upd?.phase === 'downloaded' ? window.api.updater.install() : window.api.updater.check()}>
             {upd?.phase === 'downloaded' ? 'Restart' : 'Check'}
           </button>
+        </div>
+        <div className="dl-setrow">
+          <span className="dl-lab"><b>Help</b><span>how the app works</span></span>
+          <button className="dl-ctl" onClick={onOpenHelp}>Open</button>
+        </div>
+        <div className="dl-setrow">
+          <span className="dl-lab"><b>Old screens</b><span>editing a record, photos, adding a vehicle or tire set</span></span>
+          <a className="dl-ctl" href="#/legacy/fuel">Open</a>
         </div>
       </div>
       <p className="dl-microcopy">Built by Kemar Hinds</p>

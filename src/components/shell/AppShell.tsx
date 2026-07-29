@@ -5,6 +5,7 @@ import LensBar, { type Lens } from './LensBar'
 import Spine from './Spine'
 import Sheet from './Sheet'
 import Stats from './Stats'
+import HelpSheet from './HelpSheet'
 import LogForm, { KIND_TO_LOG, type LogType } from './LogForm'
 import {
   IntervalsSheet, GarageSheet, BackupsSheet, SettingsSheet, OdometerSheet, TireSetSheet,
@@ -33,7 +34,7 @@ export default function AppShell() {
   const [logType, setLogType] = useState<LogType>('fuel')
   const [detail, setDetail] = useState<TimelineEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset'
+  type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset' | 'help'
   const [sheet, setSheet] = useState<SheetName | null>(null)
 
   const reload = useCallback(async () => {
@@ -249,6 +250,7 @@ export default function AppShell() {
         <SettingsSheet
           onOpenBackups={() => setSheet('backups')}
           onOpenOdometer={() => setSheet('odometer')}
+          onOpenHelp={() => setSheet('help')}
           onChanged={async () => { await refreshSettings(); await refreshVehicles(); reload() }}
         />
       </Sheet>
@@ -282,6 +284,15 @@ export default function AppShell() {
 
       <Sheet open={sheet === 'backups'} title="Backups & data" onClose={() => setSheet(null)}>
         <BackupsSheet />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'help'}
+        title="How this works"
+        subtitle="The short version"
+        onClose={() => setSheet(null)}
+      >
+        <HelpSheet />
       </Sheet>
 
       <Sheet

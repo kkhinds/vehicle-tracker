@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import AppShell from '@/components/shell/AppShell'
+import LegacyFrame from '@/components/shell/LegacyFrame'
 import Dashboard from '@/pages/Dashboard'
 import FuelLog from '@/pages/FuelLog'
 import Maintenance from '@/pages/Maintenance'
@@ -77,19 +78,19 @@ export default function App() {
               simply no longer linked from anywhere. */}
           <Routes>
             <Route path="/" element={<AppShell />} />
-            <Route path="/legacy/dashboard" element={<Dashboard />} />
-            <Route path="/legacy/fuel" element={<FuelLog />} />
-            <Route path="/legacy/maintenance" element={<Maintenance />} />
-            <Route path="/legacy/schedule" element={<ServiceSchedule />} />
-            <Route path="/legacy/tires" element={<Tires />} />
-            <Route path="/legacy/fluids" element={<Fluids />} />
-            <Route path="/legacy/insurance" element={<Insurance />} />
-            <Route path="/legacy/documents" element={<Documents />} />
-            <Route path="/legacy/expenses" element={<Expenses />} />
-            <Route path="/legacy/notes" element={<Notes />} />
-            <Route path="/legacy/vehicles" element={<Vehicles />} />
-            <Route path="/legacy/settings" element={<Settings />} />
-            <Route path="/legacy/help" element={<Help />} />
+            <Route path="/legacy/dashboard" element={<LegacyFrame><Dashboard /></LegacyFrame>} />
+            <Route path="/legacy/fuel" element={<LegacyFrame><FuelLog /></LegacyFrame>} />
+            <Route path="/legacy/maintenance" element={<LegacyFrame><Maintenance /></LegacyFrame>} />
+            <Route path="/legacy/schedule" element={<LegacyFrame><ServiceSchedule /></LegacyFrame>} />
+            <Route path="/legacy/tires" element={<LegacyFrame><Tires /></LegacyFrame>} />
+            <Route path="/legacy/fluids" element={<LegacyFrame><Fluids /></LegacyFrame>} />
+            <Route path="/legacy/insurance" element={<LegacyFrame><Insurance /></LegacyFrame>} />
+            <Route path="/legacy/documents" element={<LegacyFrame><Documents /></LegacyFrame>} />
+            <Route path="/legacy/expenses" element={<LegacyFrame><Expenses /></LegacyFrame>} />
+            <Route path="/legacy/notes" element={<LegacyFrame><Notes /></LegacyFrame>} />
+            <Route path="/legacy/vehicles" element={<LegacyFrame><Vehicles /></LegacyFrame>} />
+            <Route path="/legacy/settings" element={<LegacyFrame><Settings /></LegacyFrame>} />
+            <Route path="/legacy/help" element={<LegacyFrame><Help /></LegacyFrame>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
