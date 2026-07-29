@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Tracker — Driver's Log (Direction B)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E14; --panel:#111722; --panel2:#161e2b; --hover:#1A2332;
+    --line:#1E2735; --line2:#2A3547;
+    --text:#EDF1F7; --dim:#7E8A9C; --faint:#4E5A6E;
+    --accent:#FFAA2B; --accent-soft:rgba(255,170,43,.12);
+    --red:#FF3B30; --green:#2BD98F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg);color:var(--text);
+    font:14px/1.5 'Barlow',system-ui,sans-serif;
+  }
+  ::selection{background:rgba(255,170,43,.3)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .cond{font-family:'Barlow Condensed',sans-serif}
+
+  /* ── HERO ────────────────────────────────── */
+  .hero{
+    position:relative;height:270px;overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 50% 115%, rgba(255,170,43,.16), transparent 55%),
+      linear-gradient(180deg, #0A0E14 0%, #0D1420 60%, #101A29 100%);
+    border-bottom:1px solid var(--line);
+  }
+  .road{position:absolute;inset:auto 0 0 0;height:150px;opacity:.5}
+  .road line{stroke:var(--line2);stroke-width:1}
+  .road .mid{stroke:var(--accent);stroke-width:2;stroke-dasharray:14 22;opacity:.5;animation:drive 1.4s linear infinite}
+  @keyframes drive{to{stroke-dashoffset:-36}}
+  .hero-in{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 56px}
+  .hv{display:flex;flex-direction:column;gap:2px}
+  .hv .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--faint);font-weight:600}
+  .hv h1{font-family:'Barlow Condensed';font-weight:700;font-size:64px;line-height:.95;letter-spacing:.01em}
+  .hv .plate{color:var(--dim);font-size:14px;margin-top:6px}
+  .hv .plate b{color:var(--accent);font-weight:600}
+  .vswitch{display:flex;gap:8px;margin-top:14px}
+  .vswitch button{
+    font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.06em;
+    color:var(--dim);padding:4px 12px;border:1px solid var(--line2);border-radius:999px;
+    transition:all .2s;
+  }
+  .vswitch button.on{color:#131313;background:var(--accent);border-color:var(--accent)}
+  .vswitch button:not(.on):hover{color:var(--text);border-color:var(--dim)}
+  .vswitch .alert{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:6px;vertical-align:1px;animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+
+  .odo{text-align:right}
+  .odo .label{font-size:11px;letter-spacing:.34em;color:var(--faint);font-weight:600}
+  .odo .value{font-family:'JetBrains Mono';font-weight:700;font-size:58px;letter-spacing:.02em;line-height:1.05}
+  .odo .value small{font-size:20px;color:var(--dim);font-weight:400}
+  .next{margin-top:8px;font-size:13.5px;color:var(--dim)}
+  .next b{color:var(--accent);font-weight:600}
+
+  /* ── LENS BAR ────────────────────────────── */
+  .lens{
+    position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;
+    padding:12px 56px;background:rgba(10,14,20,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .lens button{
+    font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.08em;
+    padding:6px 14px;color:var(--dim);border-radius:8px;transition:all .18s;
+  }
+  .lens button:hover{color:var(--text);background:var(--hover)}
+  .lens button.on{color:var(--accent);background:var(--accent-soft)}
+  .lens .gap{flex:1}
+  .lens .search{color:var(--faint);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px}
+
+  /* ── TIMELINE ────────────────────────────── */
+  .wrap{display:flex;gap:0;max-width:1060px;margin:0 auto;padding:34px 56px 120px}
+  .spine{flex:1;position:relative;padding-left:150px}
+  .spine::before{
+    content:'';position:absolute;left:118px;top:0;bottom:0;width:2px;
+    background:linear-gradient(180deg, var(--accent) 0, var(--accent) 210px, var(--line2) 260px, var(--line2) 100%);
+  }
+  .km-mark{
+    position:absolute;left:-176px;width:104px;text-align:right;
+    font-family:'JetBrains Mono';font-size:11.5px;color:var(--faint);padding-top:18px;
+  }
+  .km-mark b{color:var(--dim);font-weight:500}
+  .node{position:absolute;left:-64px;top:22px;width:14px;height:14px;border-radius:50%;
+    background:var(--bg);border:2.5px solid var(--faint)}
+  .entry{position:relative;margin:0 0 14px 26px;animation:slide .5s cubic-bezier(.2,.9,.3,1) backwards}
+  @keyframes slide{from{opacity:0;transform:translateX(18px)}}
+  .entry:nth-child(odd){animation-delay:.05s}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px 18px;display:flex;align-items:center;gap:16px;text-align:left;width:100%;
+    transition:border-color .2s, background .2s, transform .2s;
+  }
+  .card:hover{background:var(--hover);border-color:var(--line2);transform:translateX(3px)}
+  .tag{
+    font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;
+    flex:none;width:74px;color:var(--faint);
+  }
+  .c-main{flex:1;min-width:0}
+  .c-title{font-weight:500;font-size:14.5px}
+  .c-sub{color:var(--dim);font-size:12.5px;margin-top:2px}
+  .c-val{font-family:'JetBrains Mono';font-size:14px;color:var(--text);flex:none}
+  .c-val small{color:var(--faint);font-size:11px}
+
+  /* road ahead */
+  .ahead .card{background:transparent;border-style:dashed;border-color:var(--line2)}
+  .ahead .node{border-color:var(--accent);border-style:solid}
+  .ahead .warn-node{border-color:var(--accent);background:var(--accent)}
+  .ahead .tag{color:var(--accent)}
+  .ahead .km-mark b{color:var(--accent)}
+  .today{
+    position:relative;margin:26px 0 30px 26px;display:flex;align-items:center;gap:14px;
+  }
+  .today .line{flex:1;height:1px;background:var(--line2)}
+  .today .lbl{
+    font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;letter-spacing:.18em;color:var(--accent);
+  }
+  .today .node-now{position:absolute;left:-66px;top:50%;transform:translate(0,-50%);width:18px;height:18px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 0 6px rgba(255,170,43,.15), 0 0 24px rgba(255,170,43,.4)}
+
+  /* minimap */
+  .minimap{
+    position:fixed;right:18px;top:330px;bottom:120px;width:34px;z-index:20;
+    display:flex;flex-direction:column;align-items:center;
+  }
+  .mm-track{position:relative;flex:1;width:3px;background:var(--line);border-radius:2px}
+  .mm-track i{position:absolute;left:-2.5px;width:8px;height:2.5px;border-radius:2px;background:var(--faint)}
+  .mm-track i.a{background:var(--accent)}
+  .mm-win{position:absolute;left:-6px;width:15px;height:64px;border:1.5px solid var(--accent);border-radius:6px;background:rgba(255,170,43,.08)}
+  .mm-lbl{font-family:'JetBrains Mono';font-size:9.5px;color:var(--faint);padding:6px 0;writing-mode:vertical-rl}
+
+  /* FAB + radial */
+  .fab{
+    position:fixed;right:46px;bottom:40px;z-index:50;width:58px;height:58px;border-radius:50%;
+    background:var(--accent);color:#131313;font-size:26px;font-weight:600;
+    box-shadow:0 6px 30px rgba(255,170,43,.35);transition:transform .25s cubic-bezier(.2,.9,.3,1.4);
+  }
+  .fab:hover{transform:scale(1.08) rotate(90deg)}
+  .radial{position:fixed;right:46px;bottom:40px;z-index:49;width:58px;height:58px;pointer-events:none}
+  .radial button{
+    position:absolute;right:0;bottom:0;width:52px;height:52px;border-radius:50%;
+    background:var(--panel2);border:1px solid var(--line2);color:var(--text);
+    font-family:'Barlow Condensed';font-weight:600;font-size:11.5px;letter-spacing:.05em;
+    opacity:0;transform:none;transition:all .3s cubic-bezier(.2,.9,.3,1.3);pointer-events:none;
+  }
+  .radial.open button{opacity:1;pointer-events:auto}
+  .radial.open .r1{transform:translate(-86px,6px)}
+  .radial.open .r2{transform:translate(-64px,-62px)}
+  .radial.open .r3{transform:translate(2px,-88px)}
+  .radial button:hover{background:var(--accent);color:#131313;border-color:var(--accent)}
+
+  /* detail sheet */
+  .sheet-bk{position:fixed;inset:0;background:rgba(5,8,12,.6);z-index:60;opacity:0;pointer-events:none;transition:opacity .25s}
+  .sheet-bk.open{opacity:1;pointer-events:auto}
+  .sheet{
+    position:fixed;left:50%;bottom:0;z-index:61;width:560px;transform:translate(-50%,105%);
+    background:var(--panel2);border:1px solid var(--line2);border-bottom:none;border-radius:18px 18px 0 0;
+    padding:26px 30px 34px;transition:transform .35s cubic-bezier(.2,.9,.3,1);
+  }
+  .sheet.open{transform:translate(-50%,0)}
+  .sheet .grab{width:44px;height:4px;border-radius:3px;background:var(--line2);margin:0 auto 18px}
+  .sheet h2{font-family:'Barlow Condensed';font-weight:700;font-size:26px;letter-spacing:.02em}
+  .sheet .meta{color:var(--dim);margin-top:2px;font-size:13px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;margin-top:20px}
+  .kv div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0;font-size:13.5px}
+  .kv span{color:var(--dim)}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="road" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 1200 150">
+      <line x1="0" y1="150" x2="470" y2="0"/><line x1="1200" y1="150" x2="730" y2="0"/>
+      <line class="mid" x1="600" y1="150" x2="600" y2="0"/>
+    </svg>
+    <div class="hero-in">
+      <div class="hv">
+        <div class="eyebrow">DRIVER'S LOG</div>
+        <h1>D-MAX</h1>
+        <div class="plate">2022 Isuzu D-Max 3.0TD · <b>BM-4821</b></div>
+        <div class="vswitch">
+          <button class="on">D-MAX</button>
+          <button>SWIFT<span class="alert"></span></button>
+        </div>
+      </div>
+      <div class="odo">
+        <div class="label">ODOMETER</div>
+        <div class="value" id="odo">15,148<small> km</small></div>
+        <div class="next">Next: Oil &amp; filter — <b class="mono">7,112 km</b> or <b>18 Nov</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LENS BAR -->
+  <nav class="lens">
+    <button class="on">ALL</button><button>FUEL</button><button>SERVICE</button>
+    <button>TIRES</button><button>FLUIDS</button><button>INSURANCE</button>
+    <button>DOCS</button><button>STATS</button>
+    <span class="gap"></span>
+    <span class="search mono">⌘K — search the log…</span>
+  </nav>
+
+  <!-- TIMELINE -->
+  <div class="wrap">
+    <div class="spine">
+
+      <!-- ROAD AHEAD (projected dues) -->
+      <div class="ahead">
+        <div class="entry" style="min-height:64px">
+          <span class="km-mark mono"><b>22,260</b><br>km</span><span class="node"></span>
+          <button class="card">
+            <span class="tag">SERVICE</span>
+            <span class="c-main">
+              <span class="c-title">Oil &amp; Filter Change</span>
+              <span class="c-sub">due in 7,112 km — or 18 Nov 2026, whichever first</span>
+            </span>
+            <span class="c-val">112 <small>d</small></span>
+          </button>
+        </div>
+        <div class="entry" style="min-height:64px">
+          <span class="km-mark mono"><b>20,000</b><br>km</span><span class="node"></span>
+          <button class="card">
+            <span class="tag">SERVICE</span>
+            <span class="c-main">
+              <span class="c-title">Cabin Air Filter</span>
+              <span class="c-sub">due in 4,852 km</span>
+            </span>
+            <span class="c-val">4,852 <small>km</small></span>
+          </button>
+        </div>
+        <div class="entry" style="min-height:64px">
+          <span class="km-mark mono"><b>12 AUG</b></span><span class="node warn-node"></span>
+          <button class="card" style="border-color:rgba(255,170,43,.5)">
+            <span class="tag">DOCS</span>
+            <span class="c-main">
+              <span class="c-title" style="color:var(--accent)">Road Tax renewal</span>
+              <span class="c-sub">expires 12 Aug 2026 — renew at licensing office</span>
+            </span>
+            <span class="c-val" style="color:var(--accent)">14 <small>d</small></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TODAY -->
+      <div class="today">
+        <span class="node-now"></span>
+        <span class="lbl">TODAY · 15,148 KM</span>
+        <span class="line"></span>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="entry">
+        <span class="km-mark mono"><b>15,102</b><br>24 JUL</span><span class="node"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">FUEL</span>
+          <span class="c-main">
+            <span class="c-title">Fill-up — Rubis Warrens</span>
+            <span class="c-sub">42.3 L @ $4.31/L · full tank</span>
+          </span>
+          <span class="c-val">$182.31&nbsp;&nbsp;<small>10.2 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry">
+        <span class="km-mark mono"><b>14,671</b><br>08 JUL</span><span class="node"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">FUEL</span>
+          <span class="c-main">
+            <span class="c-title">Fill-up — Sol Black Rock</span>
+            <span class="c-sub">40.1 L @ $4.31/L · full tank</span>
+          </span>
+          <span class="c-val">$172.83&nbsp;&nbsp;<small>10.2 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry">
+        <span class="km-mark mono"><b>14,262</b><br>19 JUN</span><span class="node"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">FUEL</span>
+          <span class="c-main">
+            <span class="c-title">Fill-up — Rubis Warrens</span>
+            <span class="c-sub">38.6 L @ $4.31/L · full tank</span>
+          </span>
+          <span class="c-val">$166.37&nbsp;&nbsp;<small>9.8 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry">
+        <span class="km-mark mono"><b>14,100</b><br>07 JUN</span><span class="node" style="border-color:var(--green)"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">FLUID</span>
+          <span class="c-main">
+            <span class="c-title">Coolant top-up</span>
+            <span class="c-sub">250 ml · consumption normal</span>
+          </span>
+          <span class="c-val">250 <small>ml</small></span>
+        </button>
+      </div>
+      <div class="entry">
+        <span class="km-mark mono"><b>13,884</b><br>30 MAY</span><span class="node"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">FUEL</span>
+          <span class="c-main">
+            <span class="c-title">Fill-up — Esso Wildey</span>
+            <span class="c-sub">41.0 L @ $4.31/L · full tank</span>
+          </span>
+          <span class="c-val">$176.71&nbsp;&nbsp;<small>10.5 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry">
+        <span class="km-mark mono"><b>12,260</b><br>18 MAY</span><span class="node" style="border-color:var(--text)"></span>
+        <button class="card" onclick="openSheet()">
+          <span class="tag">SERVICE</span>
+          <span class="c-main">
+            <span class="c-title">Oil &amp; Filter Change · 10k service</span>
+            <span class="c-sub">Nassco Ltd — oil, filter, water-separator drain, rotation</span>
+          </span>
+          <span class="c-val">$412.00</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINIMAP -->
+  <aside class="minimap" aria-hidden="true">
+    <span class="mm-lbl">22,260</span>
+    <div class="mm-track">
+      <i class="a" style="top:4%"></i><i class="a" style="top:11%"></i><i class="a" style="top:18%"></i>
+      <span class="mm-win" style="top:24%"></span>
+      <i style="top:30%"></i><i style="top:38%"></i><i style="top:46%"></i>
+      <i style="top:53%"></i><i style="top:62%"></i><i style="top:78%"></i>
+    </div>
+    <span class="mm-lbl">0 KM</span>
+  </aside>
+
+  <!-- FAB + radial quick-log -->
+  <div class="radial" id="radial">
+    <button class="r1">FUEL</button>
+    <button class="r2">SERVICE</button>
+    <button class="r3">FLUID</button>
+  </div>
+  <button class="fab" id="fab" onclick="toggleRadial()" aria-label="Quick log">+</button>
+
+  <!-- Detail sheet -->
+  <div class="sheet-bk" id="sheetBk" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="grab"></div>
+    <h2>Fill-up — Rubis Warrens</h2>
+    <div class="meta mono">24 Jul 2026 · 15,102 km</div>
+    <div class="kv">
+      <div><span>Litres</span><b class="mono">42.3 L</b></div>
+      <div><span>Price / L</span><b class="mono">$4.31</b></div>
+      <div><span>Total</span><b class="mono">$182.31</b></div>
+      <div><span>Economy</span><b class="mono" style="color:var(--green)">10.2 km/L</b></div>
+      <div><span>Tank</span><b>Full</b></div>
+      <div><span>Receipt</span><b style="color:var(--accent)">photo.jpg</b></div>
+    </div>
+  </div>
+
+<script>
+  // odometer count-up
+  const el = document.getElementById('odo'), target = 15148;
+  let start;
+  function tick(t){
+    if(!start) start = t;
+    const p = Math.min((t-start)/900, 1), e = 1-Math.pow(1-p,3);
+    el.innerHTML = Math.round(target*e).toLocaleString() + '<small> km</small>';
+    if(p<1) requestAnimationFrame(tick);
+  }
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
+  else el.innerHTML = target.toLocaleString() + '<small> km</small>';
+
+  function toggleRadial(){
+    document.getElementById('radial').classList.toggle('open');
+    document.getElementById('fab').style.transform =
+      document.getElementById('radial').classList.contains('open') ? 'rotate(45deg)' : '';
+  }
+  function openSheet(){
+    document.getElementById('sheet').classList.add('open');
+    document.getElementById('sheetBk').classList.add('open');
+  }
+  function closeSheet(){
+    document.getElementById('sheet').classList.remove('open');
+    document.getElementById('sheetBk').classList.remove('open');
+  }
+  addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeSheet(); document.getElementById('radial').classList.remove('open'); }});
+</script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Tracker — Mission Control (Direction A)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14181D; --panel:#1A1F26; --panel2:#20262F; --hover:#232A34;
+    --line:#2A313B; --line2:#343D49;
+    --text:#E9EDF2; --dim:#8A94A3; --faint:#5A6472;
+    --accent:#57A0FF; --accent-dim:#2C4F80;
+    --amber:#FFB020; --red:#FF5252; --green:#39D98A;
+    --r:12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.45 'Inter',system-ui,sans-serif;
+    overflow:hidden;
+  }
+  ::selection{background:var(--accent-dim)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  .disp{font-family:'Space Grotesk',sans-serif}
+
+  /* ── Top bar ─────────────────────────────── */
+  .top{
+    height:52px;display:flex;align-items:center;gap:20px;
+    padding:0 20px;border-bottom:1px solid var(--line);
+  }
+  .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--dim)}
+  .wordmark b{color:var(--text)}
+  .top .spacer{flex:1}
+  .kbd-hint{color:var(--faint);font-size:12px;display:flex;align-items:center;gap:6px}
+  .kbd{border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-family:'IBM Plex Mono';font-size:11px;color:var(--dim)}
+  .log-btn{
+    background:var(--accent);color:#0B1220;font-weight:600;font-size:13px;
+    padding:8px 16px;border-radius:8px;transition:transform .15s cubic-bezier(.2,.9,.3,1.4), background .15s;
+  }
+  .log-btn:hover{background:#74B1FF;transform:translateY(-1px)}
+
+  /* ── Vehicle strip (household) ───────────── */
+  .vstrip{display:flex;gap:12px;padding:16px 20px 4px}
+  .vcard{
+    flex:0 0 300px;display:flex;align-items:center;gap:14px;text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:12px 16px;transition:border-color .2s, background .2s, transform .2s;
+  }
+  .vcard:hover{background:var(--hover)}
+  .vcard.active{border-color:var(--line2);background:var(--panel2)}
+  .vcard.active .vname{color:var(--text)}
+  .vcar{width:74px;height:34px;flex:none;opacity:.9}
+  .vcar path{fill:none;stroke:var(--dim);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .vcard.active .vcar path{stroke:var(--accent)}
+  .vmeta{flex:1;min-width:0}
+  .vname{font-family:'Space Grotesk';font-weight:600;font-size:15px;color:var(--dim)}
+  .vodo{font-size:12px;color:var(--faint);margin-top:1px}
+  .vodo b{color:var(--dim);font-weight:500}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;margin-top:6px;
+    font-size:11px;font-weight:600;letter-spacing:.04em;
+    padding:3px 8px;border-radius:6px;
+  }
+  .chip .dot{width:6px;height:6px;border-radius:50%}
+  .chip.ok{color:var(--faint);background:rgba(90,100,114,.12)}
+  .chip.ok .dot{background:var(--green);opacity:.6}
+  .chip.warn{color:var(--amber);background:rgba(255,176,32,.10)}
+  .chip.warn .dot{background:var(--amber)}
+  .chip.bad{color:var(--red);background:rgba(255,82,82,.10)}
+  .chip.bad .dot{background:var(--red);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+
+  /* ── Bento board ─────────────────────────── */
+  .board{
+    display:grid;gap:12px;padding:14px 20px 20px;
+    grid-template-columns:repeat(12,1fr);
+    grid-auto-rows:88px;
+    height:calc(100vh - 52px - 96px);
+    overflow:auto;
+  }
+  .tile{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:16px;display:flex;flex-direction:column;text-align:left;position:relative;
+    transition:border-color .2s, background .2s, transform .25s cubic-bezier(.2,.9,.3,1.2);
+    animation:rise .5s cubic-bezier(.2,.9,.3,1) backwards;
+  }
+  .tile:hover{background:var(--hover);border-color:var(--line2);transform:translateY(-2px)}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+  .tile:nth-child(1){animation-delay:.03s}.tile:nth-child(2){animation-delay:.07s}
+  .tile:nth-child(3){animation-delay:.11s}.tile:nth-child(4){animation-delay:.15s}
+  .tile:nth-child(5){animation-delay:.19s}.tile:nth-child(6){animation-delay:.23s}
+  .tile:nth-child(7){animation-delay:.27s}.tile:nth-child(8){animation-delay:.31s}
+  .t-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .t-title{font-family:'Space Grotesk';font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--faint)}
+  .t-flag{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:5px}
+  .t-flag.warn{color:var(--amber);background:rgba(255,176,32,.12)}
+  .t-flag.ok{color:var(--faint);background:rgba(90,100,114,.14)}
+
+  .service{grid-column:span 5;grid-row:span 3}
+  .fuel{grid-column:span 4;grid-row:span 3}
+  .insurance{grid-column:span 3;grid-row:span 3}
+  .tires{grid-column:span 4;grid-row:span 2}
+  .expenses{grid-column:span 4;grid-row:span 2}
+  .docs{grid-column:span 4;grid-row:span 2}
+  .sliver{grid-column:span 6;grid-row:span 1;flex-direction:row;align-items:center;gap:14px}
+  .sliver .t-head{margin:0}
+  .sliver .t-note{color:var(--faint);font-size:12.5px}
+
+  /* service rows */
+  .srow{display:flex;align-items:center;gap:12px;padding:7px 0;border-top:1px solid var(--line)}
+  .srow:first-of-type{border-top:none}
+  .sname{flex:1;font-size:13px;color:var(--text)}
+  .sdue{font-size:12px;color:var(--dim)}
+  .sdue b{color:var(--text);font-weight:500}
+  /* LED strip */
+  .led{display:flex;gap:2.5px;width:92px;flex:none}
+  .led i{flex:1;height:9px;border-radius:2px;background:var(--line)}
+  .led i.on{background:var(--green);opacity:.75}
+  .led.warn i.on{background:var(--amber);opacity:.95}
+  .led.bad i.on{background:var(--red);opacity:1}
+
+  .big{font-size:26px;font-weight:600;letter-spacing:-.01em}
+  .big small{font-size:13px;color:var(--dim);font-weight:400;letter-spacing:0}
+  .sub{color:var(--faint);font-size:12px;margin-top:2px}
+
+  /* sparkline */
+  .spark{margin-top:auto;width:100%;height:44px}
+  .spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .spark .area{fill:url(#fade);stroke:none}
+
+  .rows-mini{margin-top:auto;font-size:12px;color:var(--dim)}
+  .rows-mini div{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)}
+  .rows-mini div:first-child{border-top:none}
+  .rows-mini .val{color:var(--text)}
+
+  /* ── Module overlay (tile morph) ─────────── */
+  .overlay{
+    position:fixed;inset:0;background:var(--bg);z-index:40;display:none;
+    flex-direction:column;
+  }
+  .overlay.open{display:flex;animation:zoom .32s cubic-bezier(.2,.9,.3,1)}
+  @keyframes zoom{from{opacity:.4;transform:scale(.92);border-radius:24px}to{opacity:1;transform:scale(1)}}
+  .ov-top{height:52px;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+  .back{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:13px;padding:6px 10px;border-radius:8px;transition:background .15s}
+  .back:hover{background:var(--hover);color:var(--text)}
+  .ov-title{font-family:'Space Grotesk';font-weight:600;letter-spacing:.16em;font-size:13px}
+  .ov-body{flex:1;overflow:auto;padding:24px 20px;display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .panel h3{font-family:'Space Grotesk';font-size:11px;letter-spacing:.18em;color:var(--faint);margin-bottom:12px;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--faint);font-weight:500;font-size:11.5px;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:8px;border-bottom:1px solid var(--line);color:var(--dim)}
+  td.mono{color:var(--text)}
+  tr:hover td{background:var(--hover)}
+  .chart-big{width:100%;height:180px}
+  .chart-big polyline{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── Quick-log sheet ─────────────────────── */
+  .sheet-bk{position:fixed;inset:0;background:rgba(8,10,14,.55);z-index:60;opacity:0;pointer-events:none;transition:opacity .25s}
+  .sheet-bk.open{opacity:1;pointer-events:auto}
+  .sheet{
+    position:fixed;top:0;right:0;bottom:0;width:400px;z-index:61;
+    background:var(--panel2);border-left:1px solid var(--line2);
+    transform:translateX(105%);transition:transform .32s cubic-bezier(.2,.9,.3,1);
+    padding:24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .sheet.open{transform:none}
+  .sheet h2{font-family:'Space Grotesk';font-size:16px;font-weight:600}
+  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+  .seg button{flex:1;padding:7px 0;font-size:12.5px;color:var(--dim);border-radius:6px}
+  .seg button.on{background:var(--panel);color:var(--text);border:1px solid var(--line2)}
+  .field label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+  .field input{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    padding:9px 11px;color:var(--text);font:inherit;
+  }
+  .field input:focus{outline:none;border-color:var(--accent)}
+  .frow{display:flex;gap:10px}.frow .field{flex:1}
+  .sheet .log-btn{margin-top:auto;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="top">
+    <div class="wordmark">VEHICLE <b>TRACKER</b></div>
+    <div class="spacer"></div>
+    <div class="kbd-hint"><span class="kbd">Ctrl K</span> search &amp; commands</div>
+    <button class="log-btn" onclick="openSheet()">+ Log</button>
+  </header>
+
+  <!-- Household vehicle strip -->
+  <div class="vstrip">
+    <button class="vcard active" onclick="pickVehicle(this)">
+      <svg class="vcar" viewBox="0 0 100 44"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
+      <div class="vmeta">
+        <div class="vname">D-Max</div>
+        <div class="vodo mono"><b>15,148</b> km · 2022 Isuzu</div>
+        <span class="chip warn"><span class="dot"></span>ROAD TAX · 14 D</span>
+      </div>
+    </button>
+    <button class="vcard" onclick="pickVehicle(this)">
+      <svg class="vcar" viewBox="0 0 100 44"><path d="M8 32 h4 l8 -10 q10 -10 24 -10 h14 q12 0 20 8 l6 6 h8 v6 h-6 M24 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M64 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M38 32 h26"/></svg>
+      <div class="vmeta">
+        <div class="vname">Swift</div>
+        <div class="vodo mono"><b>84,210</b> km · 2019 Suzuki</div>
+        <span class="chip bad"><span class="dot"></span>BRAKE FLUID · OVERDUE 320 KM</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- Bento board — tiles ARE the navigation -->
+  <main class="board" id="board">
+
+    <button class="tile service" onclick="openModule('SERVICE SCHEDULE')">
+      <div class="t-head"><span class="t-title">SERVICE SCHEDULE</span><span class="t-flag ok">18 TRACKED</span></div>
+      <div class="srow">
+        <div class="sname">Oil &amp; Filter Change</div>
+        <div class="sdue mono"><b>7,112</b> km · 112 d</div>
+        <div class="led"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="srow">
+        <div class="sname">Cabin Air Filter</div>
+        <div class="sdue mono"><b>4,852</b> km</div>
+        <div class="led warn"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="srow">
+        <div class="sname">Tire Rotation</div>
+        <div class="sdue mono"><b>7,112</b> km</div>
+        <div class="led"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="srow">
+        <div class="sname">Fuel Filter Water Drain</div>
+        <div class="sdue mono"><b>7,112</b> km</div>
+        <div class="led"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </button>
+
+    <button class="tile fuel" onclick="openModule('FUEL')">
+      <div class="t-head"><span class="t-title">FUEL</span></div>
+      <div class="big mono">10.2 <small>km/L avg</small></div>
+      <div class="sub">Last fill 24 Jul · 42.3 L · $182.31</div>
+      <svg class="spark" viewBox="0 0 200 44" preserveAspectRatio="none">
+        <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#57A0FF" stop-opacity=".25"/><stop offset="1" stop-color="#57A0FF" stop-opacity="0"/>
+        </linearGradient></defs>
+        <polygon class="area" points="0,30 33,24 66,28 100,18 133,22 166,12 200,16 200,44 0,44"/>
+        <polyline points="0,30 33,24 66,28 100,18 133,22 166,12 200,16"/>
+      </svg>
+    </button>
+
+    <button class="tile insurance" onclick="openModule('INSURANCE')">
+      <div class="t-head"><span class="t-title">INSURANCE</span></div>
+      <div class="big mono">229 <small>days</small></div>
+      <div class="sub">ICBL comprehensive<br>renews 15 Mar 2027</div>
+      <div class="rows-mini" style="margin-top:auto">
+        <div><span>Premium</span><span class="val mono">$2,340 / yr</span></div>
+      </div>
+    </button>
+
+    <button class="tile tires" onclick="openModule('TIRES')">
+      <div class="t-head"><span class="t-title">TIRES</span></div>
+      <div class="big mono">6.5 <small>mm min tread</small></div>
+      <div class="sub mono">Dunlop AT25 · 8,400 km on set</div>
+    </button>
+
+    <button class="tile expenses" onclick="openModule('EXPENSES')">
+      <div class="t-head"><span class="t-title">EXPENSES · JUL</span></div>
+      <div class="big mono">$355.14</div>
+      <div class="sub">Fuel $355.14 · Service $0 · <span class="mono">$0.61/km</span> lifetime</div>
+    </button>
+
+    <button class="tile docs" style="border-left:2px solid var(--amber)" onclick="openModule('DOCUMENTS')">
+      <div class="t-head"><span class="t-title">DOCUMENTS</span><span class="t-flag warn">1 DUE</span></div>
+      <div class="rows-mini">
+        <div><span style="color:var(--amber)">Road tax</span><span class="val mono" style="color:var(--amber)">12 Aug · 14 d</span></div>
+        <div><span>Registration</span><span class="val mono">30 Sep · 63 d</span></div>
+        <div><span>Warranty</span><span class="val mono">no expiry</span></div>
+      </div>
+    </button>
+
+    <button class="tile sliver" onclick="openModule('FLUIDS')">
+      <div class="t-head"><span class="t-title">FLUIDS</span></div>
+      <span class="chip ok"><span class="dot"></span>ALL NORMAL</span>
+      <span class="t-note">Last top-up: coolant 250 ml · 02 Jun</span>
+    </button>
+
+    <button class="tile sliver" onclick="openModule('NOTES')">
+      <div class="t-head"><span class="t-title">NOTES</span></div>
+      <span class="t-note">“Rattle from rear left over bumps — check bushing at next service” · 3 more</span>
+    </button>
+  </main>
+
+  <!-- Module overlay (fuel example) -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
+    <div class="ov-top">
+      <button class="back" onclick="closeModule()">← Board <span class="kbd" style="margin-left:4px">Esc</span></button>
+      <div class="ov-title" id="ovTitle">FUEL</div>
+      <div class="spacer" style="flex:1"></div>
+      <button class="log-btn" onclick="openSheet()">+ Log fill-up</button>
+    </div>
+    <div class="ov-body">
+      <div class="panel">
+        <h3>FILL-UPS</h3>
+        <table>
+          <tr><th>Date</th><th>Odometer</th><th>Litres</th><th>Total</th><th>km/L</th></tr>
+          <tr><td>24 Jul 2026</td><td class="mono">15,102</td><td class="mono">42.3</td><td class="mono">$182.31</td><td class="mono" style="color:var(--green)">10.2</td></tr>
+          <tr><td>08 Jul 2026</td><td class="mono">14,671</td><td class="mono">40.1</td><td class="mono">$172.83</td><td class="mono" style="color:var(--green)">10.2</td></tr>
+          <tr><td>19 Jun 2026</td><td class="mono">14,262</td><td class="mono">38.6</td><td class="mono">$166.37</td><td class="mono" style="color:var(--green)">9.8</td></tr>
+          <tr><td>30 May 2026</td><td class="mono">13,884</td><td class="mono">41.0</td><td class="mono">$176.71</td><td class="mono" style="color:var(--green)">10.5</td></tr>
+          <tr><td>09 May 2026</td><td class="mono">13,453</td><td class="mono">39.2</td><td class="mono">$168.96</td><td class="mono">—</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>EFFICIENCY — LAST 6 FULL TANKS</h3>
+        <svg class="chart-big" viewBox="0 0 300 180" preserveAspectRatio="none">
+          <polyline points="10,90 68,70 126,84 184,42 242,58 290,50"/>
+        </svg>
+        <div class="rows-mini" style="margin-top:14px">
+          <div><span>Average</span><span class="val mono">10.2 km/L</span></div>
+          <div><span>Best tank</span><span class="val mono">10.5 km/L</span></div>
+          <div><span>July spend</span><span class="val mono">$355.14</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick-log sheet -->
+  <div class="sheet-bk" id="sheetBk" onclick="closeSheet()"></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <h2 class="disp">Quick log</h2>
+    <div class="seg">
+      <button class="on">Fuel</button><button>Service</button><button>Fluid</button><button>Expense</button>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Odometer (km)</label><input class="mono" value="15148"></div>
+      <div class="field"><label>Date</label><input class="mono" value="29 Jul 2026"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Litres</label><input class="mono" placeholder="0.0"></div>
+      <div class="field"><label>Total cost</label><input class="mono" placeholder="$0.00"></div>
+    </div>
+    <div class="field"><label>Station</label><input placeholder="Rubis Warrens"></div>
+    <button class="log-btn">Save fill-up</button>
+  </aside>
+
+<script>
+  function openModule(title){
+    document.getElementById('ovTitle').textContent = title;
+    document.getElementById('overlay').classList.add('open');
+  }
+  function closeModule(){ document.getElementById('overlay').classList.remove('open'); }
+  function openSheet(){
+    document.getElementById('sheet').classList.add('open');
+    document.getElementById('sheetBk').classList.add('open');
+  }
+  function closeSheet(){
+    document.getElementById('sheet').classList.remove('open');
+    document.getElementById('sheetBk').classList.remove('open');
+  }
+  function pickVehicle(el){
+    document.querySelectorAll('.vcard').forEach(v=>v.classList.remove('active'));
+    el.classList.add('active');
+    const b = document.getElementById('board');
+    b.style.animation='none'; void b.offsetHeight;
+    document.querySelectorAll('.tile').forEach(t=>{t.style.animation='none'; void t.offsetHeight; t.style.animation='';});
+  }
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'){ closeModule(); closeSheet(); }
+  });
+</script>
+</body>
+</html>
