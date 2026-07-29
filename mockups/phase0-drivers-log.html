@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Tracker — Driver's Log · Phase 0 reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E14; --panel:#111722; --panel2:#161E2B; --hover:#1A2332;
+    --line:#1E2735; --line2:#2A3547;
+    --text:#EDF1F7; --dim:#7E8A9C; --faint:#4E5A6E;
+    --accent:#FFAA2B; --accent-ink:#131313; --accent-soft:rgba(255,170,43,.12);
+    --red:#FF3B30; --red-soft:rgba(255,59,48,.12);
+    --green:#2BD98F; --green-soft:rgba(43,217,143,.10);
+    --hero-a:#0A0E14; --hero-b:#0D1420; --hero-c:#101A29;
+    --glow:rgba(255,170,43,.16); --scrim:rgba(5,8,12,.6);
+  }
+  [data-theme="light"]{
+    --bg:#F2F4F8; --panel:#FFFFFF; --panel2:#FFFFFF; --hover:#F5F7FB;
+    --line:#E2E7EF; --line2:#CBD4E1;
+    --text:#16202E; --dim:#5B6878; --faint:#94A0B2;
+    --accent:#D97E00; --accent-ink:#FFFFFF; --accent-soft:rgba(217,126,0,.12);
+    --red:#D92B20; --red-soft:rgba(217,43,32,.10);
+    --green:#0FA968; --green-soft:rgba(15,169,104,.10);
+    --hero-a:#E8ECF4; --hero-b:#DFE6F1; --hero-c:#D6E0EF;
+    --glow:rgba(217,126,0,.18); --scrim:rgba(22,32,46,.4);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 'Barlow',system-ui,sans-serif;transition:background .3s,color .3s}
+  ::selection{background:rgba(255,170,43,.3)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .cond{font-family:'Barlow Condensed',sans-serif}
+  .hide{display:none!important}
+
+  /* ── HERO ─────────────────────────────────────────── */
+  .hero{position:relative;height:250px;overflow:hidden;border-bottom:1px solid var(--line);
+    background:radial-gradient(120% 90% at 50% 115%, var(--glow), transparent 55%),
+      linear-gradient(180deg, var(--hero-a) 0%, var(--hero-b) 60%, var(--hero-c) 100%);}
+  .road{position:absolute;inset:auto 0 0 0;height:140px;opacity:.5}
+  .road line{stroke:var(--line2);stroke-width:1}
+  .road .mid{stroke:var(--accent);stroke-width:2;stroke-dasharray:14 22;opacity:.5;animation:drive 1.4s linear infinite}
+  @keyframes drive{to{stroke-dashoffset:-36}}
+  .hero-in{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 56px}
+  .hv .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--faint);font-weight:600}
+  .hv h1{font-family:'Barlow Condensed';font-weight:700;font-size:58px;line-height:.95;letter-spacing:.01em}
+  .hv .plate{color:var(--dim);font-size:14px;margin-top:4px}
+  .hv .plate b{color:var(--accent);font-weight:600}
+  .vswitch{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .vswitch button{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.06em;
+    color:var(--dim);padding:4px 12px;border:1px solid var(--line2);border-radius:999px;transition:all .2s}
+  .vswitch button.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+  .vswitch button:not(.on):hover{color:var(--text);border-color:var(--dim)}
+  .valert{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:6px;vertical-align:1px;animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .garage-btn{color:var(--faint);font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px dashed var(--line2)}
+  .garage-btn:hover{color:var(--text);border-color:var(--dim)}
+  .odo{text-align:right}
+  .odo .label{font-size:11px;letter-spacing:.34em;color:var(--faint);font-weight:600}
+  .odo .value{font-family:'JetBrains Mono';font-weight:700;font-size:54px;letter-spacing:.02em;line-height:1.05}
+  .odo .value small{font-size:19px;color:var(--dim);font-weight:400}
+  .next{margin-top:6px;font-size:13.5px;color:var(--dim)}
+  .next b{color:var(--accent);font-weight:600}
+  .hero-actions{position:absolute;top:16px;right:56px;z-index:3;display:flex;gap:8px}
+  .icon-btn{color:var(--faint);font-size:12.5px;padding:5px 12px;border:1px solid var(--line2);border-radius:8px;transition:all .18s}
+  .icon-btn:hover{color:var(--text);background:var(--hover)}
+
+  /* ── LENS BAR ─────────────────────────────────────── */
+  .lens{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;
+    padding:11px 56px;background:color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .lens button.pill{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.08em;
+    padding:6px 13px;color:var(--dim);border-radius:8px;transition:all .18s}
+  .lens button.pill:hover{color:var(--text);background:var(--hover)}
+  .lens button.pill.on{color:var(--accent);background:var(--accent-soft)}
+  .lens .gap{flex:1}
+  .lens .search{color:var(--faint);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 14px;background:none}
+
+  /* ── LAYOUT ───────────────────────────────────────── */
+  .wrap{max-width:1060px;margin:0 auto;padding:30px 56px 130px}
+  .ctx{margin-bottom:26px;animation:fadein .35s ease backwards}
+  @keyframes fadein{from{opacity:0;transform:translateY(8px)}}
+
+  /* context strip cards */
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .k{font-size:11px;letter-spacing:.16em;color:var(--faint);font-weight:600}
+  .stat .v{font-family:'JetBrains Mono';font-size:21px;font-weight:600;margin-top:4px}
+  .stat .v small{font-size:12px;color:var(--dim);font-weight:400}
+  .stat .s{font-size:12px;color:var(--dim);margin-top:2px}
+  .stat.warn{border-color:color-mix(in srgb, var(--accent) 45%, var(--line))}
+  .stat.warn .v{color:var(--accent)}
+  .meter{display:flex;gap:2.5px;margin-top:8px}
+  .meter i{flex:1;height:8px;border-radius:2px;background:var(--line)}
+  .meter i.on{background:var(--green);opacity:.8}
+  .meter.warn i.on{background:var(--accent);opacity:1}
+  .meter.bad i.on{background:var(--red)}
+
+  /* ── SPINE ────────────────────────────────────────── */
+  .spine{position:relative;padding-left:150px}
+  .spine::before{content:'';position:absolute;left:118px;top:0;bottom:0;width:2px;
+    background:linear-gradient(180deg,var(--accent) 0,var(--accent) var(--ahead-h,210px),var(--line2) calc(var(--ahead-h,210px) + 50px),var(--line2) 100%)}
+  .km-mark{position:absolute;left:-150px;width:104px;text-align:right;
+    font-family:'JetBrains Mono';font-size:11.5px;color:var(--faint);padding-top:18px}
+  .km-mark b{color:var(--dim);font-weight:500}
+  .node{position:absolute;left:-38px;top:22px;width:14px;height:14px;border-radius:50%;
+    background:var(--bg);border:2.5px solid var(--faint)}
+  .entry{position:relative;margin:0 0 13px 0;animation:slide .45s cubic-bezier(.2,.9,.3,1) backwards}
+  @keyframes slide{from{opacity:0;transform:translateX(18px)}}
+  .entry:nth-child(2){animation-delay:.04s}.entry:nth-child(3){animation-delay:.08s}
+  .entry:nth-child(4){animation-delay:.12s}.entry:nth-child(5){animation-delay:.16s}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:13px 18px;display:flex;align-items:center;gap:16px;text-align:left;width:100%;
+    transition:border-color .2s, background .2s, transform .2s}
+  .card:hover{background:var(--hover);border-color:var(--line2);transform:translateX(3px)}
+  .tag{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.14em;flex:none;width:78px;color:var(--faint)}
+  .c-main{flex:1;min-width:0}
+  .c-title{font-weight:500;font-size:14.5px;display:block}
+  .c-sub{color:var(--dim);font-size:12.5px;margin-top:2px;display:block}
+  .c-val{font-family:'JetBrains Mono';font-size:13.5px;color:var(--text);flex:none;text-align:right}
+  .c-val small{color:var(--faint);font-size:11px}
+  .ahead .card{background:transparent;border-style:dashed;border-color:var(--line2)}
+  .ahead .node{border-color:var(--accent)}
+  .ahead .tag{color:var(--accent)}
+  .ahead .km-mark b{color:var(--accent)}
+  .entry.due .card{border-color:color-mix(in srgb, var(--accent) 50%, transparent)}
+  .entry.due .node{background:var(--accent);border-color:var(--accent)}
+  .entry.overdue .card{border-color:color-mix(in srgb, var(--red) 55%, transparent)}
+  .entry.overdue .node{background:var(--red);border-color:var(--red)}
+  .entry.overdue .tag,.entry.overdue .c-title,.entry.overdue .c-val{color:var(--red)}
+  .today{position:relative;margin:24px 0 28px;display:flex;align-items:center;gap:14px}
+  .today .line{flex:1;height:1px;background:var(--line2)}
+  .today .lbl{font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;letter-spacing:.18em;color:var(--accent)}
+  .today .node-now{position:absolute;left:-40px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 0 6px var(--accent-soft),0 0 24px var(--glow)}
+  .section-lbl{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.22em;color:var(--faint);margin:0 0 12px}
+  .empty{border:1px dashed var(--line2);border-radius:12px;padding:34px;text-align:center;color:var(--dim)}
+  .empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+  .empty button{margin-top:14px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:8px 18px;border-radius:8px}
+
+  /* ── STATS VIEW ───────────────────────────────────── */
+  .stats-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
+  .panelbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .panelbox h3{font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.2em;color:var(--faint);margin-bottom:14px}
+  .bars{display:flex;align-items:stretch;gap:14px;height:150px;padding:0 4px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
+  .bar .col{width:100%;display:flex;flex-direction:column-reverse;gap:2px}
+  .bar .f{background:var(--accent);border-radius:3px 3px 0 0;opacity:.9}
+  .bar .m{background:var(--dim);border-radius:3px}
+  .bar .lbl{font-family:'JetBrains Mono';font-size:10.5px;color:var(--faint)}
+  .kvrows div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .kvrows div:last-child{border-bottom:none}
+  .kvrows span{color:var(--dim)}
+  .kvrows b{font-family:'JetBrains Mono';font-weight:500}
+  .donut{display:flex;align-items:center;gap:20px}
+  .donut svg{flex:none}
+  .legend div{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);padding:3px 0}
+  .legend i{width:9px;height:9px;border-radius:3px}
+
+  /* ── MINIMAP ──────────────────────────────────────── */
+  .minimap{position:fixed;right:18px;top:310px;bottom:120px;width:34px;z-index:20;display:flex;flex-direction:column;align-items:center}
+  .mm-track{position:relative;flex:1;width:3px;background:var(--line);border-radius:2px}
+  .mm-track i{position:absolute;left:-2.5px;width:8px;height:2.5px;border-radius:2px;background:var(--faint)}
+  .mm-track i.a{background:var(--accent)}
+  .mm-win{position:absolute;left:-6px;width:15px;height:64px;border:1.5px solid var(--accent);border-radius:6px;background:var(--accent-soft)}
+  .mm-lbl{font-family:'JetBrains Mono';font-size:9.5px;color:var(--faint);padding:6px 0;writing-mode:vertical-rl}
+
+  /* ── FAB + RADIAL ─────────────────────────────────── */
+  .fab{position:fixed;right:46px;bottom:40px;z-index:50;width:58px;height:58px;border-radius:50%;
+    background:var(--accent);color:var(--accent-ink);font-size:26px;font-weight:600;
+    box-shadow:0 6px 30px var(--glow);transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
+  .fab:hover{transform:scale(1.08)}
+  .radial{position:fixed;right:46px;bottom:40px;z-index:49;width:58px;height:58px;pointer-events:none}
+  .radial button{position:absolute;right:0;bottom:0;width:54px;height:54px;border-radius:50%;
+    background:var(--panel2);border:1px solid var(--line2);color:var(--text);
+    font-family:'Barlow Condensed';font-weight:600;font-size:11px;letter-spacing:.04em;
+    opacity:0;transition:all .3s cubic-bezier(.2,.9,.3,1.3);pointer-events:none}
+  .radial.open button{opacity:1;pointer-events:auto}
+  .radial.open .r1{transform:translate(-88px,8px)}
+  .radial.open .r2{transform:translate(-72px,-58px)}
+  .radial.open .r3{transform:translate(-6px,-90px)}
+  .radial button:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+  /* ── SHEETS ───────────────────────────────────────── */
+  .scrim{position:fixed;inset:0;background:var(--scrim);z-index:60;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:50%;bottom:0;z-index:61;width:580px;max-height:82vh;overflow:auto;
+    transform:translate(-50%,105%);background:var(--panel2);border:1px solid var(--line2);border-bottom:none;
+    border-radius:18px 18px 0 0;padding:24px 30px 34px;transition:transform .35s cubic-bezier(.2,.9,.3,1)}
+  .sheet.open{transform:translate(-50%,0)}
+  .grab{width:44px;height:4px;border-radius:3px;background:var(--line2);margin:0 auto 16px}
+  .sheet h2{font-family:'Barlow Condensed';font-weight:700;font-size:25px;letter-spacing:.02em}
+  .sheet .meta{color:var(--dim);margin-top:2px;font-size:13px}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 26px;margin-top:18px}
+  .kv div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:7px 0;font-size:13.5px}
+  .kv span{color:var(--dim)}
+  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;margin:16px 0 4px}
+  .seg button{flex:1;padding:7px 0;font-size:12.5px;color:var(--dim);border-radius:6px}
+  .seg button.on{background:var(--panel);color:var(--text);border:1px solid var(--line2)}
+  .field{margin-top:12px}
+  .field label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--text);font:inherit}
+  .field input:focus{outline:none;border-color:var(--accent)}
+  .frow{display:flex;gap:10px}.frow .field{flex:1}
+  .save{margin-top:20px;width:100%;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:11px 0;border-radius:9px;text-align:center}
+  .setrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .setrow:last-of-type{border-bottom:none}
+  .setrow .lab b{display:block;font-weight:500}
+  .setrow .lab span{color:var(--dim);font-size:12px}
+  .setrow .ctl{color:var(--dim);font-size:12.5px;border:1px solid var(--line2);padding:5px 12px;border-radius:7px}
+  .setrow .ctl:hover{color:var(--text)}
+  .vrow{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .vrow:last-child{border-bottom:none}
+  .vrow .car{width:60px;height:28px}
+  .vrow .car path{fill:none;stroke:var(--dim);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .vrow.on .car path{stroke:var(--accent)}
+  .vrow .nm{flex:1}
+  .vrow .nm b{font-family:'Barlow Condensed';font-size:17px;font-weight:600;letter-spacing:.03em}
+  .vrow .nm span{display:block;color:var(--dim);font-size:12px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:6px}
+  .chip .dot{width:6px;height:6px;border-radius:50%}
+  .chip.ok{color:var(--faint);background:var(--green-soft)}
+  .chip.ok .dot{background:var(--green);opacity:.7}
+  .chip.warn{color:var(--accent);background:var(--accent-soft)}
+  .chip.warn .dot{background:var(--accent)}
+  .chip.bad{color:var(--red);background:var(--red-soft)}
+  .chip.bad .dot{background:var(--red);animation:pulse 1.6s infinite}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <svg class="road" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 1200 140">
+    <line x1="0" y1="140" x2="470" y2="0"/><line x1="1200" y1="140" x2="730" y2="0"/>
+    <line class="mid" x1="600" y1="140" x2="600" y2="0"/>
+  </svg>
+  <div class="hero-actions">
+    <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">☾ Dark</button>
+    <button class="icon-btn" onclick="openSheet('settings')">Settings</button>
+  </div>
+  <div class="hero-in">
+    <div class="hv">
+      <div class="eyebrow">DRIVER'S LOG</div>
+      <h1>D-MAX</h1>
+      <div class="plate">2022 Isuzu D-Max 3.0TD · <b>BM-4821</b></div>
+      <div class="vswitch">
+        <button class="on">D-MAX</button>
+        <button>SWIFT<span class="valert"></span></button>
+        <button class="garage-btn" onclick="openSheet('garage')">+ Garage</button>
+      </div>
+    </div>
+    <div class="odo">
+      <div class="label">ODOMETER</div>
+      <div class="value" id="odo">15,148<small> km</small></div>
+      <div class="next">Next: Oil &amp; filter — <b class="mono">7,112 km</b> or <b>18 Nov</b> · <span class="mono" style="color:var(--dim)">$0.61/km lifetime</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LENS BAR ══ -->
+<nav class="lens" id="lens">
+  <button class="pill on" data-lens="all">ALL</button>
+  <button class="pill" data-lens="fuel">FUEL</button>
+  <button class="pill" data-lens="service">SERVICE</button>
+  <button class="pill" data-lens="tires">TIRES</button>
+  <button class="pill" data-lens="fluid">FLUIDS</button>
+  <button class="pill" data-lens="insurance">INSURANCE</button>
+  <button class="pill" data-lens="docs">DOCS</button>
+  <button class="pill" data-lens="notes">NOTES</button>
+  <button class="pill" data-lens="stats">STATS</button>
+  <span class="gap"></span>
+  <button class="search mono">⌘K — search the log…</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- ══ CONTEXT STRIPS (one per lens) ══ -->
+  <div class="ctx" data-ctx="fuel" hidden>
+    <div class="strip">
+      <div class="stat"><div class="k">AVG ECONOMY</div><div class="v">10.2 <small>km/L</small></div><div class="s">full-tank method</div></div>
+      <div class="stat"><div class="k">JULY SPEND</div><div class="v">$355.14</div><div class="s">2 fill-ups</div></div>
+      <div class="stat"><div class="k">BEST TANK</div><div class="v">10.5 <small>km/L</small></div><div class="s">30 May — Esso Wildey</div></div>
+      <div class="stat"><div class="k">PRICE / L</div><div class="v">$4.31</div><div class="s">unchanged since May</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="service" hidden>
+    <p class="section-lbl">INTERVAL HEALTH — 18 TRACKED</p>
+    <div class="strip">
+      <div class="stat"><div class="k">OIL &amp; FILTER</div><div class="v">7,112 <small>km · 112 d</small></div>
+        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat warn"><div class="k">CABIN FILTER</div><div class="v">4,852 <small>km</small></div>
+        <div class="meter warn"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat"><div class="k">TIRE ROTATION</div><div class="v">7,112 <small>km</small></div>
+        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat"><div class="k">13 MORE</div><div class="v" style="color:var(--green)">ALL OK</div><div class="s">nearest: brake fluid 24,852 km</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="tires" hidden>
+    <div class="strip">
+      <div class="stat"><div class="k">ACTIVE SET</div><div class="v" style="font-family:'Barlow';font-size:16px">Dunlop AT25 · 265/65R17</div><div class="s mono">fitted 18 May 2026 · 8,400 km on set</div></div>
+      <div class="stat"><div class="k">MIN TREAD</div><div class="v">6.5 <small>mm</small></div><div class="s">rear-left · replace at 2 mm</div></div>
+      <div class="stat"><div class="k">PRESSURES</div><div class="v">35 / 38 <small>psi</small></div><div class="s">front / rear recommended</div></div>
+      <div class="stat"><div class="k">SET AGE</div><div class="v">0.2 <small>yr</small></div><div class="s">rubber limit 6 yr</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="fluid" hidden>
+    <div class="strip">
+      <div class="stat"><div class="k">ENGINE OIL</div><div class="v" style="color:var(--green)">NORMAL</div><div class="s">no top-ups this interval</div></div>
+      <div class="stat"><div class="k">COOLANT</div><div class="v">86 <small>ml/1000km</small></div><div class="s">threshold 50 — watch</div></div>
+      <div class="stat"><div class="k">BRAKE FLUID</div><div class="v" style="color:var(--green)">NORMAL</div><div class="s">level steady</div></div>
+      <div class="stat"><div class="k">DEF / ADBLUE</div><div class="v">1.1 <small>L/1000km</small></div><div class="s">typical for 3.0TD</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="insurance" hidden>
+    <div class="strip">
+      <div class="stat"><div class="k">ACTIVE POLICY</div><div class="v" style="font-family:'Barlow';font-size:16px">ICBL · comprehensive</div><div class="s mono">POL-88214 · renews 15 Mar 2027</div></div>
+      <div class="stat"><div class="k">RENEWAL IN</div><div class="v">229 <small>days</small></div><div class="s">no action needed</div></div>
+      <div class="stat"><div class="k">PREMIUM</div><div class="v">$2,340 <small>/yr</small></div><div class="s">paid annually</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="docs" hidden>
+    <div class="strip">
+      <div class="stat warn"><div class="k">ROAD TAX</div><div class="v">14 <small>days</small></div>
+        <div class="meter warn"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+      <div class="stat"><div class="k">REGISTRATION</div><div class="v">63 <small>days</small></div>
+        <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="stat"><div class="k">WARRANTY</div><div class="v" style="color:var(--green)">NO EXPIRY</div><div class="s">5yr/100,000 km — booklet scanned</div></div>
+    </div>
+  </div>
+
+  <div class="ctx" data-ctx="notes" hidden>
+    <div class="strip">
+      <div class="stat" style="grid-column:1/-1"><div class="k">PINNED</div>
+        <div class="s" style="font-size:13.5px;color:var(--text);margin-top:6px">“Rattle from rear left over bumps — check bushing at next service”</div>
+        <div class="s mono">12 Jul 2026 · D-Max</div></div>
+    </div>
+  </div>
+
+  <!-- ══ STATS VIEW ══ -->
+  <div class="ctx" data-ctx="stats" hidden>
+    <div class="stats-grid">
+      <div class="panelbox">
+        <h3>MONTHLY SPEND — LAST 4</h3>
+        <div class="bars">
+          <div class="bar"><div class="col" style="height:22%"><div class="f" style="height:100%"></div></div><span class="lbl">APR</span></div>
+          <div class="bar"><div class="col" style="height:100%"><div class="f" style="height:46%"></div><div class="m" style="height:54%"></div></div><span class="lbl">MAY</span></div>
+          <div class="bar"><div class="col" style="height:24%"><div class="f" style="height:100%"></div></div><span class="lbl">JUN</span></div>
+          <div class="bar"><div class="col" style="height:48%"><div class="f" style="height:100%"></div></div><span class="lbl">JUL</span></div>
+        </div>
+        <div class="legend" style="display:flex;gap:18px;margin-top:12px">
+          <div><i style="background:var(--accent)"></i>Fuel</div>
+          <div><i style="background:var(--dim)"></i>Service</div>
+        </div>
+      </div>
+      <div class="panelbox">
+        <h3>COST OF OWNERSHIP</h3>
+        <div class="kvrows">
+          <div><span>Lifetime total</span><b>$9,240.18</b></div>
+          <div><span>Cost / km</span><b>$0.61</b></div>
+          <div><span>Fuel share</span><b>58%</b></div>
+          <div><span>July total</span><b>$355.14</b></div>
+          <div><span>Avg economy</span><b>10.2 km/L</b></div>
+        </div>
+      </div>
+      <div class="panelbox">
+        <h3>SPEND BY CATEGORY — 12 MO</h3>
+        <div class="donut">
+          <svg width="110" height="110" viewBox="0 0 42 42">
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line)" stroke-width="6"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="58 42" stroke-dashoffset="25" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--dim)" stroke-width="6" stroke-dasharray="26 74" stroke-dashoffset="67" stroke-linecap="round"/>
+            <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--green)" stroke-width="6" stroke-dasharray="16 84" stroke-dashoffset="41" stroke-linecap="round"/>
+          </svg>
+          <div class="legend">
+            <div><i style="background:var(--accent)"></i>Fuel — $2,140 · 58%</div>
+            <div><i style="background:var(--dim)"></i>Insurance — $960 · 26%</div>
+            <div><i style="background:var(--green)"></i>Service — $590 · 16%</div>
+          </div>
+        </div>
+      </div>
+      <div class="panelbox">
+        <h3>EFFICIENCY TREND — 6 TANKS</h3>
+        <svg width="100%" height="110" viewBox="0 0 300 110" preserveAspectRatio="none">
+          <polyline points="10,62 68,48 126,58 184,28 242,40 290,34" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SPINE ══ -->
+  <div class="spine" id="spine">
+
+    <!-- ROAD AHEAD -->
+    <div class="ahead" id="ahead">
+      <p class="section-lbl" style="margin-left:0">ROAD AHEAD</p>
+      <div class="entry" data-kind="service">
+        <span class="km-mark mono"><b>22,260</b><br>km</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">SERVICE</span>
+          <span class="c-main"><span class="c-title">Oil &amp; Filter Change</span>
+          <span class="c-sub">in 7,112 km — or 18 Nov 2026, whichever first</span></span>
+          <span class="c-val">112 <small>d</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="service">
+        <span class="km-mark mono"><b>20,000</b><br>km</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">SERVICE</span>
+          <span class="c-main"><span class="c-title">Cabin Air Filter</span>
+          <span class="c-sub">in 4,852 km</span></span>
+          <span class="c-val">4,852 <small>km</small></span>
+        </button>
+      </div>
+      <div class="entry due" data-kind="docs">
+        <span class="km-mark mono"><b>12 AUG</b></span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">DOCS</span>
+          <span class="c-main"><span class="c-title" style="color:var(--accent)">Road Tax renewal</span>
+          <span class="c-sub">expires 12 Aug 2026 — renew at licensing office</span></span>
+          <span class="c-val" style="color:var(--accent)">14 <small>d</small></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TODAY -->
+    <div class="today">
+      <span class="node-now"></span>
+      <span class="lbl">TODAY · 15,148 KM</span>
+      <span class="line"></span>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="history">
+      <div class="entry" data-kind="fuel">
+        <span class="km-mark mono"><b>15,102</b><br>24 JUL</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">FUEL</span>
+          <span class="c-main"><span class="c-title">Fill-up — Rubis Warrens</span>
+          <span class="c-sub">42.3 L @ $4.31/L · full tank</span></span>
+          <span class="c-val">$182.31<br><small>10.2 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="notes">
+        <span class="km-mark mono"><b>12 JUL</b></span><span class="node" style="border-color:var(--line2)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">NOTE</span>
+          <span class="c-main"><span class="c-title">Rattle from rear left over bumps</span>
+          <span class="c-sub">check bushing at next service · pinned</span></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="fuel">
+        <span class="km-mark mono"><b>14,671</b><br>08 JUL</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">FUEL</span>
+          <span class="c-main"><span class="c-title">Fill-up — Sol Black Rock</span>
+          <span class="c-sub">40.1 L @ $4.31/L · full tank</span></span>
+          <span class="c-val">$172.83<br><small>10.2 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="tires">
+        <span class="km-mark mono"><b>14,900</b><br>10 JUN</span><span class="node" style="border-color:var(--green)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">TIRES</span>
+          <span class="c-main"><span class="c-title">Inspection — all corners</span>
+          <span class="c-sub">tread 7.0 / 6.9 / 6.5 / 6.6 mm · pressures set 35/38</span></span>
+          <span class="c-val">6.5 <small>mm min</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="fluid">
+        <span class="km-mark mono"><b>14,100</b><br>07 JUN</span><span class="node" style="border-color:var(--green)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">FLUID</span>
+          <span class="c-main"><span class="c-title">Coolant top-up</span>
+          <span class="c-sub">250 ml · rate 86 ml/1000km — watch</span></span>
+          <span class="c-val">250 <small>ml</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="fuel">
+        <span class="km-mark mono"><b>14,262</b><br>19 JUN</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">FUEL</span>
+          <span class="c-main"><span class="c-title">Fill-up — Rubis Warrens</span>
+          <span class="c-sub">38.6 L @ $4.31/L · full tank</span></span>
+          <span class="c-val">$166.37<br><small>9.8 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="fuel">
+        <span class="km-mark mono"><b>13,884</b><br>30 MAY</span><span class="node"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">FUEL</span>
+          <span class="c-main"><span class="c-title">Fill-up — Esso Wildey</span>
+          <span class="c-sub">41.0 L @ $4.31/L · full tank</span></span>
+          <span class="c-val">$176.71<br><small>10.5 km/L</small></span>
+        </button>
+      </div>
+      <div class="entry" data-kind="service tires">
+        <span class="km-mark mono"><b>12,260</b><br>18 MAY</span><span class="node" style="border-color:var(--text)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">SERVICE</span>
+          <span class="c-main"><span class="c-title">10k service — Nassco Ltd</span>
+          <span class="c-sub">oil + filter, water-separator drain, tire rotation, new Dunlop AT25 set</span></span>
+          <span class="c-val">$412.00</span>
+        </button>
+      </div>
+      <div class="entry" data-kind="insurance">
+        <span class="km-mark mono"><b>15 MAR</b></span><span class="node" style="border-color:var(--dim)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">INSUR</span>
+          <span class="c-main"><span class="c-title">Policy renewed — ICBL comprehensive</span>
+          <span class="c-sub">POL-88214 · 12 months</span></span>
+          <span class="c-val">$2,340</span>
+        </button>
+      </div>
+      <div class="entry" data-kind="docs">
+        <span class="km-mark mono"><b>12 AUG 25</b></span><span class="node" style="border-color:var(--dim)"></span>
+        <button class="card" onclick="openSheet('detail')">
+          <span class="tag">DOCS</span>
+          <span class="c-main"><span class="c-title">Road tax paid</span>
+          <span class="c-sub">valid 12 months</span></span>
+          <span class="c-val">$400</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE (shown when a lens has no items) -->
+    <div class="empty hide" id="emptyState">
+      <b>Nothing here yet</b>
+      This vehicle has no entries under this lens.
+      <br><button onclick="openSheet('log')">+ Log the first one</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MINIMAP ══ -->
+<aside class="minimap" aria-hidden="true">
+  <span class="mm-lbl">22,260</span>
+  <div class="mm-track">
+    <i class="a" style="top:4%"></i><i class="a" style="top:10%"></i><i class="a" style="top:16%"></i>
+    <span class="mm-win" style="top:22%"></span>
+    <i style="top:28%"></i><i style="top:34%"></i><i style="top:40%"></i><i style="top:47%"></i>
+    <i style="top:54%"></i><i style="top:63%"></i><i style="top:74%"></i><i style="top:86%"></i>
+  </div>
+  <span class="mm-lbl">0 KM</span>
+</aside>
+
+<!-- ══ FAB + RADIAL ══ -->
+<div class="radial" id="radial">
+  <button class="r1" onclick="openSheet('log')">FUEL</button>
+  <button class="r2" onclick="openSheet('log')">SERVICE</button>
+  <button class="r3" onclick="openSheet('log')">FLUID</button>
+</div>
+<button class="fab" id="fab" onclick="toggleRadial()" aria-label="Quick log">+</button>
+
+<!-- ══ SHEETS ══ -->
+<div class="scrim" id="scrim" onclick="closeSheets()"></div>
+
+<div class="sheet" id="sheet-detail" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Fill-up — Rubis Warrens</h2>
+  <div class="meta mono">24 Jul 2026 · 15,102 km</div>
+  <div class="kv">
+    <div><span>Litres</span><b class="mono">42.3 L</b></div>
+    <div><span>Price / L</span><b class="mono">$4.31</b></div>
+    <div><span>Total</span><b class="mono">$182.31</b></div>
+    <div><span>Economy</span><b class="mono" style="color:var(--green)">10.2 km/L</b></div>
+    <div><span>Tank</span><b>Full</b></div>
+    <div><span>Receipt</span><b style="color:var(--accent)">photo.jpg</b></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:20px">
+    <button class="save" style="margin:0;background:var(--panel);color:var(--text);border:1px solid var(--line2)">Edit</button>
+    <button class="save" style="margin:0;background:var(--panel);color:var(--red);border:1px solid var(--line2)">Delete</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet-log" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Quick log</h2>
+  <div class="seg">
+    <button class="on">Fuel</button><button>Service</button><button>Fluid</button><button>Expense</button><button>Note</button>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Odometer (km)</label><input class="mono" value="15148"></div>
+    <div class="field"><label>Date</label><input class="mono" value="29 Jul 2026"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Litres</label><input class="mono" placeholder="0.0"></div>
+    <div class="field"><label>Price / L</label><input class="mono" value="4.31"></div>
+    <div class="field"><label>Total</label><input class="mono" placeholder="$0.00"></div>
+  </div>
+  <div class="field"><label>Station</label><input placeholder="Rubis Warrens"></div>
+  <button class="save">Save fill-up</button>
+</div>
+
+<div class="sheet" id="sheet-settings" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Settings</h2>
+  <div style="margin-top:14px">
+    <div class="setrow"><div class="lab"><b>Theme</b><span>dark cockpit / light</span></div><button class="ctl" onclick="toggleTheme()">Toggle</button></div>
+    <div class="setrow"><div class="lab"><b>Distance unit</b><span>applies everywhere</span></div><button class="ctl">km ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Fuel economy</b><span>km/L · L/100km · MPG</span></div><button class="ctl">km/L ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Currency</b><span>display only</span></div><button class="ctl">BBD ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Backups</b><span>daily · keep 10 · D:\Backups\vehicle</span></div><button class="ctl">Open folder</button></div>
+    <div class="setrow"><div class="lab"><b>Notifications</b><span>service · insurance · documents</span></div><button class="ctl">On ▾</button></div>
+    <div class="setrow"><div class="lab"><b>Software update</b><span class="mono">v3.0.0 — up to date</span></div><button class="ctl">Check</button></div>
+    <div class="setrow"><div class="lab"><b>Help</b><span>workflow &amp; features guide</span></div><button class="ctl">Open</button></div>
+  </div>
+  <div style="text-align:center;color:var(--faint);font-size:12px;margin-top:18px">Built by Kemar Hinds</div>
+</div>
+
+<div class="sheet" id="sheet-garage" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>Garage</h2>
+  <div class="meta">Every vehicle, most urgent item first</div>
+  <div style="margin-top:10px">
+    <div class="vrow on">
+      <svg class="car" viewBox="0 0 100 44"><path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32"/></svg>
+      <div class="nm"><b>D-MAX</b><span class="mono">15,148 km · 2022 Isuzu D-Max</span></div>
+      <span class="chip warn"><span class="dot"></span>ROAD TAX · 14 D</span>
+    </div>
+    <div class="vrow">
+      <svg class="car" viewBox="0 0 100 44"><path d="M8 32 h4 l8 -10 q10 -10 24 -10 h14 q12 0 20 8 l6 6 h8 v6 h-6 M24 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M64 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M38 32 h26"/></svg>
+      <div class="nm"><b>SWIFT</b><span class="mono">84,210 km · 2019 Suzuki Swift</span></div>
+      <span class="chip bad"><span class="dot"></span>BRAKE FLUID · OVERDUE 320 KM</span>
+    </div>
+  </div>
+  <button class="save" style="background:var(--panel);color:var(--text);border:1px dashed var(--line2)">+ Add vehicle</button>
+</div>
+
+<script>
+  // odometer count-up
+  const odoEl = document.getElementById('odo'), target = 15148; let t0;
+  function tick(t){ if(!t0) t0=t; const p=Math.min((t-t0)/900,1), e=1-Math.pow(1-p,3);
+    odoEl.innerHTML = Math.round(target*e).toLocaleString()+'<small> km</small>';
+    if(p<1) requestAnimationFrame(tick); }
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
+  else odoEl.innerHTML = target.toLocaleString()+'<small> km</small>';
+
+  // lens switching
+  const lensBar = document.getElementById('lens');
+  lensBar.addEventListener('click', e=>{
+    const b = e.target.closest('[data-lens]'); if(!b) return;
+    lensBar.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+    b.classList.add('on');
+    const lens = b.dataset.lens;
+    // context strips
+    document.querySelectorAll('[data-ctx]').forEach(c=>c.hidden = c.dataset.ctx !== lens);
+    // spine visibility
+    const spine = document.getElementById('spine');
+    spine.classList.toggle('hide', lens==='stats');
+    if(lens==='stats') return;
+    // filter entries
+    let any=false;
+    document.querySelectorAll('#spine .entry').forEach(en=>{
+      const show = lens==='all' || (en.dataset.kind||'').split(' ').includes(lens);
+      en.classList.toggle('hide', !show); if(show) any=true;
+      en.style.animation='none'; void en.offsetHeight; en.style.animation='';
+    });
+    document.getElementById('ahead').querySelector('.section-lbl').classList.toggle('hide', lens==='notes');
+    document.getElementById('emptyState').classList.toggle('hide', any);
+  });
+
+  // radial + sheets
+  function toggleRadial(){
+    const r=document.getElementById('radial'); r.classList.toggle('open');
+    document.getElementById('fab').style.transform = r.classList.contains('open')?'rotate(45deg)':'';
+  }
+  function openSheet(name){
+    closeSheets(false);
+    document.getElementById('radial').classList.remove('open');
+    document.getElementById('fab').style.transform='';
+    document.getElementById('scrim').classList.add('open');
+    document.getElementById('sheet-'+name).classList.add('open');
+  }
+  function closeSheets(hideScrim=true){
+    document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+    if(hideScrim) document.getElementById('scrim').classList.remove('open');
+  }
+  addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeSheets(); document.getElementById('radial').classList.remove('open'); document.getElementById('fab').style.transform=''; }});
+
+  // theme
+  function toggleTheme(){
+    const html=document.documentElement;
+    const next = html.dataset.theme==='dark' ? 'light' : 'dark';
+    html.dataset.theme = next;
+    document.getElementById('themeBtn').textContent = next==='dark' ? '☾ Dark' : '☀ Light';
+  }
+</script>
+</body>
+</html>

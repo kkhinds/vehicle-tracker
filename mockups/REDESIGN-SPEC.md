@@ -36,3 +36,10 @@ The vehicle's life as a road. Cinematic hero (vehicle name, live count-up odomet
 1. Owner clicks both mockups, picks a direction (or hybrid), annotates.
 2. Winner becomes Phase 0 reference: expand to every screen incl. light mode, all numbers tying out.
 3. Phased build on existing backend (shell → board/spine + modules → forms → charts → polish), each phase verified in the running app.
+
+## Phase 0 reference (2026-07-29)
+Direction B chosen by owner. `phase0-drivers-log.html` is the design contract:
+every lens (ALL/FUEL/SERVICE/TIRES/FLUIDS/INSURANCE/DOCS/NOTES/STATS) with
+context strips, road-ahead + history spine, sheets (detail, quick-log, settings,
+garage/household), light mode via [data-theme], empty state, reduced-motion.
+Tokens + sample data frozen — port verbatim into the renderer build.
