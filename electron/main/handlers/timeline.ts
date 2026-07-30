@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { getDb, getCurrentVehicleId } from '../db'
+import { getDb, getCurrentVehicleId, getSetting } from '../db'
 import { daysUntil, addMonthsISO } from '../dates'
 import { format, addDays, parseISO, differenceInDays } from 'date-fns'
 
@@ -22,6 +22,8 @@ export interface TimelineEntry {
   subtitle: string
   value: string | null      // right-hand figure, already formatted
   valueSub: string | null   // smaller line under it
+  /** Raw distance-per-litre on fuel rows. The renderer owns the economy unit. */
+  consumption?: number | null
 }
 
 export interface AheadItem {
@@ -81,8 +83,8 @@ export function registerTimelineHandlers(): void {
         id: `fuel:${r.id}`, kind: 'fuel', date: r.date, odometer: r.odometer,
         title: `Fill-up${r.fuel_station ? ` — ${r.fuel_station}` : ''}`,
         subtitle: `${r.litres.toFixed(1)} L @ $${r.cost_per_litre.toFixed(2)}/L · ${r.full_tank ? 'full tank' : 'partial'}`,
-        value: money(r.total_cost),
-        valueSub: r.consumption ? `${r.consumption.toFixed(1)} km/L` : null,
+        value: money(r.total_cost), valueSub: null,
+        consumption: r.consumption,
       })
     }
 
@@ -178,6 +180,7 @@ export function registerTimelineHandlers(): void {
     const odo = db.prepare('SELECT current_odometer FROM vehicles WHERE id = ?')
       .get<{ current_odometer: number }>(v)?.current_odometer ?? 0
     const rate = drivingRatePerDay(db, v)
+    const unit = getSetting('distance_unit') ?? 'km'
     const items: AheadItem[] = []
 
     for (const iv of db.prepare(
@@ -206,7 +209,9 @@ export function registerTimelineHandlers(): void {
       items.push({
         id: `service:${iv.id}`, kind: 'service', title: iv.name,
         subtitle: [
-          kmRemaining > 0 ? `in ${Math.round(kmRemaining).toLocaleString()} km` : `${Math.abs(Math.round(kmRemaining)).toLocaleString()} km overdue`,
+          kmRemaining > 0
+            ? `in ${Math.round(kmRemaining).toLocaleString()} ${unit}`
+            : `${Math.abs(Math.round(kmRemaining)).toLocaleString()} ${unit} overdue`,
           dueDate ? `or ${format(parseISO(dueDate), 'd MMM yyyy')}, whichever first` : null,
         ].filter(Boolean).join(' — '),
         dueDate, projectedDate, estimated, dueKm, kmRemaining, daysRemaining, status,
@@ -239,11 +244,12 @@ export function registerTimelineHandlers(): void {
       })
     }
 
-    // Soonest last: the spine runs far-future at the top down to TODAY.
-    items.sort((a, b) => {
-      const ad = a.projectedDate ?? '9999-12-31', bd = b.projectedDate ?? '9999-12-31'
-      return bd.localeCompare(ad)
-    })
+    // Soonest last: the spine runs far-future at the top down to TODAY. An
+    // overdue item with no projected date is already past, so it belongs at the
+    // bottom next to TODAY rather than floated up with the far-future ones.
+    const sortKey = (i: AheadItem) =>
+      i.projectedDate ?? (i.status === 'overdue' ? '0000-01-01' : '9999-12-31')
+    items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)))
     return { items, ratePerDay: rate }
   })
 }

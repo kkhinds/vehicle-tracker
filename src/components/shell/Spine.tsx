@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { format, parseISO } from 'date-fns'
+import { economyLabel, formatEconomy } from '@/lib/utils'
 import type { AheadItem, EntryKind, TimelineEntry } from '@/env'
 import type { Lens } from './LensBar'
 
@@ -8,6 +9,7 @@ interface SpineProps {
   ahead: AheadItem[]
   odometer: number
   distanceUnit: string
+  economyUnit: 'distance' | 'l_per_100km' | 'mpg'
   lens: Lens
   onOpenEntry: (entry: TimelineEntry) => void
   onOpenAhead: (item: AheadItem) => void
@@ -40,7 +42,7 @@ function monthKey(date: string): string {
 }
 
 export default function Spine({
-  entries, ahead, odometer, distanceUnit, lens,
+  entries, ahead, odometer, distanceUnit, economyUnit, lens,
   onOpenEntry, onOpenAhead, onLogFirst, onManageIntervals,
 }: SpineProps) {
   const shownEntries = useMemo(
@@ -78,6 +80,13 @@ export default function Spine({
   // Tire records hang off a fitted set, so the tires lens manages the set
   // itself rather than service intervals.
   const manageLabel = lens === 'tires' ? 'Tire set' : 'Service intervals'
+
+  /** Fuel rows carry raw distance-per-litre; the unit is a setting. */
+  const econ = (e: TimelineEntry) => {
+    if (e.valueSub) return e.valueSub
+    const v = formatEconomy(e.consumption, distanceUnit, economyUnit)
+    return v ? `${v} ${economyLabel(distanceUnit, economyUnit)}` : null
+  }
 
   if (!shownEntries.length && !shownAhead.length) {
     return (
@@ -173,7 +182,7 @@ export default function Spine({
                 </span>
                 <span className="dl-c-val">
                   {e.value}
-                  {e.valueSub && <><br /><small>{e.valueSub}</small></>}
+                  {econ(e) && <><br /><small>{econ(e)}</small></>}
                 </span>
               </button>
             </div>

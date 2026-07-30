@@ -157,6 +157,8 @@ export interface TimelineEntry {
   subtitle: string
   value: string | null
   valueSub: string | null
+  /** Raw distance-per-litre on fuel rows; the renderer applies the economy unit. */
+  consumption?: number | null
 }
 
 export interface AheadItem {

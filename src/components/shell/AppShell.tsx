@@ -14,7 +14,7 @@ import {
 } from './ManagementSheets'
 import { useSettings } from '@/hooks/useSettings'
 import { useVehicles } from '@/hooks/useVehicles'
-import { formatDate } from '@/lib/utils'
+import { economyLabel, formatDate, formatEconomy } from '@/lib/utils'
 import type { DashboardSummary } from '@/types'
 import type { AheadItem, EntryKind, TimelineEntry } from '@/env'
 
@@ -170,6 +170,12 @@ export default function AppShell() {
     setLogOpen(true)
   }
 
+  // Fuel rows carry raw distance-per-litre; the unit is a setting.
+  const detailEconomy = detail?.valueSub ?? (() => {
+    const v = formatEconomy(detail?.consumption, settings.distance_unit, settings.economy_unit)
+    return v ? `${v} ${economyLabel(settings.distance_unit, settings.economy_unit)}` : null
+  })()
+
   const [table, id] = detail ? detail.id.split(':') : []
   async function deleteEntry() {
     if (!detail) return
@@ -234,6 +240,7 @@ export default function AppShell() {
             ahead={ahead}
             odometer={currentVehicle?.current_odometer ?? 0}
             distanceUnit={settings.distance_unit}
+            economyUnit={settings.economy_unit}
             lens={lens}
             onOpenEntry={setDetail}
             onOpenAhead={a => openLog(KIND_TO_LOG[a.kind])}
@@ -288,7 +295,7 @@ export default function AppShell() {
                 <div><span>Odometer</span><b className="mono">{detail.odometer.toLocaleString()} {settings.distance_unit}</b></div>
               )}
               {detail.value && <div><span>Amount</span><b className="mono">{detail.value}</b></div>}
-              {detail.valueSub && <div><span>Economy</span><b className="mono">{detail.valueSub}</b></div>}
+              {detailEconomy && <div><span>Economy</span><b className="mono">{detailEconomy}</b></div>}
             </div>
             <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
             <PhotoStrip paths={detailPhotos} />
