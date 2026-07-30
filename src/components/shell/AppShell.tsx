@@ -6,7 +6,7 @@ import Spine from './Spine'
 import Sheet from './Sheet'
 import Stats from './Stats'
 import HelpSheet from './HelpSheet'
-import LogForm, { KIND_TO_LOG, type LogType } from './LogForm'
+import LogForm, { KIND_TO_LOG, type EditTarget, type LogType } from './LogForm'
 import {
   IntervalsSheet, GarageSheet, BackupsSheet, SettingsSheet, OdometerSheet, TireSetSheet,
 } from './ManagementSheets'
@@ -34,6 +34,7 @@ export default function AppShell() {
   const [logType, setLogType] = useState<LogType>('fuel')
   const [detail, setDetail] = useState<TimelineEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [edit, setEdit] = useState<EditTarget | null>(null)
   type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset' | 'help'
   const [sheet, setSheet] = useState<SheetName | null>(null)
 
@@ -115,7 +116,35 @@ export default function AppShell() {
     return { station, pricePerLitre: price ? parseFloat(price) : null }
   }, [entries])
 
-  function openLog(type: LogType) { setLogType(type); setLogOpen(true) }
+  function openLog(type: LogType) { setEdit(null); setLogType(type); setLogOpen(true) }
+
+  /** Tables the quick-log form can edit — the rest have no update handler. */
+  const EDITABLE: Record<string, LogType> = {
+    fuel: 'fuel', service: 'service', fluid: 'fluid', insurance: 'insurance', docs: 'docs',
+  }
+
+  // The spine carries display text, not the stored row, so the record is pulled
+  // back from its own table before the form opens.
+  async function openEdit() {
+    if (!detail) return
+    const [t, rawId] = detail.id.split(':')
+    const type = EDITABLE[t]
+    const id = Number(rawId)
+    if (!type) return
+    const list = await ({
+      fuel: () => window.api.fuel.getAll(),
+      service: () => window.api.maintenance.getAll(),
+      fluid: () => window.api.fluids.getAll(),
+      insurance: () => window.api.insurance.getAll(),
+      docs: () => window.api.documents.getAll(),
+    } as Record<string, () => Promise<{ id: number }[]>>)[t]()
+    const record = list.find(r => r.id === id)
+    if (!record) { toast.error('That record is gone'); return }
+    setDetail(null); setConfirmDelete(false)
+    setEdit({ type, id, record: record as unknown as Record<string, unknown> })
+    setLogType(type)
+    setLogOpen(true)
+  }
 
   const [table, id] = detail ? detail.id.split(':') : []
   async function deleteEntry() {
@@ -200,17 +229,19 @@ export default function AppShell() {
 
       <Sheet
         open={logOpen}
-        title={`Quick log — ${currentVehicle?.nickname ?? ''}`}
-        onClose={() => setLogOpen(false)}
+        title={edit ? 'Edit entry' : `Quick log — ${currentVehicle?.nickname ?? ''}`}
+        onClose={() => { setLogOpen(false); setEdit(null) }}
       >
         <LogForm
           initialType={logType}
           odometer={currentVehicle?.current_odometer ?? 0}
           distanceUnit={settings.distance_unit}
           lastFuel={lastFuel}
-          onCancel={() => setLogOpen(false)}
+          edit={edit}
+          onCancel={() => { setLogOpen(false); setEdit(null) }}
           onSaved={what => {
             setLogOpen(false)
+            setEdit(null)
             toast.success(what)
             refreshVehicles()
             reload()
@@ -237,7 +268,9 @@ export default function AppShell() {
             </div>
             <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
             <div className="dl-btnrow">
-              <button className="dl-save dl-ghost" onClick={soon}>Edit</button>
+              {EDITABLE[table] && (
+                <button className="dl-save dl-ghost" onClick={openEdit}>Edit</button>
+              )}
               <button
                 className="dl-save dl-danger"
                 onClick={() => confirmDelete ? deleteEntry() : setConfirmDelete(true)}
@@ -245,7 +278,9 @@ export default function AppShell() {
                 {confirmDelete ? 'Delete — click again' : 'Delete…'}
               </button>
             </div>
-            <p className="dl-microcopy">Editing lands next; delete asks twice</p>
+            <p className="dl-microcopy">
+              {EDITABLE[table] ? 'Delete asks twice' : 'Tire records are logged fresh rather than edited'}
+            </p>
           </>
         )}
       </Sheet>

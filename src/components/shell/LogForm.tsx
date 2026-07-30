@@ -11,32 +11,80 @@ const TYPES: { key: LogType; label: string }[] = [
   { key: 'insurance', label: 'Insurance' }, { key: 'docs', label: 'Doc' },
 ]
 
+/** An existing record opened for editing, loaded by the shell. */
+export interface EditTarget {
+  type: LogType
+  id: number
+  record: Record<string, unknown>
+}
+
 interface LogFormProps {
   initialType: LogType
   odometer: number
   distanceUnit: string
   /** Station and price carried over from the last fill-up, so the weekly job is fast. */
   lastFuel: { station: string | null; pricePerLitre: number | null } | null
+  /** Set to edit an existing record instead of adding a new one. */
+  edit?: EditTarget | null
   onSaved: (what: string) => void
   onCancel: () => void
 }
 
 type Errors = Partial<Record<string, string>>
 
+const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+
+/** Inverse of the payloads in save() — turns a stored record back into fields. */
+function recordToForm(type: LogType, r: Record<string, unknown>): Record<string, string> {
+  switch (type) {
+    case 'fuel': return {
+      date: str(r.date), odometer: str(r.odometer), litres: str(r.litres),
+      price: str(r.cost_per_litre), total: str(r.total_cost), totalTouched: '1',
+      station: str(r.fuel_station), notes: str(r.notes),
+    }
+    case 'service': return {
+      date: str(r.date), odometer: str(r.odometer), category: str(r.category),
+      description: str(r.description), cost: str(r.cost), shop: str(r.shop_name),
+      notes: str(r.notes),
+    }
+    case 'fluid': return {
+      date: str(r.date), odometer: str(r.odometer), fluidType: str(r.fluid_type),
+      amount: str(r.amount), unit: str(r.unit), notes: str(r.notes),
+    }
+    case 'insurance': return {
+      date: str(r.start_date), provider: str(r.provider), policy: str(r.policy_number),
+      coverage: str(r.coverage_type), premium: str(r.premium_amount),
+      renewal: str(r.renewal_date), notes: str(r.notes),
+    }
+    case 'docs': return {
+      date: str(r.issued_date), title: str(r.title), docType: str(r.doc_type),
+      expiry: str(r.expiry_date), noExpiry: r.expiry_date ? '' : '1',
+      cost: str(r.cost), notes: str(r.notes),
+    }
+    default: return {}
+  }
+}
+
 export default function LogForm({
-  initialType, odometer, distanceUnit, lastFuel, onSaved, onCancel,
+  initialType, odometer, distanceUnit, lastFuel, edit, onSaved, onCancel,
 }: LogFormProps) {
-  const [type, setType] = useState<LogType>(initialType)
+  const [type, setType] = useState<LogType>(edit?.type ?? initialType)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [f, setF] = useState<Record<string, string>>({})
   const [fullTank, setFullTank] = useState(true)
 
-  useEffect(() => { setType(initialType) }, [initialType])
+  useEffect(() => { setType(edit?.type ?? initialType) }, [initialType, edit])
 
-  // Reset per type, seeding the values worth pre-filling.
+  // Reset per type, seeding the values worth pre-filling. Editing seeds from
+  // the stored record instead, and the type is fixed.
   useEffect(() => {
     setErrors({})
+    if (edit) {
+      setF(recordToForm(edit.type, edit.record))
+      setFullTank(edit.record.full_tank !== false)
+      return
+    }
     setF({
       date: todayISO(),
       odometer: '',
@@ -44,7 +92,7 @@ export default function LogForm({
       price: lastFuel?.pricePerLitre != null ? String(lastFuel.pricePerLitre) : '',
     })
     setFullTank(true)
-  }, [type, lastFuel])
+  }, [type, lastFuel, edit])
 
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
@@ -62,7 +110,9 @@ export default function LogForm({
       const v = parseFloat(f.odometer ?? '')
       if (!Number.isFinite(v)) e.odometer = 'Enter the current reading'
       // Readings only go up; a lower one would poison economy and service maths.
-      else if (v < odometer) e.odometer = `Must be at least ${odometer.toLocaleString()} ${distanceUnit}`
+      // An edit is exempt — an older entry legitimately sits below today's reading.
+      else if (!edit && v < odometer) e.odometer = `Must be at least ${odometer.toLocaleString()} ${distanceUnit}`
+      else if (v < 0) e.odometer = 'Cannot be negative'
     }
     if (!f.date) e.date = 'Pick a date'
     if (type === 'fuel') {
@@ -86,6 +136,7 @@ export default function LogForm({
     setSaving(true)
     const odo = parseFloat(f.odometer ?? '')
     try {
+      if (edit) { await saveEdit(odo); return }
       switch (type) {
         case 'fuel': {
           const litres = parseFloat(f.litres), total = parseFloat(totalValue)
@@ -153,6 +204,55 @@ export default function LogForm({
     }
   }
 
+  /** Updates send only the fields this form owns; handlers merge the rest. */
+  async function saveEdit(odo: number) {
+    if (!edit) return
+    const id = edit.id
+    switch (edit.type) {
+      case 'fuel': {
+        const litres = parseFloat(f.litres), total = parseFloat(totalValue)
+        await window.api.fuel.update(id, {
+          date: f.date, odometer: odo, litres,
+          cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
+          total_cost: total, fuel_station: f.station || null,
+          full_tank: fullTank, notes: f.notes || null,
+        })
+        onSaved('Fill-up updated'); break
+      }
+      case 'service':
+        await window.api.maintenance.update(id, {
+          date: f.date, odometer: odo, category: f.category || 'Other',
+          description: f.description, cost: parseFloat(f.cost ?? '') || 0,
+          shop_name: f.shop || null, notes: f.notes || null,
+        })
+        onSaved('Service updated'); break
+      case 'fluid':
+        await window.api.fluids.update(id, {
+          date: f.date, odometer: odo, fluid_type: f.fluidType || 'engine-oil',
+          amount: parseFloat(f.amount), unit: (f.unit as 'ml' | 'L' | 'oz') || 'ml',
+          notes: f.notes || null,
+        })
+        onSaved('Top-up updated'); break
+      case 'insurance':
+        await window.api.insurance.update(id, {
+          provider: f.provider, policy_number: f.policy || '',
+          coverage_type: (f.coverage as never) || 'comprehensive',
+          premium_amount: parseFloat(f.premium ?? '') || 0,
+          start_date: f.date, renewal_date: f.renewal, notes: f.notes || null,
+        })
+        onSaved('Policy updated'); break
+      case 'docs':
+        await window.api.documents.update(id, {
+          doc_type: (f.docType as never) || 'registration', title: f.title,
+          issued_date: f.date, expiry_date: f.noExpiry === '1' ? null : (f.expiry || null),
+          cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null,
+        })
+        onSaved('Document updated'); break
+      default:
+        toast.error('This record type can only be deleted, not edited')
+    }
+  }
+
   const field = (
     name: string, label: string,
     opts: { type?: string; placeholder?: string; hint?: string; value?: string } = {}
@@ -179,17 +279,20 @@ export default function LogForm({
 
   return (
     <>
-      <div className="dl-seg" role="group" aria-label="Record type">
-        {TYPES.map(t => (
-          <button key={t.key} aria-pressed={type === t.key} onClick={() => setType(t.key)}>{t.label}</button>
-        ))}
-      </div>
+      {/* A record can't change type mid-edit — the row lives in one table. */}
+      {!edit && (
+        <div className="dl-seg" role="group" aria-label="Record type">
+          {TYPES.map(t => (
+            <button key={t.key} aria-pressed={type === t.key} onClick={() => setType(t.key)}>{t.label}</button>
+          ))}
+        </div>
+      )}
 
       {(type === 'fuel' || type === 'service' || type === 'fluid' || type === 'tires') && (
         <div className="dl-frow">
           {field('odometer', `Odometer (${distanceUnit})`, {
             placeholder: `last: ${odometer.toLocaleString()}`,
-            hint: `must be ≥ ${odometer.toLocaleString()}`,
+            hint: edit ? 'the reading when this happened' : `must be ≥ ${odometer.toLocaleString()}`,
           })}
           {field('date', 'Date', { type: 'text' })}
         </div>
@@ -281,7 +384,8 @@ export default function LogForm({
 
       <div className="dl-btnrow">
         <button className="dl-save" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'} <span className="mono" style={{ fontWeight: 400 }}>· Enter</span>
+          {saving ? 'Saving…' : edit ? 'Save changes' : 'Save'}
+          <span className="mono" style={{ fontWeight: 400 }}> · Enter</span>
         </button>
         <button className="dl-save dl-ghost" onClick={onCancel}>Cancel</button>
       </div>
