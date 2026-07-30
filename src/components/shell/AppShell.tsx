@@ -95,8 +95,12 @@ export default function AppShell() {
     if (!ns) return null
     return {
       label: ns.name,
-      km: `${ns.kmRemaining.toLocaleString()} ${settings.distance_unit}`,
-      date: ns.dueDate ? formatDate(ns.dueDate) : null,
+      // Past due reads as "overdue", not as a negative distance.
+      km: ns.kmRemaining < 0
+        ? `${Math.abs(ns.kmRemaining).toLocaleString()} ${settings.distance_unit} overdue`
+        : `${ns.kmRemaining.toLocaleString()} ${settings.distance_unit}`,
+      // "…overdue or 18 Nov" reads as nonsense, so the date drops once it's past.
+      date: ns.kmRemaining < 0 || !ns.dueDate ? null : formatDate(ns.dueDate),
     }
   }, [summary, settings.distance_unit])
 
@@ -258,7 +262,7 @@ export default function AppShell() {
       <Sheet
         open={sheet === 'garage'}
         title="Garage"
-        subtitle="Every vehicle · click to switch"
+        subtitle="Switch, add or edit a vehicle"
         onClose={() => setSheet(null)}
       >
         <GarageSheet
@@ -266,6 +270,11 @@ export default function AppShell() {
           currentId={currentVehicleId}
           distanceUnit={settings.distance_unit}
           onSwitch={id => { switchVehicle(id); setSheet(null) }}
+          onChanged={async () => {
+            // Deleting the active vehicle makes the backend pick a new current
+            // one, and that choice lives in settings — refresh those too.
+            await refreshSettings(); await refreshVehicles(); reload()
+          }}
         />
       </Sheet>
 

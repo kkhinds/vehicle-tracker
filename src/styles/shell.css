@@ -197,18 +197,30 @@
 .dl-rule{ flex:1; height:1px; background:var(--line) }
 .dl-sum{ font-size:11px; color:var(--faint) }
 .dl-section-lbl{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
   font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
   letter-spacing:.14em; color:var(--dim); margin:0 0 12px;
 }
+/* Way into the sheet that owns whatever this lens schedules — intervals for
+   services, the fitted set for tires. */
+.dl-lbl-link{
+  font-family:'Barlow',sans-serif; font-size:12px; font-weight:500; letter-spacing:0;
+  color:var(--dim); border:1px solid var(--line2); border-radius:7px; padding:5px 10px;
+}
+.dl-lbl-link:hover{ color:var(--text); background:var(--hover) }
 .dl-empty{
   border:1px dashed var(--line2); border-radius:12px; padding:32px;
   text-align:center; color:var(--dim);
 }
 .dl-empty b{ display:block; color:var(--text); font-size:14px; margin-bottom:4px }
 .dl-empty button{
-  margin-top:16px; background:var(--accent); color:var(--accent-ink);
+  margin:16px 5px 0; background:var(--accent); color:var(--accent-ink);
   font-weight:600; padding:8px 20px; border-radius:8px;
 }
+.dl-empty button.ghost{
+  background:none; color:var(--dim); border:1px solid var(--line2); font-weight:500;
+}
+.dl-empty button.ghost:hover{ color:var(--text); background:var(--hover) }
 
 @media (max-width:1000px){
   /* keep the 32px gutter between the spine line and card content */
@@ -259,7 +271,13 @@
   width:100%; background:var(--bg); border:1px solid var(--dim); border-radius:8px;
   padding:9px 12px; color:var(--text); font:inherit;
 }
-.dl-field input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent) }
+.dl-field select{
+  width:100%; background:var(--bg); border:1px solid var(--dim); border-radius:8px;
+  padding:9px 12px; color:var(--text); font:inherit;
+}
+.dl-field input:focus-visible, .dl-field select:focus-visible{
+  outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);
+}
 .dl-field.error input{ border-color:var(--red) }
 .dl-hint{ font-size:11px; color:var(--faint); margin-top:4px }
 .dl-err{ font-size:11px; color:var(--red); margin-top:4px }
@@ -301,12 +319,18 @@
   padding:8px 12px; border-radius:7px; flex:none;
 }
 .dl-ctl:hover{ color:var(--text); background:var(--hover) }
+.dl-subhead{
+  margin:22px 0 2px; font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--faint);
+}
 
+/* Each vehicle is a switch button plus its own Edit button, so the separator
+   lives on the wrapper — a nested button would be invalid markup. */
+.dl-vrowwrap{ display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line) }
+.dl-vrowwrap:last-child{ border-bottom:none }
 .dl-vrow{
   display:flex; align-items:center; gap:16px; padding:12px 0; width:100%;
-  text-align:left; border-bottom:1px solid var(--line);
+  text-align:left;
 }
-.dl-vrow:last-of-type{ border-bottom:none }
 .dl-vrow:hover{ background:var(--hover) }
 .dl-vrow-car{ width:60px; height:28px; flex:none }
 .dl-vrow-car path{ fill:none; stroke:var(--dim); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }

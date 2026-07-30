@@ -2,7 +2,29 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDate, todayISO } from '@/lib/utils'
 import type { BackupStatus, UpdaterStatus } from '@/env'
-import type { ServiceInterval, TireSet, Vehicle } from '@/types'
+import { DRIVETRAINS, DRIVETRAIN_LABELS } from '@/types'
+import type { Drivetrain, ServiceInterval, TireSet, Vehicle } from '@/types'
+
+/* Shared bits for the small forms in this file. The quick-log form has its own
+   copy tuned to its validation; these are the plain version. */
+function Field({ id, label, value, onChange, hint, error, placeholder, mono = true }: {
+  id: string; label: string; value: string; onChange: (v: string) => void
+  hint?: string; error?: string; placeholder?: string; mono?: boolean
+}) {
+  return (
+    <div className={`dl-field${error ? ' error' : ''}`}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        className={mono ? 'mono' : ''}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+      {error ? <div className="dl-err">{error}</div> : hint && <div className="dl-hint">{hint}</div>}
+    </div>
+  )
+}
 
 /* ── Service intervals ─────────────────────────────────────────────────────
    The capability the redesign was missing most: 18 intervals with no way to
@@ -118,26 +140,217 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
 }
 
 /* ── Garage ───────────────────────────────────────────────────────────────── */
-export function GarageSheet({ vehicles, currentId, distanceUnit, onSwitch }: {
-  vehicles: Vehicle[]; currentId: number; distanceUnit: string; onSwitch: (id: number) => void
+export function GarageSheet({ vehicles, currentId, distanceUnit, onSwitch, onChanged }: {
+  vehicles: Vehicle[]; currentId: number; distanceUnit: string
+  onSwitch: (id: number) => void; onChanged: () => Promise<void>
 }) {
+  /** null = list, 'new' = add form, Vehicle = edit form. */
+  const [editing, setEditing] = useState<Vehicle | 'new' | null>(null)
+  const active = vehicles.filter(v => !v.is_archived)
+  const archived = vehicles.filter(v => v.is_archived)
+
+  if (editing) {
+    return (
+      <VehicleForm
+        vehicle={editing === 'new' ? null : editing}
+        distanceUnit={distanceUnit}
+        canDelete={active.length > 1}
+        onCancel={() => setEditing(null)}
+        onSaved={async (id, isNew) => {
+          setEditing(null)
+          await onChanged()
+          if (isNew) onSwitch(id)
+        }}
+        onRemoved={async () => { setEditing(null); await onChanged() }}
+      />
+    )
+  }
+
+  const row = (v: Vehicle) => (
+    <div className="dl-vrowwrap" key={v.id}>
+      <button className={`dl-vrow${v.id === currentId ? ' on' : ''}`} onClick={() => onSwitch(v.id)}>
+        <svg className="dl-vrow-car" viewBox="0 0 100 44" aria-hidden="true">
+          <path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32" />
+        </svg>
+        <span className="dl-vrow-nm">
+          <b>{v.nickname.toUpperCase()}</b>
+          <span className="mono">{v.current_odometer.toLocaleString()} {distanceUnit} · {v.year} {v.make} {v.model}</span>
+        </span>
+        {v.id === currentId && <span className="dl-chip ok"><span className="dot" aria-hidden="true" />ACTIVE</span>}
+      </button>
+      <button className="dl-ctl" onClick={() => setEditing(v)} aria-label={`Edit ${v.nickname}`}>Edit</button>
+    </div>
+  )
+
   return (
     <>
-      <div style={{ marginTop: 8 }}>
-        {vehicles.filter(v => !v.is_archived).map(v => (
-          <button key={v.id} className={`dl-vrow${v.id === currentId ? ' on' : ''}`} onClick={() => onSwitch(v.id)}>
-            <svg className="dl-vrow-car" viewBox="0 0 100 44" aria-hidden="true">
-              <path d="M4 32 h6 l6 -12 h26 l4 -8 h18 l6 8 h16 l8 6 v6 h-8 M22 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M68 32 a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M36 32 h32" />
-            </svg>
-            <span className="dl-vrow-nm">
-              <b>{v.nickname.toUpperCase()}</b>
-              <span className="mono">{v.current_odometer.toLocaleString()} {distanceUnit} · {v.year} {v.make} {v.model}</span>
-            </span>
-            {v.id === currentId && <span className="dl-chip ok"><span className="dot" aria-hidden="true" />ACTIVE</span>}
-          </button>
-        ))}
+      <div style={{ marginTop: 8 }}>{active.map(row)}</div>
+
+      {archived.length > 0 && (
+        <>
+          <h3 className="dl-subhead">ARCHIVED</h3>
+          <div style={{ opacity: .7 }}>{archived.map(row)}</div>
+        </>
+      )}
+
+      <div className="dl-btnrow">
+        <button className="dl-save" onClick={() => setEditing('new')}>+ Add a vehicle</button>
       </div>
-      <p className="dl-microcopy">Adding, editing and archiving vehicles is still on the old screen — Vehicles page</p>
+      <p className="dl-microcopy">A new vehicle gets its own service intervals from its drivetrain</p>
+    </>
+  )
+}
+
+function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRemoved }: {
+  vehicle: Vehicle | null
+  distanceUnit: string
+  /** The backend refuses to delete the last active vehicle; hide the button too. */
+  canDelete: boolean
+  onSaved: (id: number, isNew: boolean) => Promise<void>
+  onCancel: () => void
+  onRemoved: () => Promise<void>
+}) {
+  const [f, setF] = useState<Record<string, string>>(() => ({
+    nickname: vehicle?.nickname ?? '',
+    make: vehicle?.make ?? '',
+    model: vehicle?.model ?? '',
+    year: vehicle ? String(vehicle.year) : String(new Date().getFullYear()),
+    trim: vehicle?.trim ?? '',
+    plate: vehicle?.license_plate ?? '',
+    color: vehicle?.color ?? '',
+    vin: vehicle?.vin ?? '',
+    odometer: vehicle ? String(vehicle.current_odometer) : '0',
+    purchaseDate: vehicle?.purchase_date ?? '',
+  }))
+  const [drivetrain, setDrivetrain] = useState<Drivetrain>(vehicle?.drivetrain ?? 'petrol-na')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const set = (k: string) => (v: string) => setF(prev => ({ ...prev, [k]: v }))
+
+  async function save() {
+    const e: Record<string, string> = {}
+    if (!f.nickname.trim()) e.nickname = 'Give it a name'
+    if (!f.make.trim()) e.make = 'Required'
+    if (!f.model.trim()) e.model = 'Required'
+    const year = parseInt(f.year, 10)
+    if (!Number.isFinite(year) || year < 1900 || year > 2100) e.year = '1900–2100'
+    const odo = parseFloat(f.odometer)
+    if (!Number.isFinite(odo) || odo < 0) e.odometer = 'Enter a reading'
+    setErrors(e)
+    if (Object.keys(e).length) return
+
+    setSaving(true)
+    const payload = {
+      nickname: f.nickname.trim(), make: f.make.trim(), model: f.model.trim(), year,
+      trim: f.trim.trim() || null, drivetrain, vin: f.vin.trim() || null,
+      license_plate: f.plate.trim() || null, color: f.color.trim() || null, photo: null,
+      purchase_date: f.purchaseDate || null, purchase_odometer: null, current_odometer: odo,
+      is_archived: vehicle?.is_archived ?? false,
+    }
+    try {
+      if (vehicle) {
+        await window.api.vehicles.update(vehicle.id, payload)
+        toast.success('Vehicle updated')
+        await onSaved(vehicle.id, false)
+      } else {
+        const created = await window.api.vehicles.add(payload)
+        toast.success(`${payload.nickname} added`)
+        await onSaved(created.id, true)
+      }
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function archive() {
+    if (!vehicle) return
+    try {
+      await window.api.vehicles.update(vehicle.id, { is_archived: !vehicle.is_archived })
+      toast.success(vehicle.is_archived ? 'Vehicle restored' : 'Vehicle archived')
+      await onRemoved()
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
+  async function remove() {
+    if (!vehicle) return
+    try {
+      await window.api.vehicles.delete(vehicle.id)
+      toast.success('Vehicle deleted')
+      await onRemoved()
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
+  return (
+    <>
+      <h3 className="dl-subhead" style={{ marginTop: 6 }}>
+        {vehicle ? `EDIT ${vehicle.nickname.toUpperCase()}` : 'ADD A VEHICLE'}
+      </h3>
+      <div className="dl-frow">
+        <Field id="v-nick" label="Name" value={f.nickname} onChange={set('nickname')} error={errors.nickname} placeholder="The D-Max" mono={false} />
+        <Field id="v-plate" label="Plate" value={f.plate} onChange={set('plate')} placeholder="optional" />
+      </div>
+      <div className="dl-frow">
+        <Field id="v-make" label="Make" value={f.make} onChange={set('make')} error={errors.make} placeholder="Isuzu" mono={false} />
+        <Field id="v-model" label="Model" value={f.model} onChange={set('model')} error={errors.model} placeholder="D-Max" mono={false} />
+        <Field id="v-year" label="Year" value={f.year} onChange={set('year')} error={errors.year} />
+      </div>
+      <div className="dl-frow">
+        <div className="dl-field">
+          <label htmlFor="v-drive">Drivetrain</label>
+          <select id="v-drive" value={drivetrain} onChange={e => setDrivetrain(e.target.value as Drivetrain)}>
+            {DRIVETRAINS.map(d => <option key={d} value={d}>{DRIVETRAIN_LABELS[d]}</option>)}
+          </select>
+          <div className="dl-hint">
+            {vehicle ? 'changing this leaves existing intervals alone' : 'picks the starting service intervals'}
+          </div>
+        </div>
+        <Field
+          id="v-odo" label={`Odometer (${distanceUnit})`} value={f.odometer}
+          onChange={set('odometer')} error={errors.odometer}
+        />
+      </div>
+      <div className="dl-frow">
+        <Field id="v-trim" label="Trim" value={f.trim} onChange={set('trim')} placeholder="optional" mono={false} />
+        <Field id="v-color" label="Colour" value={f.color} onChange={set('color')} placeholder="optional" mono={false} />
+        <Field id="v-bought" label="Bought" value={f.purchaseDate} onChange={set('purchaseDate')} placeholder="yyyy-mm-dd" />
+      </div>
+      <Field id="v-vin" label="VIN" value={f.vin} onChange={set('vin')} placeholder="optional" />
+
+      <div className="dl-btnrow">
+        <button className="dl-save" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : vehicle ? 'Save changes' : 'Add vehicle'}
+        </button>
+        <button className="dl-save dl-ghost" onClick={onCancel}>Back</button>
+      </div>
+
+      {vehicle && (
+        <>
+          <div className="dl-btnrow">
+            <button className="dl-save dl-ghost" onClick={archive}>
+              {vehicle.is_archived ? 'Restore from archive' : 'Archive'}
+            </button>
+            {canDelete && (
+              <button
+                className="dl-save dl-danger"
+                onClick={() => confirmDelete ? remove() : setConfirmDelete(true)}
+              >
+                {confirmDelete ? 'Delete — click again' : 'Delete…'}
+              </button>
+            )}
+          </div>
+          <p className="dl-microcopy">
+            Archiving hides the vehicle but keeps its history. Deleting takes everything logged against
+            it — fill-ups, services, photos — and can't be undone.
+          </p>
+        </>
+      )}
     </>
   )
 }
@@ -266,7 +479,7 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onCha
           <button className="dl-ctl" onClick={onOpenHelp}>Open</button>
         </div>
         <div className="dl-setrow">
-          <span className="dl-lab"><b>Old screens</b><span>editing a record, photos, adding a vehicle or tire set</span></span>
+          <span className="dl-lab"><b>Old screens</b><span>editing a record, photos</span></span>
           <a className="dl-ctl" href="#/legacy/fuel">Open</a>
         </div>
       </div>
@@ -303,37 +516,166 @@ export function TireSetSheet({ distanceUnit, odometer, onChanged }: {
   distanceUnit: string; odometer: number; onChanged: () => void
 }) {
   const [sets, setSets] = useState<TireSet[]>([])
+  const [editing, setEditing] = useState<TireSet | 'new' | null>(null)
+  const [confirmRetire, setConfirmRetire] = useState(false)
   const load = () => window.api.tires.getSets().then(setSets)
   useEffect(() => { load() }, [])
   const active = sets.find(s => s.is_active)
+  const retired = sets.filter(s => !s.is_active)
 
-  if (!sets.length) {
-    return <p className="dl-hint" style={{ marginTop: 16 }}>
-      No tire sets yet. Adding a set is still on the old Tires screen; once one exists you can log
-      inspections and rotations from the log button.
-    </p>
+  if (editing) {
+    return (
+      <TireSetForm
+        set={editing === 'new' ? null : editing}
+        distanceUnit={distanceUnit}
+        odometer={odometer}
+        onCancel={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(); onChanged() }}
+      />
+    )
   }
 
   return (
     <>
-      {active && (
+      {active ? (
         <div className="dl-kv">
           <div><span>Set</span><b>{active.brand} {active.model}</b></div>
           <div><span>Size</span><b className="mono">{active.size}</b></div>
           <div><span>Fitted</span><b className="mono">{formatDate(active.install_date)}</b></div>
-          <div><span>Distance on set</span><b className="mono">{(odometer - active.install_odometer).toLocaleString()} {distanceUnit}</b></div>
+          <div><span>Distance on set</span><b className="mono">{Math.max(0, odometer - active.install_odometer).toLocaleString()} {distanceUnit}</b></div>
+        </div>
+      ) : (
+        <p className="dl-hint" style={{ marginTop: 16 }}>
+          No tire set fitted. Add one and the log button starts taking inspections and rotations
+          against it.
+        </p>
+      )}
+
+      <div className="dl-btnrow">
+        {active ? (
+          <>
+            <button className="dl-save dl-ghost" onClick={() => setEditing(active)}>Edit set</button>
+            <button className="dl-save dl-danger" onClick={async () => {
+              if (!confirmRetire) { setConfirmRetire(true); return }
+              await window.api.tires.retireSet(active.id, todayISO(), odometer)
+              toast.success('Set retired')
+              setConfirmRetire(false); load(); onChanged()
+            }}>{confirmRetire ? 'Retire — click again' : 'Retire this set'}</button>
+          </>
+        ) : (
+          <button className="dl-save" onClick={() => setEditing('new')}>+ Fit a set</button>
+        )}
+      </div>
+
+      {active && (
+        <div className="dl-btnrow">
+          <button className="dl-save dl-ghost" onClick={() => setEditing('new')}>+ Fit a different set</button>
         </div>
       )}
-      <div className="dl-btnrow">
-        <button className="dl-save dl-ghost" onClick={async () => {
-          if (!active) return
-          await window.api.tires.retireSet(active.id, todayISO(), odometer)
-          toast.success('Set retired'); load(); onChanged()
-        }}>Retire this set</button>
-      </div>
-      {sets.filter(s => !s.is_active).length > 0 && (
-        <p className="dl-microcopy">{sets.filter(s => !s.is_active).length} retired set(s) kept in history</p>
+
+      {retired.length > 0 && (
+        <>
+          <h3 className="dl-subhead">RETIRED</h3>
+          {retired.map(s => (
+            <div key={s.id} className="dl-setrow">
+              <span className="dl-lab">
+                <b>{s.brand} {s.model}</b>
+                <span className="mono">
+                  {s.size} · {formatDate(s.install_date)} → {s.retired_date ? formatDate(s.retired_date) : '—'}
+                  {s.retired_odometer != null ? ` · ${(s.retired_odometer - s.install_odometer).toLocaleString()} ${distanceUnit}` : ''}
+                </span>
+              </span>
+            </div>
+          ))}
+        </>
       )}
+      <p className="dl-microcopy">Fitting a new set doesn't retire the old one — retire it first if it came off</p>
+    </>
+  )
+}
+
+function TireSetForm({ set: existing, distanceUnit, odometer, onSaved, onCancel }: {
+  set: TireSet | null; distanceUnit: string; odometer: number
+  onSaved: () => void; onCancel: () => void
+}) {
+  const [f, setF] = useState<Record<string, string>>(() => ({
+    brand: existing?.brand ?? '',
+    model: existing?.model ?? '',
+    size: existing?.size ?? '',
+    installDate: existing?.install_date ?? todayISO(),
+    installOdo: existing ? String(existing.install_odometer) : String(odometer),
+    dot: existing?.dot_date ?? '',
+    psiF: existing?.recommended_psi_front != null ? String(existing.recommended_psi_front) : '',
+    psiR: existing?.recommended_psi_rear != null ? String(existing.recommended_psi_rear) : '',
+  }))
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const set = (k: string) => (v: string) => setF(prev => ({ ...prev, [k]: v }))
+  const num = (v: string) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null }
+
+  async function save() {
+    const e: Record<string, string> = {}
+    if (!f.brand.trim()) e.brand = 'Required'
+    if (!f.size.trim()) e.size = 'e.g. 265/65R17'
+    if (!f.installDate) e.installDate = 'Pick a date'
+    const installOdo = parseFloat(f.installOdo)
+    if (!Number.isFinite(installOdo) || installOdo < 0) e.installOdo = 'Enter a reading'
+    setErrors(e)
+    if (Object.keys(e).length) return
+
+    setSaving(true)
+    const payload = {
+      brand: f.brand.trim(), model: f.model.trim(), size: f.size.trim(),
+      dot_date: f.dot.trim() || null,
+      install_date: f.installDate, install_odometer: installOdo,
+      retired_date: null, retired_odometer: null,
+      recommended_psi_front: num(f.psiF), recommended_psi_rear: num(f.psiR),
+      notes: null,
+    }
+    try {
+      if (existing) {
+        await window.api.tires.updateSet(existing.id, payload)
+        toast.success('Set updated')
+      } else {
+        await window.api.tires.addSet(payload)
+        toast.success('Set fitted')
+      }
+      onSaved()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="dl-frow">
+        <Field id="ts-brand" label="Brand" value={f.brand} onChange={set('brand')} error={errors.brand} placeholder="Bridgestone" mono={false} />
+        <Field id="ts-model" label="Model" value={f.model} onChange={set('model')} placeholder="Dueler A/T" mono={false} />
+      </div>
+      <div className="dl-frow">
+        <Field id="ts-size" label="Size" value={f.size} onChange={set('size')} error={errors.size} placeholder="265/65R17" />
+        <Field id="ts-dot" label="DOT date" value={f.dot} onChange={set('dot')} placeholder="yyyy-mm" hint="week/year stamped on the wall" />
+      </div>
+      <div className="dl-frow">
+        <Field id="ts-date" label="Fitted on" value={f.installDate} onChange={set('installDate')} error={errors.installDate} placeholder="yyyy-mm-dd" />
+        <Field
+          id="ts-odo" label={`Fitted at (${distanceUnit})`} value={f.installOdo}
+          onChange={set('installOdo')} error={errors.installOdo}
+          hint="distance on the set counts from here"
+        />
+      </div>
+      <div className="dl-frow">
+        <Field id="ts-psif" label="Front PSI" value={f.psiF} onChange={set('psiF')} placeholder="optional" />
+        <Field id="ts-psir" label="Rear PSI" value={f.psiR} onChange={set('psiR')} placeholder="optional" />
+      </div>
+      <div className="dl-btnrow">
+        <button className="dl-save" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : existing ? 'Save changes' : 'Fit set'}
+        </button>
+        <button className="dl-save dl-ghost" onClick={onCancel}>Back</button>
+      </div>
     </>
   )
 }

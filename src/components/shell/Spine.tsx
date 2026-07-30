@@ -75,6 +75,10 @@ export default function Spine({
     return groups
   }, [shownEntries])
 
+  // Tire records hang off a fitted set, so the tires lens manages the set
+  // itself rather than service intervals.
+  const manageLabel = lens === 'tires' ? 'Tire set' : 'Service intervals'
+
   if (!shownEntries.length && !shownAhead.length) {
     return (
       <div className="dl-empty">
@@ -82,15 +86,24 @@ export default function Spine({
         {EMPTY_COPY[lens] ?? EMPTY_COPY.all}
         <br />
         <button onClick={onLogFirst}>+ Log the first one</button>
+        <button className="ghost" onClick={onManageIntervals}>{manageLabel}</button>
       </div>
     )
   }
 
   return (
     <div className="dl-spine">
+      {shownAhead.length === 0 && (
+        <p className="dl-section-lbl" style={{ justifyContent: 'flex-end' }}>
+          <button className="dl-lbl-link" onClick={onManageIntervals}>{manageLabel}</button>
+        </p>
+      )}
       {shownAhead.length > 0 && (
         <div className="dl-ahead">
-          <p className="dl-section-lbl">ROAD AHEAD</p>
+          <p className="dl-section-lbl">
+            ROAD AHEAD
+            <button className="dl-lbl-link" onClick={onManageIntervals}>{manageLabel}</button>
+          </p>
           {shownAhead.map(a => (
             <div key={a.id} className={`dl-entry ${a.status === 'overdue' ? 'overdue' : a.status === 'due-soon' ? 'due' : ''}`}>
               <span className="dl-date-mark mono" aria-hidden="true">
