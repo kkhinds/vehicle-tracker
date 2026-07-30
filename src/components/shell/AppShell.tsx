@@ -60,28 +60,16 @@ export default function AppShell() {
     if (el) el.style.setProperty('--ahead-h', `${aheadEl?.offsetHeight ?? 0}px`)
   }, [entries, ahead, lens])
 
-  // Which vehicles need attention — drives the dot on the switcher. Cheap enough
-  // to ask per vehicle; a single household query lands in Phase 4.
+  // Which vehicles need attention — drives the dot on the switcher. One query
+  // covers the household; this used to make each vehicle current in turn, which
+  // wrote settings (and so persisted the whole database) once per vehicle.
   useEffect(() => {
     let cancelled = false
-    async function check() {
-      const flagged = new Set<number>()
-      const active = vehicles.filter(v => !v.is_archived)
-      for (const v of active) {
-        if (v.id === currentVehicleId) {
-          if (summaryNeedsAttention(summary)) flagged.add(v.id)
-          continue
-        }
-        await window.api.vehicles.setCurrent(v.id)
-        const s = await window.api.dashboard.getSummary()
-        if (summaryNeedsAttention(s)) flagged.add(v.id)
-      }
-      if (currentVehicleId) await window.api.vehicles.setCurrent(currentVehicleId)
-      if (!cancelled) setAlerting(flagged)
-    }
-    if (vehicles.length > 1) check()
+    window.api.dashboard.getAlerts().then(ids => {
+      if (!cancelled) setAlerting(new Set(ids))
+    })
     return () => { cancelled = true }
-  }, [vehicles, currentVehicleId, summary])
+  }, [vehicles, summary])
 
   // Attachments live on the record, not on the timeline row.
   useEffect(() => {
@@ -415,13 +403,4 @@ export default function AppShell() {
       </Sheet>
     </>
   )
-}
-
-function summaryNeedsAttention(s: DashboardSummary | null): boolean {
-  if (!s) return false
-  if (s.nextService && s.nextService.kmRemaining <= 0) return true
-  if (s.nextService?.daysRemaining != null && s.nextService.daysRemaining <= 0) return true
-  if (s.upcomingDocument && s.upcomingDocument.daysRemaining <= 30) return true
-  if (s.insuranceRenewal && s.insuranceRenewal.daysRemaining <= 30) return true
-  return !!s.tireWarning || !!s.fluidWarning
 }

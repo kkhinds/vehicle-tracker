@@ -183,6 +183,53 @@ export function registerDashboardHandlers(): void {
       monthlyTrend,
     }
   })
+
+  /**
+   * Which vehicles need attention, for the switcher's alert dots. The renderer
+   * used to answer this by making each vehicle current in turn and asking for
+   * its summary — a settings write per vehicle, and every write persists the
+   * whole database synchronously. This reads them all in place instead.
+   */
+  ipcMain.handle('dashboard:getAlerts', () => {
+    const vehicles = db.prepare(
+      'SELECT id, current_odometer FROM vehicles WHERE is_archived = 0'
+    ).all() as Array<{ id: number; current_odometer: number }>
+
+    return vehicles
+      .filter(v => vehicleNeedsAttention(db, v.id, v.current_odometer))
+      .map(v => v.id)
+  })
+}
+
+/** Same thresholds the hero and spine colour on: due, overdue, or expiring within a month. */
+function vehicleNeedsAttention(
+  db: ReturnType<typeof import('../db').getDb>,
+  vehicleId: number,
+  odometer: number,
+): boolean {
+  const intervals = db.prepare(
+    'SELECT interval_km, interval_months, last_done_km, last_done_date FROM service_intervals WHERE vehicle_id = ?'
+  ).all(vehicleId) as Array<{
+    interval_km: number; interval_months: number | null
+    last_done_km: number | null; last_done_date: string | null
+  }>
+  for (const iv of intervals) {
+    if ((iv.last_done_km ?? 0) + iv.interval_km - odometer <= 0) return true
+    if (iv.interval_months && iv.last_done_date
+      && daysUntil(addMonthsISO(iv.last_done_date, iv.interval_months)) <= 0) return true
+  }
+
+  const doc = db.prepare(
+    'SELECT expiry_date FROM vehicle_documents WHERE vehicle_id = ? AND expiry_date IS NOT NULL ORDER BY expiry_date ASC LIMIT 1'
+  ).get(vehicleId) as { expiry_date: string } | undefined
+  if (doc && daysUntil(doc.expiry_date) <= 30) return true
+
+  const policy = db.prepare(
+    'SELECT renewal_date FROM insurance_policies WHERE vehicle_id = ? AND is_active = 1 ORDER BY renewal_date ASC LIMIT 1'
+  ).get(vehicleId) as { renewal_date: string } | undefined
+  if (policy && daysUntil(policy.renewal_date) <= 30) return true
+
+  return !!computeTireWarning(db, vehicleId, odometer) || !!computeFluidWarning(db, vehicleId, odometer)
 }
 
 interface FluidRow {

@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   dashboard: {
     getSummary: () => ipcRenderer.invoke('dashboard:getSummary'),
+    getAlerts: () => ipcRenderer.invoke('dashboard:getAlerts'),
   },
   expenses: {
     getSummary: (startDate?: string, endDate?: string) =>

@@ -81,6 +81,8 @@ interface ElectronAPI {
   }
   dashboard: {
     getSummary: () => Promise<DashboardSummary>
+    /** Ids of non-archived vehicles with something due, overdue or expiring soon. */
+    getAlerts: () => Promise<number[]>
   }
   expenses: {
     getSummary: (startDate?: string, endDate?: string) => Promise<ExpenseSummary>
