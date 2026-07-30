@@ -76,6 +76,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
       date: str(r.start_date), provider: str(r.provider), policy: str(r.policy_number),
       coverage: str(r.coverage_type), premium: str(r.premium_amount),
       renewal: str(r.renewal_date), notes: str(r.notes),
+      active: r.is_active === false ? '' : '1',
     }
     case 'docs': return {
       date: str(r.issued_date), title: str(r.title), docType: str(r.doc_type),
@@ -95,6 +96,9 @@ export default function LogForm({
   const [f, setF] = useState<Record<string, string>>({})
   const [fullTank, setFullTank] = useState(true)
   const [photos, setPhotos] = useState<string[]>([])
+  /** Tires log two different things against the fitted set. */
+  const [tireMode, setTireMode] = useState<'inspection' | 'rotation'>('inspection')
+  const [fluidPresets, setFluidPresets] = useState<{ key: string; label: string }[]>([])
   // Picking copies the file immediately, so anything picked and then abandoned
   // has to be unlinked or it sits in the photos folder forever.
   const copied = useRef<string[]>([])
@@ -120,6 +124,11 @@ export default function LogForm({
     setFullTank(true)
     setPhotos([])
   }, [type, lastFuel, edit])
+
+  useEffect(() => {
+    if (type !== 'fluid' || fluidPresets.length) return
+    window.api.fluids.getPresets().then(p => setFluidPresets(p.map(x => ({ key: x.key, label: x.label }))))
+  }, [type, fluidPresets.length])
 
   /** Drops copies the user picked but never saved. */
   async function cancel() {
@@ -210,7 +219,14 @@ export default function LogForm({
         case 'tires': {
           const sets = await window.api.tires.getSets()
           const active = sets.find(s => s.is_active) ?? sets[0]
-          if (!active) { toast.error('Add a tire set first — Tires lens › Manage set'); break }
+          if (!active) { toast.error('Fit a tire set first — Tires lens › Tire set'); break }
+          if (tireMode === 'rotation') {
+            await window.api.tires.addRotation({
+              tire_set_id: active.id, date: f.date, odometer: odo,
+              pattern: (f.pattern as never) || 'front-to-back', notes: f.notes || null,
+            })
+            onSaved('Rotation logged'); break
+          }
           const mm = (k: string) => { const n = parseFloat(f[k] ?? ''); return Number.isFinite(n) ? n : null }
           await window.api.tires.addInspection({
             tire_set_id: active.id, date: f.date, odometer: odo,
@@ -282,6 +298,7 @@ export default function LogForm({
           coverage_type: (f.coverage as never) || 'comprehensive',
           premium_amount: parseFloat(f.premium ?? '') || 0,
           start_date: f.date, renewal_date: f.renewal, notes: f.notes || null, photos,
+          is_active: f.active === '1',
         })
         onSaved('Policy updated'); break
       case 'docs':
@@ -298,7 +315,7 @@ export default function LogForm({
 
   const field = (
     name: string, label: string,
-    opts: { type?: string; placeholder?: string; hint?: string; value?: string } = {}
+    opts: { type?: string; placeholder?: string; hint?: string; value?: string; list?: string } = {}
   ) => (
     <div className={`dl-field${errors[name] ? ' error' : ''}`}>
       <label htmlFor={`lf-${name}`}>{label}</label>
@@ -307,6 +324,7 @@ export default function LogForm({
         className={opts.type === 'text' ? '' : 'mono'}
         inputMode={opts.type === 'text' ? undefined : 'decimal'}
         placeholder={opts.placeholder}
+        list={opts.list}
         value={opts.value ?? f[name] ?? ''}
         onChange={e => {
           if (name === 'total') set('totalTouched', '1')
@@ -373,20 +391,48 @@ export default function LogForm({
       )}
 
       {type === 'fluid' && (
-        <div className="dl-frow">
-          {field('fluidType', 'Fluid', { type: 'text', placeholder: 'engine-oil' })}
-          {field('amount', 'Amount', { placeholder: '0' })}
-          {field('unit', 'Unit', { type: 'text', placeholder: 'ml' })}
-        </div>
+        <>
+          <div className="dl-frow">
+            {field('fluidType', 'Fluid', { type: 'text', placeholder: 'engine-oil', list: 'lf-fluid-list' })}
+            {field('amount', 'Amount', { placeholder: '0' })}
+            {field('unit', 'Unit', { type: 'text', placeholder: 'ml' })}
+          </div>
+          {/* Suggestions only — a fluid the presets don't know about still types in. */}
+          <datalist id="lf-fluid-list">
+            {fluidPresets.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </datalist>
+        </>
       )}
 
       {type === 'tires' && (
         <>
-          <div className="dl-hint" style={{ marginTop: 12 }}>Tread depth per corner (mm) — leave blank if not measured</div>
-          <div className="dl-frow">
-            {field('fl', 'Front left')}{field('fr', 'Front right')}
-            {field('rl', 'Rear left')}{field('rr', 'Rear right')}
-          </div>
+          {!edit && (
+            <div className="dl-seg" role="group" aria-label="Tire record">
+              <button aria-pressed={tireMode === 'inspection'} onClick={() => setTireMode('inspection')}>Inspection</button>
+              <button aria-pressed={tireMode === 'rotation'} onClick={() => setTireMode('rotation')}>Rotation</button>
+            </div>
+          )}
+          {tireMode === 'rotation' ? (
+            <>
+              {field('pattern', 'Pattern', {
+                type: 'text', placeholder: 'front-to-back', list: 'lf-pattern-list',
+                hint: 'how the wheels moved around',
+              })}
+              <datalist id="lf-pattern-list">
+                {['front-to-back', 'cross', 'x-pattern', 'side-to-side', 'other'].map(p => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+            </>
+          ) : (
+            <>
+              <div className="dl-hint" style={{ marginTop: 12 }}>Tread depth per corner (mm) — leave blank if not measured</div>
+              <div className="dl-frow">
+                {field('fl', 'Front left')}{field('fr', 'Front right')}
+                {field('rl', 'Rear left')}{field('rr', 'Rear right')}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -401,6 +447,16 @@ export default function LogForm({
             {field('date', 'Starts', { type: 'text' })}
             {field('renewal', 'Renews', { type: 'text', placeholder: 'yyyy-mm-dd' })}
           </div>
+          {edit && (
+            <label className="dl-check">
+              <input
+                type="checkbox"
+                checked={f.active === '1'}
+                onChange={e => set('active', e.target.checked ? '1' : '')}
+              />
+              Still the active policy — renewal reminders come off this
+            </label>
+          )}
         </>
       )}
 
@@ -425,7 +481,7 @@ export default function LogForm({
         </>
       )}
 
-      {TAKES_PHOTOS[type] && (
+      {TAKES_PHOTOS[type] && !(type === 'tires' && tireMode === 'rotation') && (
         <PhotoPicker
           category={PHOTO_CATEGORY[type]}
           paths={photos}

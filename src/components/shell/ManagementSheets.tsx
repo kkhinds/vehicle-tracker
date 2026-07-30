@@ -33,8 +33,9 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
   odometer: number; distanceUnit: string; onChanged: () => void
 }) {
   const [rows, setRows] = useState<ServiceInterval[]>([])
-  const [editing, setEditing] = useState<ServiceInterval | null>(null)
+  const [editing, setEditing] = useState<ServiceInterval | 'new' | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = () => window.api.schedule.getAll().then(setRows)
   useEffect(() => { load() }, [])
@@ -47,15 +48,44 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
 
   async function saveEdit() {
     if (!editing) return
-    await window.api.schedule.update(editing.id, {
-      name: form.name || editing.name,
-      interval_km: parseFloat(form.km) || editing.interval_km,
-      interval_months: form.months ? parseFloat(form.months) : null,
-      last_done_km: form.lastKm ? parseFloat(form.lastKm) : editing.last_done_km,
-      last_done_date: form.lastDate || editing.last_done_date,
-    })
-    toast.success('Interval updated')
-    setEditing(null); load(); onChanged()
+    const km = parseFloat(form.km)
+    if (!form.name?.trim()) { toast.error('Name it first'); return }
+    if (!(km > 0)) { toast.error('Enter how often it comes round'); return }
+    try {
+      if (editing === 'new') {
+        await window.api.schedule.add({
+          name: form.name.trim(), category_key: null, interval_km: km,
+          interval_months: form.months ? parseFloat(form.months) : null,
+          last_done_km: form.lastKm ? parseFloat(form.lastKm) : null,
+          last_done_date: form.lastDate || null,
+          is_custom: true, consequence_of_skipping: null, notes: null,
+        })
+        toast.success('Interval added')
+      } else {
+        await window.api.schedule.update(editing.id, {
+          name: form.name.trim(),
+          interval_km: km,
+          interval_months: form.months ? parseFloat(form.months) : null,
+          last_done_km: form.lastKm ? parseFloat(form.lastKm) : editing.last_done_km,
+          last_done_date: form.lastDate || editing.last_done_date,
+        })
+        toast.success('Interval updated')
+      }
+      setEditing(null); setConfirmDelete(false); load(); onChanged()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  async function removeInterval() {
+    if (!editing || editing === 'new') return
+    try {
+      await window.api.schedule.delete(editing.id)
+      toast.success('Interval removed')
+      setEditing(null); setConfirmDelete(false); load(); onChanged()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
   }
 
   if (editing) {
@@ -86,15 +116,28 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
             <input id="iv-lastdate" className="mono" placeholder="yyyy-mm-dd" value={form.lastDate ?? ''} onChange={e => setForm({ ...form, lastDate: e.target.value })} />
           </div>
         </div>
-        {editing.consequence_of_skipping && (
+        {editing !== 'new' && editing.consequence_of_skipping && (
           <p className="dl-hint" style={{ marginTop: 14, lineHeight: 1.5 }}>
             <b style={{ color: 'var(--dim)' }}>Why this matters — </b>{editing.consequence_of_skipping}
           </p>
         )}
         <div className="dl-btnrow">
-          <button className="dl-save" onClick={saveEdit}>Save</button>
-          <button className="dl-save dl-ghost" onClick={() => setEditing(null)}>Back</button>
+          <button className="dl-save" onClick={saveEdit}>{editing === 'new' ? 'Add interval' : 'Save'}</button>
+          <button className="dl-save dl-ghost" onClick={() => { setEditing(null); setConfirmDelete(false) }}>Back</button>
         </div>
+        {editing !== 'new' && (
+          <>
+            <div className="dl-btnrow">
+              <button
+                className="dl-save dl-danger"
+                onClick={() => confirmDelete ? removeInterval() : setConfirmDelete(true)}
+              >
+                {confirmDelete ? 'Remove — click again' : 'Remove this interval'}
+              </button>
+            </div>
+            <p className="dl-microcopy">Removing stops it appearing on the road ahead. Past services stay logged.</p>
+          </>
+        )}
       </>
     )
   }
@@ -133,6 +176,9 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
             </div>
           )
         })}
+      </div>
+      <div className="dl-btnrow">
+        <button className="dl-save" onClick={() => { setEditing('new'); setForm({}) }}>+ Add an interval</button>
       </div>
       <p className="dl-microcopy">Click a row to edit · ✓ marks it done at {odometer.toLocaleString()} {distanceUnit}</p>
     </>
