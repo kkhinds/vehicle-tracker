@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { todayISO } from '@/lib/utils'
+import { PhotoPicker } from './Photos'
 import type { EntryKind } from '@/env'
 
 export type LogType = 'fuel' | 'service' | 'fluid' | 'tires' | 'insurance' | 'docs'
@@ -33,6 +34,26 @@ interface LogFormProps {
 type Errors = Partial<Record<string, string>>
 
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+
+/** Photo folder each type files its attachments under. */
+const PHOTO_CATEGORY: Record<LogType, string> = {
+  fuel: 'fuel', service: 'maintenance', fluid: 'maintenance',
+  tires: 'tires', insurance: 'insurance', docs: 'documents',
+}
+
+/** Fluids carry no attachment column, so they get no picker. */
+const TAKES_PHOTOS: Record<LogType, boolean> = {
+  fuel: true, service: true, fluid: false, tires: true, insurance: true, docs: true,
+}
+
+/** Fuel receipts and tire inspection shots are single columns, not tables. */
+const SINGLE_PHOTO: Record<string, boolean> = { fuel: true, tires: true }
+
+function recordToPhotos(type: LogType, r: Record<string, unknown>): string[] {
+  if (type === 'fuel') return r.receipt_photo ? [String(r.receipt_photo)] : []
+  if (type === 'tires') return r.photo ? [String(r.photo)] : []
+  return Array.isArray(r.photos) ? (r.photos as string[]) : []
+}
 
 /** Inverse of the payloads in save() — turns a stored record back into fields. */
 function recordToForm(type: LogType, r: Record<string, unknown>): Record<string, string> {
@@ -73,6 +94,10 @@ export default function LogForm({
   const [errors, setErrors] = useState<Errors>({})
   const [f, setF] = useState<Record<string, string>>({})
   const [fullTank, setFullTank] = useState(true)
+  const [photos, setPhotos] = useState<string[]>([])
+  // Picking copies the file immediately, so anything picked and then abandoned
+  // has to be unlinked or it sits in the photos folder forever.
+  const copied = useRef<string[]>([])
 
   useEffect(() => { setType(edit?.type ?? initialType) }, [initialType, edit])
 
@@ -83,6 +108,7 @@ export default function LogForm({
     if (edit) {
       setF(recordToForm(edit.type, edit.record))
       setFullTank(edit.record.full_tank !== false)
+      setPhotos(recordToPhotos(edit.type, edit.record))
       return
     }
     setF({
@@ -92,7 +118,23 @@ export default function LogForm({
       price: lastFuel?.pricePerLitre != null ? String(lastFuel.pricePerLitre) : '',
     })
     setFullTank(true)
+    setPhotos([])
   }, [type, lastFuel, edit])
+
+  /** Drops copies the user picked but never saved. */
+  async function cancel() {
+    const saved = new Set(edit ? recordToPhotos(edit.type, edit.record) : [])
+    for (const p of copied.current) {
+      if (!saved.has(p)) await window.api.files.deleteFile(p)
+    }
+    copied.current = []
+    onCancel()
+  }
+
+  function changePhotos(next: string[]) {
+    for (const p of next) if (!copied.current.includes(p)) copied.current.push(p)
+    setPhotos(next)
+  }
 
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
@@ -144,7 +186,7 @@ export default function LogForm({
             date: f.date, odometer: odo, litres,
             cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
             total_cost: total, fuel_station: f.station || null,
-            full_tank: fullTank, notes: f.notes || null, receipt_photo: null,
+            full_tank: fullTank, notes: f.notes || null, receipt_photo: photos[0] ?? null,
             // Derived by the backend from the fill-to-full span, not the form.
             consumption: null,
           })
@@ -155,7 +197,7 @@ export default function LogForm({
             date: f.date, odometer: odo, category: f.category || 'Other',
             description: f.description, cost: parseFloat(f.cost ?? '') || 0,
             shop_name: f.shop || null, parts_replaced: null,
-            notes: f.notes || null, photos: [],
+            notes: f.notes || null, photos,
           })
           onSaved('Service logged'); break
         case 'fluid':
@@ -174,7 +216,7 @@ export default function LogForm({
             tire_set_id: active.id, date: f.date, odometer: odo,
             tread_fl: mm('fl'), tread_fr: mm('fr'), tread_rl: mm('rl'), tread_rr: mm('rr'),
             pressure_fl: null, pressure_fr: null, pressure_rl: null, pressure_rr: null,
-            notes: f.notes || null, photo: null,
+            notes: f.notes || null, photo: photos[0] ?? null,
           })
           onSaved('Inspection logged'); break
         }
@@ -185,7 +227,7 @@ export default function LogForm({
             premium_amount: parseFloat(f.premium ?? '') || 0,
             payment_frequency: 'annually', start_date: f.date, renewal_date: f.renewal,
             agent_name: null, agent_contact: null, notes: f.notes || null,
-            is_active: true, photos: [],
+            is_active: true, photos,
           })
           onSaved('Policy saved'); break
         case 'docs':
@@ -193,7 +235,7 @@ export default function LogForm({
             doc_type: (f.docType as never) || 'registration', title: f.title,
             reference_number: null, issuer: null, issued_date: f.date,
             expiry_date: f.noExpiry === '1' ? null : (f.expiry || null),
-            cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null, photos: [],
+            cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null, photos,
           })
           onSaved('Document saved'); break
       }
@@ -216,6 +258,7 @@ export default function LogForm({
           cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
           total_cost: total, fuel_station: f.station || null,
           full_tank: fullTank, notes: f.notes || null,
+          receipt_photo: photos[0] ?? null,
         })
         onSaved('Fill-up updated'); break
       }
@@ -223,7 +266,7 @@ export default function LogForm({
         await window.api.maintenance.update(id, {
           date: f.date, odometer: odo, category: f.category || 'Other',
           description: f.description, cost: parseFloat(f.cost ?? '') || 0,
-          shop_name: f.shop || null, notes: f.notes || null,
+          shop_name: f.shop || null, notes: f.notes || null, photos,
         })
         onSaved('Service updated'); break
       case 'fluid':
@@ -238,14 +281,14 @@ export default function LogForm({
           provider: f.provider, policy_number: f.policy || '',
           coverage_type: (f.coverage as never) || 'comprehensive',
           premium_amount: parseFloat(f.premium ?? '') || 0,
-          start_date: f.date, renewal_date: f.renewal, notes: f.notes || null,
+          start_date: f.date, renewal_date: f.renewal, notes: f.notes || null, photos,
         })
         onSaved('Policy updated'); break
       case 'docs':
         await window.api.documents.update(id, {
           doc_type: (f.docType as never) || 'registration', title: f.title,
           issued_date: f.date, expiry_date: f.noExpiry === '1' ? null : (f.expiry || null),
-          cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null,
+          cost: parseFloat(f.cost ?? '') || null, notes: f.notes || null, photos,
         })
         onSaved('Document updated'); break
       default:
@@ -382,12 +425,22 @@ export default function LogForm({
         </>
       )}
 
+      {TAKES_PHOTOS[type] && (
+        <PhotoPicker
+          category={PHOTO_CATEGORY[type]}
+          paths={photos}
+          onChange={changePhotos}
+          multiple={!SINGLE_PHOTO[type]}
+          label={type === 'fuel' ? 'Receipt' : 'File'}
+        />
+      )}
+
       <div className="dl-btnrow">
         <button className="dl-save" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : edit ? 'Save changes' : 'Save'}
           <span className="mono" style={{ fontWeight: 400 }}> · Enter</span>
         </button>
-        <button className="dl-save dl-ghost" onClick={onCancel}>Cancel</button>
+        <button className="dl-save dl-ghost" onClick={cancel}>Cancel</button>
       </div>
     </>
   )

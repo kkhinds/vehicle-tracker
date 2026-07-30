@@ -6,6 +6,8 @@ import Spine from './Spine'
 import Sheet from './Sheet'
 import Stats from './Stats'
 import HelpSheet from './HelpSheet'
+import SearchSheet from './SearchSheet'
+import { PhotoStrip } from './Photos'
 import LogForm, { KIND_TO_LOG, type EditTarget, type LogType } from './LogForm'
 import {
   IntervalsSheet, GarageSheet, BackupsSheet, SettingsSheet, OdometerSheet, TireSetSheet,
@@ -35,7 +37,8 @@ export default function AppShell() {
   const [detail, setDetail] = useState<TimelineEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [edit, setEdit] = useState<EditTarget | null>(null)
-  type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset' | 'help'
+  const [detailPhotos, setDetailPhotos] = useState<string[]>([])
+  type SheetName = 'settings' | 'garage' | 'intervals' | 'backups' | 'odometer' | 'tireset' | 'help' | 'search'
   const [sheet, setSheet] = useState<SheetName | null>(null)
 
   const reload = useCallback(async () => {
@@ -80,6 +83,22 @@ export default function AppShell() {
     return () => { cancelled = true }
   }, [vehicles, currentVehicleId, summary])
 
+  // Attachments live on the record, not on the timeline row.
+  useEffect(() => {
+    if (!detail) { setDetailPhotos([]); return }
+    let cancelled = false
+    loadRecord(detail.id).then(r => {
+      if (cancelled || !r) return
+      const paths = r.receipt_photo ? [String(r.receipt_photo)]
+        : r.photo ? [String(r.photo)]
+        : Array.isArray(r.photos) ? (r.photos as string[])
+        : []
+      setDetailPhotos(paths)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail])
+
   const theme = settings.theme
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -105,7 +124,17 @@ export default function AppShell() {
     }
   }, [summary, settings.distance_unit])
 
-  const soon = () => toast.info('Lands in a later phase of the rebuild')
+  // Ctrl/Cmd+K is the advertised way in, so it works from anywhere in the shell.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        setSheet(s => (s === 'search' ? null : 'search'))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Carried into the next fill-up so the weekly job is mostly pre-filled.
   const lastFuel = useMemo(() => {
@@ -123,25 +152,32 @@ export default function AppShell() {
     fuel: 'fuel', service: 'service', fluid: 'fluid', insurance: 'insurance', docs: 'docs',
   }
 
-  // The spine carries display text, not the stored row, so the record is pulled
-  // back from its own table before the form opens.
-  async function openEdit() {
-    if (!detail) return
-    const [t, rawId] = detail.id.split(':')
-    const type = EDITABLE[t]
-    const id = Number(rawId)
-    if (!type) return
-    const list = await ({
+  // The spine carries display text, not the stored row, so anything that needs
+  // real fields — the edit form, the attachment strip — fetches the record back
+  // from its own table.
+  async function loadRecord(entryId: string): Promise<Record<string, unknown> | null> {
+    const [t, rawId] = entryId.split(':')
+    const get = ({
       fuel: () => window.api.fuel.getAll(),
       service: () => window.api.maintenance.getAll(),
       fluid: () => window.api.fluids.getAll(),
       insurance: () => window.api.insurance.getAll(),
       docs: () => window.api.documents.getAll(),
-    } as Record<string, () => Promise<{ id: number }[]>>)[t]()
-    const record = list.find(r => r.id === id)
+    } as Record<string, () => Promise<{ id: number }[]>>)[t]
+    if (!get) return null
+    const record = (await get()).find(r => r.id === Number(rawId))
+    return (record as unknown as Record<string, unknown>) ?? null
+  }
+
+  async function openEdit() {
+    if (!detail) return
+    const [t, rawId] = detail.id.split(':')
+    const type = EDITABLE[t]
+    if (!type) return
+    const record = await loadRecord(detail.id)
     if (!record) { toast.error('That record is gone'); return }
     setDetail(null); setConfirmDelete(false)
-    setEdit({ type, id, record: record as unknown as Record<string, unknown> })
+    setEdit({ type, id: Number(rawId), record })
     setLogType(type)
     setLogOpen(true)
   }
@@ -192,7 +228,7 @@ export default function AppShell() {
         onChange={setLens}
         vehicleName={currentVehicle?.nickname ?? 'No vehicle'}
         onOpenGarage={() => setSheet('garage')}
-        onSearch={soon}
+        onSearch={() => setSheet('search')}
       />
       <main className="shell" style={{ paddingBlock: 32, paddingBottom: 130 }} ref={spineRef}>
         {loading ? (
@@ -267,6 +303,7 @@ export default function AppShell() {
               {detail.valueSub && <div><span>Economy</span><b className="mono">{detail.valueSub}</b></div>}
             </div>
             <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
+            <PhotoStrip paths={detailPhotos} />
             <div className="dl-btnrow">
               {EDITABLE[table] && (
                 <button className="dl-save dl-ghost" onClick={openEdit}>Edit</button>
@@ -323,6 +360,19 @@ export default function AppShell() {
           odometer={currentVehicle?.current_odometer ?? 0}
           distanceUnit={settings.distance_unit}
           onChanged={reload}
+        />
+      </Sheet>
+
+      <Sheet
+        open={sheet === 'search'}
+        title="Search"
+        subtitle={currentVehicle?.nickname ?? ''}
+        onClose={() => setSheet(null)}
+      >
+        <SearchSheet
+          entries={entries}
+          distanceUnit={settings.distance_unit}
+          onOpen={e => { setSheet(null); setDetail(e) }}
         />
       </Sheet>
 
