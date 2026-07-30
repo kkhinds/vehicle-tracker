@@ -25,8 +25,42 @@ export default function HelpSheet() {
           <li>Total works itself out from litres × price. Type over it if the pump disagrees.</li>
           <li>Leave <b>Full</b> selected when you filled the tank. Economy is measured between
             full tanks, so partial fills still count toward the litres but don't end the span.</li>
+          <li>Attach a receipt, an invoice or a PDF — the file is copied into the app, so
+            moving the original later doesn't break anything.</li>
           <li>Enter saves. Esc closes.</li>
         </ul>
+      </section>
+
+      <section>
+        <h3>Changing something you logged</h3>
+        <p>
+          Click any entry on the timeline. The sheet shows what was recorded, its
+          attachments, and buttons to edit or delete it. Editing reopens the same form
+          with the stored values — fields the form doesn't show are left alone. Delete
+          asks twice.
+        </p>
+        <p>
+          Tire inspections and rotations are the exception: log a fresh one rather than
+          editing an old reading.
+        </p>
+      </section>
+
+      <section>
+        <h3>Finding an old entry</h3>
+        <p>
+          <b>Ctrl K</b> searches everything logged against the current vehicle — station,
+          shop, part, month, amount. Every word has to match, so "sol june" narrows it down.
+        </p>
+      </section>
+
+      <section>
+        <h3>Your garage</h3>
+        <p>
+          <b>+ Garage</b> under the vehicle name lists every vehicle and takes new ones. A
+          new vehicle starts with the service intervals its drivetrain needs. Archiving
+          hides a vehicle without touching its history; deleting takes everything logged
+          against it.
+        </p>
       </section>
 
       <section>
@@ -49,7 +83,8 @@ export default function HelpSheet() {
         </p>
         <p>
           Open <b>Service intervals</b> from the SERVICE lens to change a period, correct the
-          last-done reading, or tick one off at today's odometer.
+          last-done reading, add one of your own, or tick one off at today's odometer. The
+          TIRES lens has the same link for the fitted set.
         </p>
       </section>
 
@@ -87,6 +122,7 @@ export default function HelpSheet() {
       <section>
         <h3>Keyboard</h3>
         <ul>
+          <li><span className="mono">Ctrl K</span> — search the log</li>
           <li><span className="mono">Esc</span> — close a sheet</li>
           <li><span className="mono">Enter</span> — save the open form</li>
           <li><span className="mono">Ctrl R</span> — reload · <span className="mono">F12</span> — dev tools</li>
