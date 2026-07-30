@@ -69,7 +69,7 @@ export default function HelpSheet() {
           The row under the vehicle name filters the timeline. FUEL shows fill-ups,
           SERVICE shows work done and what's due, and so on. Each lens has its own summary
           and its own add button. STATS is the exception — it replaces the timeline with
-          spend, cost per km and the CSV export.
+          spend, cost per km (or mile) and the CSV export.
         </p>
       </section>
 

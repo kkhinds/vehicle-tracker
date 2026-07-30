@@ -305,9 +305,10 @@ function computeTireWarning(
   }
 
   // Heuristic km-based warning if no inspection logged yet
-  const kmOnTires = odometer - set.install_odometer
-  if (kmOnTires > 60000) {
-    return { tireSetId: set.id, reason: `${kmOnTires.toFixed(0)} km on these tires — check tread depth.` }
+  const distanceOnTires = odometer - set.install_odometer
+  if (distanceOnTires > 60000) {
+    const unit = getSetting('distance_unit') ?? 'km'
+    return { tireSetId: set.id, reason: `${distanceOnTires.toFixed(0)} ${unit} on these tires — check tread depth.` }
   }
 
   return null

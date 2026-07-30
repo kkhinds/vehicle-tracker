@@ -61,6 +61,7 @@ export function runNotificationCheck(): { fired: number; checked: number } {
     'SELECT id, nickname, current_odometer FROM vehicles WHERE is_archived = 0'
   ).all() as VehicleRow[]
 
+  const unit = getSetting('distance_unit') ?? 'km'
   const alerted = getAlertedKeys()
   const stillRelevant = new Set<string>()
   let fired = 0
@@ -100,7 +101,9 @@ export function runNotificationCheck(): { fired: number; checked: number } {
       stillRelevant.add(key)
       if (alerted.has(key)) continue
 
-      const verb = remaining <= 0 ? `overdue by ${Math.abs(Math.round(remaining))} km` : `due in ${Math.round(remaining)} km`
+      const verb = remaining <= 0
+        ? `overdue by ${Math.abs(Math.round(remaining))} ${unit}`
+        : `due in ${Math.round(remaining)} ${unit}`
       notify(`${v.nickname}: ${iv.name}`, `Service ${verb}.`)
       alerted.add(key)
       fired++
