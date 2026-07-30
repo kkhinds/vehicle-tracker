@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { formatDate, todayISO } from '@/lib/utils'
+import { formatDate, formatSize, todayISO } from '@/lib/utils'
 import type { BackupStatus, UpdaterStatus } from '@/env'
 import { DRIVETRAINS, DRIVETRAIN_LABELS } from '@/types'
 import type { Drivetrain, ServiceInterval, TireSet, Vehicle } from '@/types'
@@ -404,6 +404,8 @@ function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRe
 /* ── Backups ──────────────────────────────────────────────────────────────── */
 export function BackupsSheet() {
   const [status, setStatus] = useState<BackupStatus | null>(null)
+  const [showList, setShowList] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const load = () => window.api.backup.getStatus().then(setStatus)
   useEffect(() => { load() }, [])
 
@@ -435,9 +437,47 @@ export function BackupsSheet() {
         </div>
         <div className="dl-setrow">
           <span className="dl-lab"><b>Copies kept</b><span>{status?.backups.length ?? 0} on disk</span></span>
-          <button className="dl-ctl" onClick={() => window.api.backup.openFolder()}>Open folder</button>
+          <span style={{ display: 'flex', gap: 8 }}>
+            <button className="dl-ctl" onClick={() => setShowList(v => !v)} aria-expanded={showList}>
+              {showList ? 'Hide' : 'Show'}
+            </button>
+            <button className="dl-ctl" onClick={() => window.api.backup.openFolder()}>Open folder</button>
+          </span>
         </div>
       </div>
+
+      {showList && (
+        <>
+          <h3 className="dl-subhead">SNAPSHOTS — NEWEST FIRST</h3>
+          {(status?.backups ?? []).length === 0 && (
+            <p className="dl-hint">Nothing on disk yet. "Back up now" makes the first one.</p>
+          )}
+          {(status?.backups ?? []).map(b => (
+            <div key={b.path} className="dl-setrow">
+              <span className="dl-lab">
+                <b className="mono">{new Date(b.createdAt).toLocaleString()}</b>
+                <span className="mono">{formatSize(b.size)} · {b.name}</span>
+              </span>
+              <span style={{ display: 'flex', gap: 8 }}>
+                <button className="dl-ctl" onClick={() => window.api.backup.restore(b.path)}>Restore</button>
+                <button
+                  className="dl-ctl"
+                  onClick={() => {
+                    if (confirmDelete !== b.path) { setConfirmDelete(b.path); return }
+                    act(async () => {
+                      const next = await window.api.backup.delete(b.path)
+                      setStatus(next); setConfirmDelete(null)
+                    }, 'Snapshot deleted')
+                  }}
+                >
+                  {confirmDelete === b.path ? 'Delete — again' : 'Delete'}
+                </button>
+              </span>
+            </div>
+          ))}
+          <p className="dl-microcopy">Restoring from a snapshot takes a copy of today's data first, then restarts the app</p>
+        </>
+      )}
       <div className="dl-btnrow">
         <button className="dl-save dl-ghost" onClick={() => act(async () => {
           const dest = await window.api.backup.export()
