@@ -1,6 +1,6 @@
 # Vehicle Tracker (V2) — household vehicle management
 
-Electron desktop app (v3.1.0) tracking fuel, maintenance, service schedules, insurance, tires, fluids, expenses and documents per vehicle. Successor to the old "D-Max Tracker" — the old `E:\AI Projects\Vehicle App` folder is legacy, do not touch it.
+Electron desktop app (v3.2.0) tracking fuel, maintenance, service schedules, insurance, tires, fluids, expenses and documents per vehicle. Successor to the old "D-Max Tracker" — the old `E:\AI Projects\Vehicle App` folder is legacy, do not touch it.
 
 ## The UI is the Driver's Log
 One screen, no sidebar: hero (vehicle + odometer + next due) › lens bar (ALL / FUEL / SERVICE / TIRES / FLUIDS / INSURANCE / DOCS / STATS) › the **spine**, a date-ordered timeline with the projected "road ahead" above TODAY. Everything else opens as a bottom sheet. Design contract: `mockups/phase0-drivers-log.html` + `mockups/REDESIGN-SPEC.md` — match those tokens rather than inventing new ones. **Colour rule: chroma only for due/overdue; healthy stays neutral.** Notes were dropped in v3.0.
@@ -21,7 +21,7 @@ Electron 31 + electron-vite 2 + React 18 (HashRouter, one route), Tailwind + a c
 
 ## Release / update
 - electron-builder publish target: GitHub releases on **`kkhinds/vehicle-tracker`** (the code repo itself, NOT a separate `-releases` repo).
-- **Releases are automatic.** Bump `version` in package.json, push to `main`, and `.github/workflows/release.yml` builds the Windows installer on a runner and publishes it live, then tags the commit. A push that doesn't change the version stops at the `check` job. Latest release: v3.1.1. Write the user-facing notes in `release-notes/v<version>.md` before pushing the bump — the workflow attaches them; without the file the release body is empty.
+- **Releases are automatic.** Bump `version` in package.json, push to `main`, and `.github/workflows/release.yml` builds the Windows installer on a runner and publishes it live, then tags the commit. A push that doesn't change the version stops at the `check` job. Latest release: v3.2.0. Write the user-facing notes in `release-notes/v<version>.md` before pushing the bump — the workflow attaches them; without the file the release body is empty.
 - The installer name is pinned by `build.win.artifactName` to `Vehicle-Tracker-Setup-${version}.${ext}` — it must match the `url:` in `latest.yml` or the updater 404s. The auto-updater checks 5s after launch, downloads, installs on quit.
 - Building locally still works (`npm run dist:win`) but needs the winCodeSign workaround — see Gotchas.
 
