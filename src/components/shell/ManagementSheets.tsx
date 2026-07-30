@@ -525,8 +525,8 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onCha
           <button className="dl-ctl" onClick={onOpenHelp}>Open</button>
         </div>
         <div className="dl-setrow">
-          <span className="dl-lab"><b>Old screens</b><span>editing a record, photos</span></span>
-          <a className="dl-ctl" href="#/legacy/fuel">Open</a>
+          <span className="dl-lab"><b>Notifications test</b><span>fires a sample reminder</span></span>
+          <button className="dl-ctl" onClick={() => window.api.notifications.test()}>Send</button>
         </div>
       </div>
       <p className="dl-microcopy">Built by Kemar Hinds</p>
