@@ -18,9 +18,14 @@ interface HeroProps {
   onOpenSettings: () => void
 }
 
-/** Counts up to `value` once on mount/change. Static when reduced motion is on. */
+/**
+ * Counts up to `value`: from zero on first paint, and from the previous
+ * reading afterwards — re-running the whole climb every time a fill-up nudges
+ * the odometer is noise. Static when reduced motion is on.
+ */
 function useCountUp(value: number): number {
   const [shown, setShown] = useState(value)
+  const last = useRef<number | null>(null)
   const prefersStatic = useRef(
     typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
   )
@@ -29,7 +34,8 @@ function useCountUp(value: number): number {
     if (prefersStatic.current) { setShown(value); return }
     let raf = 0
     let start: number | null = null
-    const from = 0
+    const from = last.current ?? 0
+    last.current = value
     const step = (t: number) => {
       if (start === null) start = t
       const p = Math.min((t - start) / 900, 1)

@@ -28,7 +28,10 @@ export default function SearchSheet({ entries, distanceUnit, onOpen }: SearchShe
     return () => clearTimeout(t)
   }, [])
 
-  const results = useMemo(() => {
+  /** Long result lists get cut; the hint says so rather than quietly hiding rows. */
+  const LIMIT = 40
+
+  const matches = useMemo(() => {
     const needle = q.trim().toLowerCase()
     if (!needle) return entries.slice(0, 12)
     // Every word has to appear somewhere in the row, so "shell june" narrows.
@@ -39,8 +42,11 @@ export default function SearchSheet({ entries, distanceUnit, onOpen }: SearchShe
         e.odometer != null ? String(e.odometer) : '',
       ].join(' ').toLowerCase()
       return words.every(w => hay.includes(w))
-    }).slice(0, 40)
+    })
   }, [q, entries])
+
+  const results = matches.slice(0, LIMIT)
+  const hidden = matches.length - results.length
 
   return (
     <>
@@ -56,7 +62,7 @@ export default function SearchSheet({ entries, distanceUnit, onOpen }: SearchShe
         />
         <div className="dl-hint">
           {q.trim()
-            ? `${results.length} match${results.length === 1 ? '' : 'es'}`
+            ? `${matches.length} match${matches.length === 1 ? '' : 'es'}${hidden > 0 ? ` — showing the first ${LIMIT}` : ''}`
             : `${entries.length} entries — showing the most recent`}
         </div>
       </div>

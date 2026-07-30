@@ -463,3 +463,6 @@
 }
 .dl-thumb-add:hover{ color:var(--text); border-color:var(--dim) }
 .dl-thumb-add:disabled{ opacity:.5; cursor:default }
+
+/* Stats range picker sits above the grid, not inside a panel. */
+.dl-range{ margin:0 0 18px }

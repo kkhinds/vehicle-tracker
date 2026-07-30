@@ -15,10 +15,29 @@ interface StatsProps {
  * the shapes here are simple, and it keeps the series colours on the design's
  * luminance ramp. Accent stays reserved for "something is due".
  */
+/** Windows the spend panels look at. Trend stays 12 months whatever is picked. */
+const RANGES = [
+  { key: '12m', label: '12 MONTHS' },
+  { key: 'ytd', label: 'THIS YEAR' },
+  { key: 'all', label: 'ALL TIME' },
+] as const
+type RangeKey = (typeof RANGES)[number]['key']
+
+function rangeDates(key: RangeKey): [string | undefined, string | undefined] {
+  const today = new Date().toISOString().slice(0, 10)
+  if (key === 'ytd') return [`${today.slice(0, 4)}-01-01`, today]
+  if (key === 'all') return ['1900-01-01', today]
+  return [undefined, undefined]   // handler's own default is the last 12 months
+}
+
 export default function Stats({ summary, currency, distanceUnit, economyUnit }: StatsProps) {
   const [exp, setExp] = useState<ExpenseSummary | null>(null)
+  const [range, setRange] = useState<RangeKey>('12m')
 
-  useEffect(() => { window.api.expenses.getSummary().then(setExp) }, [])
+  useEffect(() => {
+    const [from, to] = rangeDates(range)
+    window.api.expenses.getSummary(from, to).then(setExp)
+  }, [range])
 
   const maxMonth = useMemo(
     () => Math.max(1, ...(exp?.monthlyTrend ?? []).map(m => m.total)),
@@ -28,7 +47,8 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
 
   async function exportCsv() {
     try {
-      const path = await window.api.expenses.exportCsv()
+      const [from, to] = rangeDates(range)
+      const path = await window.api.expenses.exportCsv(from, to)
       toast.success(`Exported to ${path}`)
     } catch (e) {
       toast.error((e as Error).message)
@@ -40,7 +60,16 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
   const econ = formatEconomy(summary?.avgConsumption, distanceUnit, economyUnit)
   const total = exp.byCategory.reduce((s, c) => s + c.amount, 0)
 
+  const rangeLabel = RANGES.find(r => r.key === range)!.label
+
   return (
+    <>
+      <div className="dl-seg dl-range" role="group" aria-label="Date range">
+        {RANGES.map(r => (
+          <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.label}</button>
+        ))}
+      </div>
+
     <div className="dl-stats-grid">
       <div className="dl-panelbox">
         <h3>MONTHLY SPEND — LAST 6</h3>
@@ -78,7 +107,7 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
       </div>
 
       <div className="dl-panelbox">
-        <h3>SPEND BY CATEGORY</h3>
+        <h3>SPEND BY CATEGORY — {rangeLabel}</h3>
         {exp.byCategory.length === 0 ? (
           <p className="dl-hint">Nothing logged in this range yet.</p>
         ) : (
@@ -113,7 +142,9 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
           ))}
         </div>
         <button className="dl-export-btn" onClick={exportCsv}>⤓ Export CSV to Downloads</button>
+        <p className="dl-hint">the export covers the selected range</p>
       </div>
     </div>
+    </>
   )
 }
