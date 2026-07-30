@@ -15,5 +15,7 @@
       "@main/*": ["electron/main/*"]
     }
   },
-  "include": ["electron/**/*", "electron.vite.config.ts"]
+  // The main process shares the renderer's domain types, so they have to be
+  // part of this project too or tsc refuses to follow the import.
+  "include": ["electron/**/*", "electron.vite.config.ts", "src/types/**/*"]
 }

@@ -1,7 +1,7 @@
 {
   "name": "vehicle-tracker",
   "version": "3.1.0",
-  "description": "Vehicle Tracker by Kemar Hinds — household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
+  "description": "Vehicle Tracker by Kemar Hinds \u2014 household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
   "main": "out/main/index.js",
   "author": "Kemar Hinds",
   "license": "MIT",
@@ -11,7 +11,9 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "dist:win": "npm run icon && npm run build && electron-builder --win",
-    "icon": "node scripts/build-icon.mjs"
+    "icon": "node scripts/build-icon.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "release:win": "npm run icon && npm run build && electron-builder --win --publish always"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",
@@ -57,7 +59,8 @@
     "publish": {
       "provider": "github",
       "owner": "kkhinds",
-      "repo": "vehicle-tracker"
+      "repo": "vehicle-tracker",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",

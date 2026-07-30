@@ -1,0 +1,66 @@
+name: Release
+
+# Bump "version" in package.json, push to main, and this builds the Windows
+# installer and publishes it live on this repo's releases — no local build, no
+# manual asset upload. Pushes that don't change the version stop at the
+# few-second `check` job.
+#
+# The runner also fixes the local build's sore point: electron-builder can't
+# unpack winCodeSign on the dev machine, so local builds disable signing and
+# stamp the exe with a standalone rcedit. On a clean Windows runner none of
+# that is needed.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      exists: ${{ steps.exists.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - id: exists
+        name: Has this version already been released?
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${{ steps.version.outputs.value }}" >/dev/null 2>&1; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.exists == 'false'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      # Publishes the installer, its blockmap and latest.yml — the updater
+      # needs all three, and the artifact name has to match latest.yml's url.
+      - name: Build and publish the installer
+        run: npm run release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the source commit
+        run: |
+          git tag "v${{ needs.check.outputs.version }}"
+          git push origin "v${{ needs.check.outputs.version }}"

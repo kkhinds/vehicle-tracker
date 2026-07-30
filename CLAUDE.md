@@ -19,10 +19,11 @@ Electron 31 + electron-vite 2 + React 18 (HashRouter, one route), Tailwind + a c
 - `src/components/shell/` — the whole UI: `AppShell` (state + sheets), `Hero`, `LensBar`, `Spine`, `Sheet`, `LogForm` (add **and** edit), `ManagementSheets` (intervals, garage, backups, settings, odometer, tire set), `Stats`, `SearchSheet`, `Photos`, `HelpSheet`
 - `src/styles/tokens.css` + `shell.css` — design tokens and every shell style; `src/{hooks,lib,types}`
 
-## Release / update — ⚠ different from the other apps
+## Release / update
 - electron-builder publish target: GitHub releases on **`kkhinds/vehicle-tracker`** (the code repo itself, NOT a separate `-releases` repo).
-- **No GitHub Actions workflow exists.** Releases are manual: `npm run dist:win` locally, then create the GitHub release and attach `Vehicle-Tracker-Setup-<ver>.exe`, its `.blockmap`, and `latest.yml` from `dist/`. The installer name is hyphenated because `build.win.artifactName` is pinned to `Vehicle-Tracker-Setup-${version}.${ext}` — it must match the `url:` in `latest.yml` or the updater 404s. Releases are live (latest v3.1.0); the auto-updater checks 5s after launch, auto-downloads, installs on quit.
-- `/release` skill applies, but with the manual local-build path until a CI workflow is added (copying Invoice App's `release.yml` is the intended fix).
+- **Releases are automatic.** Bump `version` in package.json, push to `main`, and `.github/workflows/release.yml` builds the Windows installer on a runner and publishes it live, then tags the commit. A push that doesn't change the version stops at the `check` job. Latest release: v3.1.0.
+- The installer name is pinned by `build.win.artifactName` to `Vehicle-Tracker-Setup-${version}.${ext}` — it must match the `url:` in `latest.yml` or the updater 404s. The auto-updater checks 5s after launch, downloads, installs on quit.
+- Building locally still works (`npm run dist:win`) but needs the winCodeSign workaround — see Gotchas.
 
 ## Data & backups
 - Backups: `%AppData%\Roaming\vehicle-tracker\backups\` or custom dir (`backup_dir` in settings table); `vehicle-tracker-YYYY-MM-DD-HHMMSS.db`; frequency on_open/daily/weekly/manual (default daily, keep 10). Restore takes a pre-restore snapshot first.
