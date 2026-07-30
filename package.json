@@ -1,6 +1,6 @@
 {
   "name": "vehicle-tracker",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Vehicle Tracker by Kemar Hinds — household vehicle management (fuel, maintenance, services, tires, insurance, documents).",
   "main": "out/main/index.js",
   "author": "Kemar Hinds",
@@ -73,8 +73,9 @@
       "installerIcon": "resources/icon.ico",
       "uninstallerIcon": "resources/icon.ico",
       "installerHeaderIcon": "resources/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vehicle Tracker"
     },
     "files": [
       "out/**/*",
