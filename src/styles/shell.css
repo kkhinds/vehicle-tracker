@@ -466,3 +466,10 @@
 
 /* Stats range picker sits above the grid, not inside a panel. */
 .dl-range{ margin:0 0 18px }
+
+/* Economy sparkline. Neutral like every other healthy figure — accent stays
+   reserved for "something is due". */
+.dl-spark{ width:100%; height:90px; margin:6px 0 10px; overflow:visible }
+.dl-spark .line{ fill:none; stroke:var(--text); stroke-width:1.6; stroke-linejoin:round }
+.dl-spark .fill{ fill:var(--hover); stroke:none }
+.dl-spark circle{ fill:var(--bg); stroke:var(--dim); stroke-width:1.4 }

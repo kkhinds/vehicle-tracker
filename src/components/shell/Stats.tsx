@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { formatCurrency, formatEconomy, economyLabel } from '@/lib/utils'
+import { formatCurrency, formatEconomy, economyLabel, economyValue, formatDate } from '@/lib/utils'
 import type { DashboardSummary, ExpenseSummary } from '@/types'
 
 interface StatsProps {
@@ -33,11 +33,25 @@ function rangeDates(key: RangeKey): [string | undefined, string | undefined] {
 export default function Stats({ summary, currency, distanceUnit, economyUnit }: StatsProps) {
   const [exp, setExp] = useState<ExpenseSummary | null>(null)
   const [range, setRange] = useState<RangeKey>('12m')
+  const [econSeries, setEconSeries] = useState<{ date: string; value: number }[]>([])
 
   useEffect(() => {
     const [from, to] = rangeDates(range)
     window.api.expenses.getSummary(from, to).then(setExp)
   }, [range])
+
+  // Economy per full tank, oldest first. Only full tanks close a measured span,
+  // so partial fills have no consumption figure of their own.
+  useEffect(() => {
+    window.api.fuel.getAll().then(rows => {
+      const points = rows
+        .filter(r => r.full_tank && r.consumption != null)
+        .map(r => ({ date: r.date, value: economyValue(r.consumption, distanceUnit, economyUnit) }))
+        .filter((p): p is { date: string; value: number } => p.value != null)
+        .sort((a, b) => a.date.localeCompare(b.date))
+      setEconSeries(points.slice(-12))
+    })
+  }, [distanceUnit, economyUnit])
 
   const maxMonth = useMemo(
     () => Math.max(1, ...(exp?.monthlyTrend ?? []).map(m => m.total)),
@@ -128,6 +142,62 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
               )
             })}
           </div>
+        )}
+      </div>
+
+      <div className="dl-panelbox">
+        <h3>FUEL ECONOMY — LAST {econSeries.length || ''} FULL TANKS</h3>
+        {econSeries.length < 2 ? (
+          <p className="dl-hint">
+            Two full tanks are needed before economy has anything to compare. Partial fills
+            count toward the litres but don't close a span.
+          </p>
+        ) : (
+          <>
+            <svg
+              className="dl-spark"
+              viewBox="0 0 300 90"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={econSeries.map(p =>
+                `${formatDate(p.date)}: ${p.value} ${economyLabel(distanceUnit, economyUnit)}`).join(', ')}
+            >
+              {(() => {
+                const vals = econSeries.map(p => p.value)
+                const lo = Math.min(...vals), hi = Math.max(...vals)
+                const span = hi - lo || 1
+                // Inset on every side so the end dots aren't half off the panel.
+                const pt = (v: number, i: number) =>
+                  `${6 + (i / (econSeries.length - 1)) * 288},${84 - ((v - lo) / span) * 78}`
+                const line = vals.map(pt).join(' ')
+                return (
+                  <>
+                    <polyline className="fill" points={`6,90 ${line} 294,90`} />
+                    <polyline className="line" points={line} />
+                    {vals.map((v, i) => {
+                      const [x, y] = pt(v, i).split(',')
+                      return <circle key={i} cx={x} cy={y} r="2.5" />
+                    })}
+                  </>
+                )
+              })()}
+            </svg>
+            <div className="dl-kvrows">
+              <div>
+                <span>Best</span>
+                <b className="mono">
+                  {Math[economyUnit === 'l_per_100km' ? 'min' : 'max'](...econSeries.map(p => p.value))}
+                  {' '}{economyLabel(distanceUnit, economyUnit)}
+                </b>
+              </div>
+              <div>
+                <span>Latest</span>
+                <b className="mono">
+                  {econSeries[econSeries.length - 1].value} {economyLabel(distanceUnit, economyUnit)}
+                </b>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
