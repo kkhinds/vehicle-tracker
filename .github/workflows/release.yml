@@ -60,6 +60,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # electron-builder publishes with an empty body. Write the human version
+      # in release-notes/v<version>.md and it lands on the release.
+      - name: Attach release notes if written
+        shell: bash
+        run: |
+          file="release-notes/v${{ needs.check.outputs.version }}.md"
+          if [ -f "$file" ]; then
+            gh release edit "v${{ needs.check.outputs.version }}" --notes-file "$file"
+          else
+            echo "no $file — release keeps an empty body"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Tag the source commit
         run: |
           git tag "v${{ needs.check.outputs.version }}"

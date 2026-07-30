@@ -21,7 +21,7 @@ Electron 31 + electron-vite 2 + React 18 (HashRouter, one route), Tailwind + a c
 
 ## Release / update
 - electron-builder publish target: GitHub releases on **`kkhinds/vehicle-tracker`** (the code repo itself, NOT a separate `-releases` repo).
-- **Releases are automatic.** Bump `version` in package.json, push to `main`, and `.github/workflows/release.yml` builds the Windows installer on a runner and publishes it live, then tags the commit. A push that doesn't change the version stops at the `check` job. Latest release: v3.1.0.
+- **Releases are automatic.** Bump `version` in package.json, push to `main`, and `.github/workflows/release.yml` builds the Windows installer on a runner and publishes it live, then tags the commit. A push that doesn't change the version stops at the `check` job. Latest release: v3.1.1. Write the user-facing notes in `release-notes/v<version>.md` before pushing the bump — the workflow attaches them; without the file the release body is empty.
 - The installer name is pinned by `build.win.artifactName` to `Vehicle-Tracker-Setup-${version}.${ext}` — it must match the `url:` in `latest.yml` or the updater 404s. The auto-updater checks 5s after launch, downloads, installs on quit.
 - Building locally still works (`npm run dist:win`) but needs the winCodeSign workaround — see Gotchas.
 
