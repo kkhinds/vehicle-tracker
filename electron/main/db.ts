@@ -206,6 +206,9 @@ function initSchema(db: Db): void {
       notes TEXT,
       receipt_photo TEXT,
       consumption REAL,
+      -- Set when fill-ups before this one went unlogged: the distance covers
+      -- fuel that was never recorded, so the span can't measure economy.
+      missed_fills INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -427,6 +430,12 @@ function migrate(db: Db): void {
       DROP TABLE vehicle_documents;
       ALTER TABLE vehicle_documents_new RENAME TO vehicle_documents;
     `)
+  }
+
+  // Marks a fill-up that follows unlogged ones, so economy skips that span
+  // instead of dividing a long distance by too few litres.
+  if (tableExists(db, 'fuel_log') && !tableHasColumn(db, 'fuel_log', 'missed_fills')) {
+    db.exec(`ALTER TABLE fuel_log ADD COLUMN missed_fills INTEGER NOT NULL DEFAULT 0`)
   }
 
   // service_intervals new columns

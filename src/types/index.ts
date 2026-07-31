@@ -47,6 +47,8 @@ export interface FuelEntry {
   notes: string | null
   receipt_photo: string | null
   consumption: number | null
+  /** Fill-ups before this one went unlogged, so its span can't measure economy. */
+  missed_fills: boolean
   created_at: string
 }
 

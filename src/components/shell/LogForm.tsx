@@ -27,6 +27,8 @@ interface LogFormProps {
   lastFuel: { station: string | null; pricePerLitre: number | null } | null
   /** Set to edit an existing record instead of adding a new one. */
   edit?: EditTarget | null
+  /** The vehicle's running economy, used to flag a suspiciously good tank. */
+  avgConsumption?: number | null
   onSaved: (what: string) => void
   onCancel: () => void
 }
@@ -62,6 +64,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
       date: str(r.date), odometer: str(r.odometer), litres: str(r.litres),
       price: str(r.cost_per_litre), total: str(r.total_cost), totalTouched: '1',
       station: str(r.fuel_station), notes: str(r.notes),
+      missed: r.missed_fills ? '1' : '',
     }
     case 'service': return {
       date: str(r.date), odometer: str(r.odometer), category: str(r.category),
@@ -88,7 +91,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
 }
 
 export default function LogForm({
-  initialType, odometer, distanceUnit, lastFuel, edit, onSaved, onCancel,
+  initialType, odometer, distanceUnit, lastFuel, edit, avgConsumption, onSaved, onCancel,
 }: LogFormProps) {
   const [type, setType] = useState<LogType>(edit?.type ?? initialType)
   const [saving, setSaving] = useState(false)
@@ -191,15 +194,26 @@ export default function LogForm({
       switch (type) {
         case 'fuel': {
           const litres = parseFloat(f.litres), total = parseFloat(totalValue)
-          await window.api.fuel.add({
+          const saved = await window.api.fuel.add({
             date: f.date, odometer: odo, litres,
             cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
             total_cost: total, fuel_station: f.station || null,
             full_tank: fullTank, notes: f.notes || null, receipt_photo: photos[0] ?? null,
+            missed_fills: f.missed === '1',
             // Derived by the backend from the fill-to-full span, not the form.
             consumption: null,
           })
-          onSaved('Fill-up saved'); break
+          onSaved('Fill-up saved')
+          // A tank that reads far better than this vehicle ever manages almost
+          // always means a fill-up went unlogged, not a sudden miracle.
+          if (avgConsumption && saved.consumption && saved.consumption > avgConsumption * 1.75) {
+            toast.warning(
+              'That tank came out much better than usual — if you missed logging a fill-up, ' +
+              'open the entry and tick "I missed logging fill-ups before this one".',
+              { duration: 9000 },
+            )
+          }
+          break
         }
         case 'service':
           await window.api.maintenance.add({
@@ -275,6 +289,7 @@ export default function LogForm({
           total_cost: total, fuel_station: f.station || null,
           full_tank: fullTank, notes: f.notes || null,
           receipt_photo: photos[0] ?? null,
+          missed_fills: f.missed === '1',
         })
         onSaved('Fill-up updated'); break
       }
@@ -377,6 +392,20 @@ export default function LogForm({
               <div className="dl-hint">full tanks drive the economy figure</div>
             </div>
           </div>
+          <label className="dl-check">
+            <input
+              type="checkbox"
+              checked={f.missed === '1'}
+              onChange={e => set('missed', e.target.checked ? '1' : '')}
+            />
+            I missed logging fill-ups before this one
+          </label>
+          {f.missed === '1' && (
+            <div className="dl-hint">
+              The distance since your last logged fill covers fuel that was never recorded, so
+              economy skips this tank and starts measuring again from here.
+            </div>
+          )}
         </>
       )}
 

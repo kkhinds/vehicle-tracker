@@ -15,11 +15,12 @@ interface FuelRow {
   notes: string | null
   receipt_photo: string | null
   consumption: number | null
+  missed_fills: number
   created_at: string
 }
 
 function rowToEntry(row: FuelRow) {
-  return { ...row, full_tank: row.full_tank === 1 }
+  return { ...row, full_tank: row.full_tank === 1, missed_fills: row.missed_fills === 1 }
 }
 
 type Db = ReturnType<typeof getDb>
@@ -30,17 +31,29 @@ type Db = ReturnType<typeof getDb>
  * (partial fills in between included). Stored on the later full-tank entry.
  * Recomputed wholesale after any add/edit/delete so a changed partial fill
  * correctly re-flows into its span's economy.
+ *
+ * An entry marked `missed_fills` breaks the span. Fuel that went in without
+ * being logged still moved the odometer, so dividing that distance by the
+ * litres on record reads far better than the vehicle actually managed. The
+ * marked entry gets no figure of its own and starts the next span fresh.
  */
 function recomputeConsumption(db: Db, vehicleId: number): void {
   const rows = db.prepare(
-    'SELECT id, odometer, litres, full_tank FROM fuel_log WHERE vehicle_id = ? ORDER BY odometer ASC, id ASC'
-  ).all<{ id: number; odometer: number; litres: number; full_tank: number }>(vehicleId)
+    'SELECT id, odometer, litres, full_tank, missed_fills FROM fuel_log WHERE vehicle_id = ? ORDER BY odometer ASC, id ASC'
+  ).all<{ id: number; odometer: number; litres: number; full_tank: number; missed_fills: number }>(vehicleId)
 
   let lastFullOdo: number | null = null
   let litresSinceFull = 0
   const stmt = db.prepare('UPDATE fuel_log SET consumption = ? WHERE id = ?')
   const apply = db.transaction(() => {
     for (const r of rows) {
+      if (r.missed_fills === 1) {
+        // Whatever came before is unusable; restart from here.
+        stmt.run(null, r.id)
+        lastFullOdo = r.full_tank === 1 ? r.odometer : null
+        litresSinceFull = 0
+        continue
+      }
       if (lastFullOdo !== null) litresSinceFull += r.litres
       let consumption: number | null = null
       if (r.full_tank === 1) {
@@ -68,16 +81,17 @@ export function registerFuelHandlers(): void {
     return rows.map(rowToEntry)
   })
 
-  ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id' | 'full_tank'> & { full_tank: boolean }) => {
+  ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id' | 'full_tank' | 'missed_fills'> & { full_tank: boolean; missed_fills?: boolean }) => {
     const vehicleId = getCurrentVehicleId()
 
     const result = db.prepare(`
-      INSERT INTO fuel_log (vehicle_id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, notes, receipt_photo, consumption)
-      VALUES (@vehicle_id, @date, @odometer, @litres, @cost_per_litre, @total_cost, @fuel_station, @full_tank, @notes, @receipt_photo, NULL)
+      INSERT INTO fuel_log (vehicle_id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, notes, receipt_photo, consumption, missed_fills)
+      VALUES (@vehicle_id, @date, @odometer, @litres, @cost_per_litre, @total_cost, @fuel_station, @full_tank, @notes, @receipt_photo, NULL, @missed_fills)
     `).run({
       ...entry,
       vehicle_id: vehicleId,
       full_tank: entry.full_tank ? 1 : 0,
+      missed_fills: entry.missed_fills ? 1 : 0,
       fuel_station: entry.fuel_station ?? null,
       notes: entry.notes ?? null,
       receipt_photo: entry.receipt_photo ?? null,
@@ -89,11 +103,15 @@ export function registerFuelHandlers(): void {
     return rowToEntry(db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(result.lastInsertRowid) as FuelRow)
   })
 
-  ipcMain.handle('fuel:update', (_, id: number, entry: Partial<Omit<FuelRow, 'full_tank'> & { full_tank: boolean }>) => {
+  ipcMain.handle('fuel:update', (_, id: number, entry: Partial<Omit<FuelRow, 'full_tank' | 'missed_fills'> & { full_tank: boolean; missed_fills: boolean }>) => {
     const current = db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(id) as FuelRow
     if (!current) return
 
-    const merged = { ...current, ...entry, full_tank: entry.full_tank !== undefined ? (entry.full_tank ? 1 : 0) : current.full_tank }
+    const merged = {
+      ...current, ...entry,
+      full_tank: entry.full_tank !== undefined ? (entry.full_tank ? 1 : 0) : current.full_tank,
+      missed_fills: entry.missed_fills !== undefined ? (entry.missed_fills ? 1 : 0) : current.missed_fills,
+    }
 
     // Unlink the old receipt if this edit replaced or cleared it.
     if (current.receipt_photo && current.receipt_photo !== merged.receipt_photo) {
@@ -103,7 +121,7 @@ export function registerFuelHandlers(): void {
     db.prepare(`
       UPDATE fuel_log SET date=@date, odometer=@odometer, litres=@litres, cost_per_litre=@cost_per_litre,
       total_cost=@total_cost, fuel_station=@fuel_station, full_tank=@full_tank, notes=@notes,
-      receipt_photo=@receipt_photo WHERE id=@id
+      receipt_photo=@receipt_photo, missed_fills=@missed_fills WHERE id=@id
     `).run({ ...merged, id })
 
     recomputeConsumption(db, current.vehicle_id)

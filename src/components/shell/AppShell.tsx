@@ -269,6 +269,7 @@ export default function AppShell() {
           distanceUnit={settings.distance_unit}
           lastFuel={lastFuel}
           edit={edit}
+          avgConsumption={summary?.avgConsumption ?? null}
           onCancel={() => { setLogOpen(false); setEdit(null) }}
           onSaved={what => {
             setLogOpen(false)

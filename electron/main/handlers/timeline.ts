@@ -77,12 +77,13 @@ export function registerTimelineHandlers(): void {
     const out: TimelineEntry[] = []
 
     for (const r of db.prepare(
-      'SELECT id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, consumption FROM fuel_log WHERE vehicle_id = ?'
-    ).all<{ id: number; date: string; odometer: number; litres: number; cost_per_litre: number; total_cost: number; fuel_station: string | null; full_tank: number; consumption: number | null }>(v)) {
+      'SELECT id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, consumption, missed_fills FROM fuel_log WHERE vehicle_id = ?'
+    ).all<{ id: number; date: string; odometer: number; litres: number; cost_per_litre: number; total_cost: number; fuel_station: string | null; full_tank: number; consumption: number | null; missed_fills: number }>(v)) {
       out.push({
         id: `fuel:${r.id}`, kind: 'fuel', date: r.date, odometer: r.odometer,
         title: `Fill-up${r.fuel_station ? ` — ${r.fuel_station}` : ''}`,
-        subtitle: `${r.litres.toFixed(1)} L @ $${r.cost_per_litre.toFixed(2)}/L · ${r.full_tank ? 'full tank' : 'partial'}`,
+        subtitle: `${r.litres.toFixed(1)} L @ $${r.cost_per_litre.toFixed(2)}/L · ${r.full_tank ? 'full tank' : 'partial'}`
+          + (r.missed_fills === 1 ? ' · fills missed before this' : ''),
         value: money(r.total_cost), valueSub: null,
         consumption: r.consumption,
       })
