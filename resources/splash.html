@@ -132,6 +132,22 @@
       letter-spacing: .04em;
     }
 
+    /* Dev builds say so — the splash is otherwise identical to the shipped app. */
+    .devtag {
+      display: none;
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 3px 10px;
+      border: 1px solid #2BD98F;
+      border-radius: 999px;
+      color: #2BD98F;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2em;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .logo { animation: none; }
       .track::after { animation: none; width: 100%; opacity: .5; }
@@ -140,6 +156,7 @@
 </head>
 <body>
   <div class="splash">
+    <p class="devtag" id="devtag">DEV BUILD</p>
     <svg class="road" viewBox="0 0 420 200" preserveAspectRatio="none" aria-hidden="true">
       <line x1="-40" y1="200" x2="196" y2="0" />
       <line x1="460" y1="200" x2="224" y2="0" />
@@ -156,5 +173,11 @@
 
     <p class="status">Loading your vehicles…</p>
   </div>
+  <script>
+    // main passes ?dev=1 when running unpackaged.
+    if (new URLSearchParams(location.search).get('dev')) {
+      document.getElementById('devtag').style.display = 'block'
+    }
+  </script>
 </body>
 </html>

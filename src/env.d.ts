@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import type {
   Vehicle, FuelEntry, MaintenanceEntry, ServiceInterval, InsurancePolicy,
   Note, AppSettings, DashboardSummary, ExpenseSummary,

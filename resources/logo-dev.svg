@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Dev build mark: the shipping logo with a green road instead of amber, so
+       a glance at the taskbar says which one is running. Kept structurally
+       identical so it still reads as the same app. -->
+  <defs>
+    <linearGradient id="vtd-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#131C2A"/>
+      <stop offset="100%" stop-color="#0A0E14"/>
+    </linearGradient>
+    <linearGradient id="vtd-road" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#5CF0B0"/>
+      <stop offset="45%" stop-color="#2BD98F"/>
+      <stop offset="100%" stop-color="#0E8F5A" stop-opacity=".3"/>
+    </linearGradient>
+    <clipPath id="vtd-clip"><rect width="64" height="64" rx="14"/></clipPath>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="url(#vtd-bg)"/>
+
+  <path d="M 3 64 L 26 12 L 38 12 L 61 64 Z" fill="url(#vtd-road)" clip-path="url(#vtd-clip)"/>
+
+  <g stroke="#0A0E14" stroke-opacity=".5" stroke-linecap="butt">
+    <line x1="32" y1="60" x2="32" y2="50" stroke-width="3.4"/>
+    <line x1="32" y1="44" x2="32" y2="37" stroke-width="2.6"/>
+    <line x1="32" y1="32" x2="32" y2="27" stroke-width="1.9"/>
+  </g>
+
+  <rect x=".5" y=".5" width="63" height="63" rx="13.5"
+        fill="none" stroke="#FFFFFF" stroke-opacity=".07"/>
+</svg>

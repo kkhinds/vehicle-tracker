@@ -37,6 +37,15 @@ function resolveResource(name: string): string {
   return candidates[0]
 }
 
+/**
+ * A dev build gets its own icon, window title and taskbar identity so it is
+ * obvious at a glance which one is running — the packaged app and `npm run dev`
+ * otherwise look identical and share a taskbar group.
+ */
+const IS_DEV = !app.isPackaged
+const APP_ICON = () => resolveResource(IS_DEV ? 'icon-dev.ico' : 'icon.ico')
+const WINDOW_TITLE = IS_DEV ? 'Vehicle Tracker — DEV' : 'Vehicle Tracker'
+
 let splashWindow: BrowserWindow | null = null
 let mainWindow: BrowserWindow | null = null
 let splashShownAt = 0
@@ -63,7 +72,7 @@ function createSplashWindow(): void {
     splashWindow?.show()
     splashShownAt = Date.now()
   })
-  splashWindow.loadFile(resolveResource('splash.html'))
+  splashWindow.loadFile(resolveResource('splash.html'), IS_DEV ? { query: { dev: '1' } } : undefined)
 }
 
 function createMainWindow(): void {
@@ -72,7 +81,8 @@ function createMainWindow(): void {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    icon: resolveResource('icon.ico'),
+    icon: APP_ICON(),
+    title: WINDOW_TITLE,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -88,6 +98,8 @@ function createMainWindow(): void {
     autoHideMenuBar: false,
   })
   mainWindow.setMenuBarVisibility(false)
+  // The renderer's <title> would overwrite the window title a moment after load.
+  mainWindow.on('page-title-updated', e => { e.preventDefault() })
 
   mainWindow.once('ready-to-show', () => {
     // Keep the splash on screen for at least MIN_SPLASH_MS, even if the
@@ -123,7 +135,8 @@ app.whenReady().then(async () => {
   // under "Electron" and uses the generic Electron icon, no matter what
   // we set on the BrowserWindow. Must match build.appId in package.json.
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.kemarhinds.vehicletracker')
+    // Distinct id in dev, so the two builds don't share a taskbar button.
+    app.setAppUserModelId(IS_DEV ? 'com.kemarhinds.vehicletracker.dev' : 'com.kemarhinds.vehicletracker')
   }
 
   // No visible menu bar, but the menu itself is kept so its accelerators keep

@@ -44,6 +44,9 @@ export default function LensBar({ lens, onChange, vehicleName, onOpenGarage, onS
         </button>
       ))}
 
+      {/* Vite sets this only for `npm run dev`, so a built app never shows it. */}
+      {import.meta.env.DEV && <span className="dl-devtag">DEV</span>}
+
       <span className="dl-gap" />
 
       <button

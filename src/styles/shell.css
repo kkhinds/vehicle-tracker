@@ -473,3 +473,11 @@
 .dl-spark .line{ fill:none; stroke:var(--text); stroke-width:1.6; stroke-linejoin:round }
 .dl-spark .fill{ fill:var(--hover); stroke:none }
 .dl-spark circle{ fill:var(--bg); stroke:var(--dim); stroke-width:1.4 }
+
+/* Dev-build marker in the lens bar. Green, because amber means "something is
+   due" and this isn't that. */
+.dl-devtag{
+  flex:none; margin-left:10px; padding:3px 9px; border-radius:999px;
+  border:1px solid var(--green); color:var(--green);
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:12px; letter-spacing:.14em;
+}
