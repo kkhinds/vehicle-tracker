@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { todayISO } from '@/lib/utils'
 import { PhotoPicker } from './Photos'
-import type { EntryKind } from '@/env'
+import type { EntryKind, PumpPrices } from '@/env'
 
 export type LogType = 'fuel' | 'service' | 'fluid' | 'tires' | 'insurance' | 'docs'
 
@@ -29,6 +29,8 @@ interface LogFormProps {
   edit?: EditTarget | null
   /** The vehicle's running economy, used to flag a suspiciously good tank. */
   avgConsumption?: number | null
+  /** Which national price to compare against — the vehicle's fuel. */
+  fuelKind?: 'gasoline' | 'diesel' | null
   onSaved: (what: string) => void
   onCancel: () => void
 }
@@ -62,7 +64,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
   switch (type) {
     case 'fuel': return {
       date: str(r.date), odometer: str(r.odometer), litres: str(r.litres),
-      price: str(r.cost_per_litre), total: str(r.total_cost), totalTouched: '1',
+      price: str(r.cost_per_litre), total: str(r.total_cost), lastMoney: 'price',
       station: str(r.fuel_station), notes: str(r.notes),
       missed: r.missed_fills ? '1' : '',
     }
@@ -91,7 +93,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
 }
 
 export default function LogForm({
-  initialType, odometer, distanceUnit, lastFuel, edit, avgConsumption, onSaved, onCancel,
+  initialType, odometer, distanceUnit, lastFuel, edit, avgConsumption, fuelKind, onSaved, onCancel,
 }: LogFormProps) {
   const [type, setType] = useState<LogType>(edit?.type ?? initialType)
   const [saving, setSaving] = useState(false)
@@ -102,6 +104,7 @@ export default function LogForm({
   /** Tires log two different things against the fitted set. */
   const [tireMode, setTireMode] = useState<'inspection' | 'rotation'>('inspection')
   const [fluidPresets, setFluidPresets] = useState<{ key: string; label: string }[]>([])
+  const [pump, setPump] = useState<PumpPrices | null>(null)
   // Picking copies the file immediately, so anything picked and then abandoned
   // has to be unlinked or it sits in the photos folder forever.
   const copied = useRef<string[]>([])
@@ -128,6 +131,13 @@ export default function LogForm({
     setPhotos([])
   }, [type, lastFuel, edit])
 
+  // Cached national price, for comparison only — never prefilled over what you
+  // typed, because the pump you used is the one that counts.
+  useEffect(() => {
+    if (type !== 'fuel' || pump) return
+    window.api.fuelPrices.get().then(setPump)
+  }, [type, pump])
+
   useEffect(() => {
     if (type !== 'fluid' || fluidPresets.length) return
     window.api.fluids.getPresets().then(p => setFluidPresets(p.map(x => ({ key: x.key, label: x.label }))))
@@ -150,12 +160,54 @@ export default function LogForm({
 
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
-  // Total follows litres × price unless it has been typed over.
-  const autoTotal = useMemo(() => {
-    const l = parseFloat(f.litres ?? ''), p = parseFloat(f.price ?? '')
-    return Number.isFinite(l) && Number.isFinite(p) ? (l * p).toFixed(2) : ''
-  }, [f.litres, f.price])
-  const totalValue = f.totalTouched === '1' ? (f.total ?? '') : autoTotal
+  /**
+   * Price and total each derive from the other, so either can be the one you
+   * type. Pumps give you a total and a litre count; the price per litre is what
+   * the app actually stores, and working it out by hand is how it drifts.
+   * Whichever of the two was edited last wins, and litres feeds both.
+   */
+  const money = useMemo(() => {
+    const litres = parseFloat(f.litres ?? '')
+    const typedPrice = parseFloat(f.price ?? '')
+    const typedTotal = parseFloat(f.total ?? '')
+    const hasLitres = Number.isFinite(litres) && litres > 0
+
+    if (f.lastMoney === 'total' && hasLitres && Number.isFinite(typedTotal)) {
+      return { price: (typedTotal / litres).toFixed(3), total: f.total ?? '', derived: 'price' as const }
+    }
+    if (hasLitres && Number.isFinite(typedPrice)) {
+      return { price: f.price ?? '', total: (litres * typedPrice).toFixed(2), derived: 'total' as const }
+    }
+    return { price: f.price ?? '', total: f.total ?? '', derived: null }
+  }, [f.litres, f.price, f.total, f.lastMoney])
+  const totalValue = money.total
+
+  /**
+   * Cross-check against the national price. It's a nudge, not a rule — station
+   * prices differ, and the figure on the site is a week or two old at times.
+   */
+  const pumpCheck = useMemo(() => {
+    if (type !== 'fuel' || !pump || !fuelKind) return null
+    const national = fuelKind === 'diesel' ? pump.diesel : pump.gasoline
+    if (!national) return null
+
+    const label = `${pump.country} ${fuelKind}`
+    const when = pump.priceDate ? ` (${pump.priceDate})` : ''
+    const mine = parseFloat(money.price)
+    if (!Number.isFinite(mine) || mine <= 0) {
+      return { off: false, text: `${label} is $${national.toFixed(2)}/L${when}` }
+    }
+
+    const gap = Math.abs(mine - national) / national
+    if (gap > 0.2) {
+      return {
+        off: true,
+        text: `That works out to $${mine.toFixed(2)}/L, against ${label} at $${national.toFixed(2)}${when}`
+          + ' — worth double-checking the litres and the total.',
+      }
+    }
+    return { off: false, text: `$${mine.toFixed(2)}/L · ${label} is $${national.toFixed(2)}${when}` }
+  }, [type, pump, fuelKind, money.price])
 
   function validate(): Errors {
     const e: Errors = {}
@@ -285,7 +337,7 @@ export default function LogForm({
         const litres = parseFloat(f.litres), total = parseFloat(totalValue)
         await window.api.fuel.update(id, {
           date: f.date, odometer: odo, litres,
-          cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
+          cost_per_litre: parseFloat(money.price) || +(total / litres).toFixed(3),
           total_cost: total, fuel_station: f.station || null,
           full_tank: fullTank, notes: f.notes || null,
           receipt_photo: photos[0] ?? null,
@@ -342,7 +394,8 @@ export default function LogForm({
         list={opts.list}
         value={opts.value ?? f[name] ?? ''}
         onChange={e => {
-          if (name === 'total') set('totalTouched', '1')
+          // Remember which side of the pump maths was typed, so the other one follows.
+          if (name === 'total' || name === 'price') set('lastMoney', name)
           set(name, e.target.value)
         }}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
@@ -378,8 +431,14 @@ export default function LogForm({
         <>
           <div className="dl-frow">
             {field('litres', 'Litres', { placeholder: '0.0' })}
-            {field('price', 'Price / L')}
-            {field('total', 'Total', { placeholder: 'auto', hint: 'litres × price — editable', value: totalValue })}
+            {field('price', 'Price / L', {
+              value: money.price,
+              hint: money.derived === 'price' ? 'worked out from the total' : undefined,
+            })}
+            {field('total', 'Total paid', {
+              value: money.total,
+              hint: money.derived === 'total' ? 'litres × price' : 'type this and the price per litre follows',
+            })}
           </div>
           <div className="dl-frow">
             {field('station', 'Station', { type: 'text', hint: lastFuel?.station ? 'from your last fill-up' : undefined })}
@@ -392,6 +451,12 @@ export default function LogForm({
               <div className="dl-hint">full tanks drive the economy figure</div>
             </div>
           </div>
+          {pumpCheck && (
+            <div className={pumpCheck.off ? 'dl-err' : 'dl-hint'} style={{ marginTop: 10 }}>
+              {pumpCheck.text}
+            </div>
+          )}
+
           <label className="dl-check">
             <input
               type="checkbox"

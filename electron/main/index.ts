@@ -20,6 +20,7 @@ import { runStartupBackup } from './backups'
 import { registerFluidHandlers } from './handlers/fluids'
 import { registerUpdaterHandlers } from './handlers/updater'
 import { registerTimelineHandlers } from './handlers/timeline'
+import { registerFuelPriceHandlers, refreshPumpPricesIfStale } from './fuelPrices'
 import { initAutoUpdater } from './updater'
 
 // Resolve a resource shipped under /resources at both dev and production paths.
@@ -176,7 +177,12 @@ app.whenReady().then(async () => {
   registerFluidHandlers()
   registerUpdaterHandlers()
   registerTimelineHandlers()
+  registerFuelPriceHandlers()
   ipcMain.handle('app:getVersion', () => app.getVersion())
+
+  // National pump prices, for cross-checking what gets typed in. Fire and
+  // forget: it's a nicety, and the app is fully usable offline without it.
+  void refreshPumpPricesIfStale()
 
   createMainWindow()
   startNotificationScheduler()

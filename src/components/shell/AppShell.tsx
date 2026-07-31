@@ -270,6 +270,8 @@ export default function AppShell() {
           lastFuel={lastFuel}
           edit={edit}
           avgConsumption={summary?.avgConsumption ?? null}
+          fuelKind={currentVehicle?.drivetrain === 'diesel' ? 'diesel'
+            : currentVehicle?.drivetrain === 'ev' ? null : 'gasoline'}
           onCancel={() => { setLogOpen(false); setEdit(null) }}
           onSaved={what => {
             setLogOpen(false)

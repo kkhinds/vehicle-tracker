@@ -117,6 +117,10 @@ contextBridge.exposeInMainWorld('api', {
     chooseDir: () => ipcRenderer.invoke('backup:chooseDir'),
     resetDir: () => ipcRenderer.invoke('backup:resetDir'),
   },
+  fuelPrices: {
+    get: () => ipcRenderer.invoke('fuelPrices:get'),
+    refresh: () => ipcRenderer.invoke('fuelPrices:refresh'),
+  },
   timeline: {
     getEntries: () => ipcRenderer.invoke('timeline:getEntries'),
     getAhead: () => ipcRenderer.invoke('timeline:getAhead'),

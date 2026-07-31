@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDate, formatSize, todayISO } from '@/lib/utils'
-import type { BackupStatus, UpdaterStatus } from '@/env'
+import type { BackupStatus, PumpPrices, UpdaterStatus } from '@/env'
 import { DRIVETRAINS, DRIVETRAIN_LABELS } from '@/types'
 import type { Drivetrain, ServiceInterval, TireSet, Vehicle } from '@/types'
 
@@ -501,11 +501,14 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onCha
   const [s, setS] = useState<Record<string, unknown> | null>(null)
   const [upd, setUpd] = useState<UpdaterStatus | null>(null)
   const [version, setVersion] = useState('')
+  const [pump, setPump] = useState<PumpPrices | null>(null)
+  const [pumpBusy, setPumpBusy] = useState(false)
 
   useEffect(() => {
     window.api.settings.get().then(v => setS(v as never))
     window.api.updater.getStatus().then(setUpd)
     window.api.app.getVersion().then(setVersion)
+    window.api.fuelPrices.get().then(setPump)
     return window.api.updater.onStatus(setUpd)
   }, [])
 
@@ -563,6 +566,24 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onCha
         <div className="dl-setrow">
           <span className="dl-lab"><b>Help</b><span>how the app works</span></span>
           <button className="dl-ctl" onClick={onOpenHelp}>Open</button>
+        </div>
+        <div className="dl-setrow">
+          <span className="dl-lab">
+            <b>Pump prices</b>
+            <span className="mono">
+              {pump
+                ? `${pump.country}: petrol $${pump.gasoline?.toFixed(2) ?? '—'} · diesel $${pump.diesel?.toFixed(2) ?? '—'}`
+                  + (pump.priceDate ? ` · ${formatDate(pump.priceDate)}` : '')
+                : 'not fetched yet'}
+            </span>
+          </span>
+          <button className="dl-ctl" onClick={async () => {
+            setPumpBusy(true)
+            const next = await window.api.fuelPrices.refresh()
+            setPumpBusy(false)
+            if (next) { setPump(next); toast.success('Pump prices updated') }
+            else toast.error("Couldn't reach the price site")
+          }}>{pumpBusy ? '…' : 'Check now'}</button>
         </div>
         <div className="dl-setrow">
           <span className="dl-lab"><b>Notifications test</b><span>fires a sample reminder</span></span>

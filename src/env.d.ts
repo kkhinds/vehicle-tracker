@@ -136,6 +136,10 @@ interface ElectronAPI {
     chooseDir: () => Promise<{ dir: string; moved: number } | null>
     resetDir: () => Promise<BackupStatus>
   }
+  fuelPrices: {
+    get: () => Promise<PumpPrices | null>
+    refresh: () => Promise<PumpPrices | null>
+  }
   timeline: {
     getEntries: () => Promise<TimelineEntry[]>
     getAhead: () => Promise<{ items: AheadItem[]; ratePerDay: number | null }>
@@ -146,6 +150,16 @@ interface ElectronAPI {
     getStatus: () => Promise<UpdaterStatus>
     onStatus: (callback: (status: UpdaterStatus) => void) => () => void
   }
+}
+
+/** National pump prices, cached from globalpetrolprices.com. */
+export interface PumpPrices {
+  gasoline: number | null
+  diesel: number | null
+  priceDate: string | null
+  country: string
+  checkedAt: string
+  source: string
 }
 
 export type EntryKind = 'fuel' | 'service' | 'tires' | 'fluid' | 'insurance' | 'docs'

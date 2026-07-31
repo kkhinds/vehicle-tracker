@@ -22,7 +22,10 @@ export default function HelpSheet() {
         </p>
         <ul>
           <li>Station and price carry over from your last fill-up.</li>
-          <li>Total works itself out from litres × price. Type over it if the pump disagrees.</li>
+          <li>Price and total work each other out. Type the litres and what you paid and the
+            price per litre follows; type a price per litre instead and the total follows.</li>
+          <li>Under them, the national pump price for your fuel, for comparison. If what you
+            typed is more than 20% off it, the app says so — usually a slipped decimal.</li>
           <li>Leave <b>Full</b> selected when you filled the tank. Economy is measured between
             full tanks, so partial fills still count toward the litres but don't end the span.</li>
           <li>Attach a receipt, an invoice or a PDF — the file is copied into the app, so
@@ -100,9 +103,16 @@ export default function HelpSheet() {
       <section>
         <h3>Your data</h3>
         <p>
-          Everything sits in one file on this PC. Nothing is uploaded. Backups run on a
-          schedule and keep the last several copies; <b>Settings → Backups</b> has back up now,
-          restore, and export. Restoring snapshots what you have first, then restarts the app.
+          Everything sits in one file on this PC, and none of it leaves. The app makes two
+          outbound requests and neither one sends anything of yours: it checks GitHub for a
+          new version, and about once a week it reads the national pump price off
+          globalpetrolprices.com. Both are just downloads, and the app works offline without
+          them — <b>Settings</b> has a Check now for the price.
+        </p>
+        <p>
+          Backups run on a schedule and keep the last several copies; <b>Settings → Backups</b>
+          has back up now, restore, and export, and lists every snapshot on disk. Restoring
+          snapshots what you have first, then restarts the app.
         </p>
         <p>
           Keep one copy somewhere other than this machine — a USB drive, or point the backup
