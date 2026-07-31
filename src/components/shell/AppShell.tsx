@@ -297,10 +297,30 @@ export default function AppShell() {
               {detail.odometer != null && (
                 <div><span>Odometer</span><b className="mono">{detail.odometer.toLocaleString()} {settings.distance_unit}</b></div>
               )}
+              {detail.expiresOn && (
+                <div>
+                  <span>{detail.kind === 'insurance' ? 'Renews' : 'Expires'}</span>
+                  <b className="mono">{formatDate(detail.expiresOn)}</b>
+                </div>
+              )}
+              {detail.daysRemaining != null && (
+                <div>
+                  <span>{detail.daysRemaining < 0 ? 'Overdue by' : 'Time left'}</span>
+                  <b className="mono" style={{ color: detail.daysRemaining <= 30 ? 'var(--red)' : undefined }}>
+                    {Math.abs(detail.daysRemaining)} day{Math.abs(detail.daysRemaining) === 1 ? '' : 's'}
+                  </b>
+                </div>
+              )}
               {detail.value && <div><span>Amount</span><b className="mono">{detail.value}</b></div>}
               {detailEconomy && <div><span>Economy</span><b className="mono">{detailEconomy}</b></div>}
             </div>
             <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
+            {detail.kind === 'docs' && !detail.expiresOn && (
+              <p className="dl-hint" style={{ marginTop: 10 }}>
+                No expiry date on this one, so it can't be counted down or remind you.
+                Add one with Edit and you'll get warnings at 60, 30 and 7 days.
+              </p>
+            )}
             <PhotoStrip paths={detailPhotos} />
             <div className="dl-btnrow">
               {EDITABLE[table] && (

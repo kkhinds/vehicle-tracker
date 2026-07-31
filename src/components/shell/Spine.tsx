@@ -34,6 +34,8 @@ const EMPTY_COPY: Record<string, string> = {
 
 /** How far ahead the spine looks before folding the rest into one row. */
 const HORIZON_DAYS = 240
+/** Fixed yearly deadlines (documents, policies) stay on the spine all year. */
+const DATED_HORIZON_DAYS = 400
 /** Keep TODAY above the fold — the rest of the road folds into the overflow row. */
 const AHEAD_MAX = 4
 
@@ -57,7 +59,10 @@ export default function Spine({
     const withinHorizon = lensAhead.filter(a => {
       if (!a.projectedDate) return a.status !== 'ok'
       const days = (parseISO(a.projectedDate).getTime() - Date.now()) / 86_400_000
-      return days <= HORIZON_DAYS
+      // Road tax and insurance run yearly, so a fixed date has to stay visible
+      // for longer than a service that's projected from driving.
+      const horizon = a.kind === 'docs' || a.kind === 'insurance' ? DATED_HORIZON_DAYS : HORIZON_DAYS
+      return days <= horizon
     })
     // Sorted farthest-first, so the nearest items are at the end — keep those.
     return withinHorizon.slice(-AHEAD_MAX)

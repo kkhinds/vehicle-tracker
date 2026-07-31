@@ -24,6 +24,10 @@ export interface TimelineEntry {
   valueSub: string | null   // smaller line under it
   /** Raw distance-per-litre on fuel rows. The renderer owns the economy unit. */
   consumption?: number | null
+  /** Expiry (documents) or renewal (insurance), yyyy-MM-dd. */
+  expiresOn?: string | null
+  /** Days until that date — negative once it's past. */
+  daysRemaining?: number | null
 }
 
 export interface AheadItem {
@@ -63,6 +67,14 @@ function drivingRatePerDay(db: Db, vehicleId: number): number | null {
   const km = row.last_odo - row.first_odo
   if (days < 14 || km <= 0) return null   // too little history to extrapolate
   return km / days
+}
+
+/** " — 134 days left" / " — expired 3 days ago", or nothing when undated. */
+function countdown(days: number | null): string {
+  if (days === null) return ''
+  if (days < 0) return ` — expired ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago`
+  if (days === 0) return ' — expires today'
+  return ` — ${days} day${days === 1 ? '' : 's'} left`
 }
 
 function money(n: number | null | undefined): string | null {
@@ -148,12 +160,19 @@ export function registerTimelineHandlers(): void {
     }
 
     for (const r of db.prepare(
-      'SELECT id, provider, policy_number, premium_amount, start_date FROM insurance_policies WHERE vehicle_id = ?'
-    ).all<{ id: number; provider: string; policy_number: string; premium_amount: number; start_date: string }>(v)) {
+      'SELECT id, provider, policy_number, premium_amount, start_date, renewal_date, is_active FROM insurance_policies WHERE vehicle_id = ?'
+    ).all<{ id: number; provider: string; policy_number: string; premium_amount: number; start_date: string; renewal_date: string | null; is_active: number }>(v)) {
+      const days = r.renewal_date ? daysUntil(r.renewal_date) : null
       out.push({
         id: `insurance:${r.id}`, kind: 'insurance', date: r.start_date, odometer: null,
-        title: `Policy started — ${r.provider}`, subtitle: r.policy_number,
+        title: `Policy started — ${r.provider}`,
+        subtitle: [
+          r.policy_number || null,
+          r.renewal_date ? `renews ${format(parseISO(r.renewal_date), 'd MMM yyyy')}${countdown(days)}` : null,
+          r.is_active === 1 ? null : 'no longer active',
+        ].filter(Boolean).join(' · '),
         value: money(r.premium_amount), valueSub: null,
+        expiresOn: r.renewal_date, daysRemaining: r.is_active === 1 ? days : null,
       })
     }
 
@@ -162,10 +181,20 @@ export function registerTimelineHandlers(): void {
     ).all<{ id: number; doc_type: string; title: string; issued_date: string | null; expiry_date: string | null; cost: number | null }>(v)) {
       const when = r.issued_date ?? r.expiry_date
       if (!when) continue
+      const days = r.expiry_date ? daysUntil(r.expiry_date) : null
       out.push({
         id: `docs:${r.id}`, kind: 'docs', date: when, odometer: null,
-        title: r.title, subtitle: r.doc_type.replace(/-/g, ' '),
+        title: r.title,
+        subtitle: [
+          r.doc_type.replace(/-/g, ' '),
+          // Nothing distinguishes "never expires" from "not filled in", so the
+          // wording stays neutral and the detail sheet offers to add a date.
+          r.expiry_date
+            ? `expires ${format(parseISO(r.expiry_date), 'd MMM yyyy')}${countdown(days)}`
+            : 'no expiry date set',
+        ].join(' · '),
         value: money(r.cost), valueSub: null,
+        expiresOn: r.expiry_date, daysRemaining: days,
       })
     }
 

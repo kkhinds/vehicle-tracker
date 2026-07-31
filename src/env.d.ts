@@ -175,6 +175,10 @@ export interface TimelineEntry {
   valueSub: string | null
   /** Raw distance-per-litre on fuel rows; the renderer applies the economy unit. */
   consumption?: number | null
+  /** Expiry (documents) or renewal (insurance), yyyy-MM-dd. */
+  expiresOn?: string | null
+  /** Days until that date — negative once it's past. */
+  daysRemaining?: number | null
 }
 
 export interface AheadItem {
