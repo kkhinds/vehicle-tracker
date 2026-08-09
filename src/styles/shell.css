@@ -290,7 +290,9 @@
 .dl-err{ font-size:11px; color:var(--red); margin-top:4px }
 .dl-frow{ display:flex; gap:12px; flex-wrap:wrap }
 .dl-frow > .dl-field{ min-width:132px }
-.dl-check{ display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--dim) }
+.dl-check{ display:flex; align-items:center; gap:10px; margin-top:14px; font-size:13px; color:var(--dim) }
+/* Default checkboxes render at 13px — under the 24px a pointer target needs. */
+.dl-check input[type="checkbox"]{ width:24px; height:24px; flex:none; accent-color:var(--accent) }
 
 .dl-save{
   margin-top:20px; width:100%; background:var(--accent); color:var(--accent-ink);
@@ -352,7 +354,7 @@
   letter-spacing:.04em; padding:3px 9px; border-radius:6px; flex:none;
 }
 .dl-chip .dot{ width:6px; height:6px; border-radius:50% }
-.dl-chip.ok{ color:var(--dim); background:var(--green-soft) }
+.dl-chip.ok{ color:var(--chip-ink); background:var(--green-soft) }
 .dl-chip.ok .dot{ background:var(--green); opacity:.7 }
 
 .dl-irow{ display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line) }
@@ -383,10 +385,17 @@
   letter-spacing:.14em; color:var(--dim); margin:0 0 12px;
 }
 .dl-bars{ display:flex; align-items:stretch; gap:14px; height:150px; padding:0 4px }
-.dl-bar{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100% }
-.dl-col{ width:100%; display:flex; flex-direction:column-reverse; gap:2px }
-.dl-col .f{ background:var(--dim); border-radius:3px 3px 0 0 }
-.dl-col .m{ background:var(--faint); border-radius:3px; opacity:.55 }
+.dl-bar{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100% }
+/* The column's height is a percentage, so it needs a parent whose height can't
+   be shrunk out from under it — otherwise every tall bar lands on the same
+   pixel height and different months look identical. */
+.dl-bar-track{ position:relative; flex:1; min-height:0; width:100% }
+.dl-col{
+  position:absolute; left:0; right:0; bottom:0;
+  display:flex; flex-direction:column-reverse; gap:2px;
+}
+.dl-col .f{ background:var(--series-1); border-radius:3px 3px 0 0 }
+.dl-col .m{ background:var(--series-2); border-radius:3px }
 .dl-bar-lbl{ font-size:11px; color:var(--dim) }
 .dl-kvrows > div{
   display:flex; justify-content:space-between; padding:8px 0;
@@ -498,7 +507,7 @@
   background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .dl-callout b{ display:block; font-size:13px; font-weight:600; color:var(--text) }
-.dl-callout p{ margin:6px 0 0; font-size:12.5px; line-height:1.55; color:var(--dim) }
+.dl-callout p{ margin:6px 0 0; font-size:12.5px; line-height:1.55; color:var(--callout-ink) }
 .dl-callout-btn{
   margin-top:12px; width:100%; padding:9px 0; border-radius:8px; font-weight:600; font-size:13px;
   background:var(--accent); color:var(--accent-ink);

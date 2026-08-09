@@ -84,6 +84,10 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
         ))}
       </div>
 
+    {/* The panels below are h3; without this the view jumps h1 to h3. It stays
+        for screen readers only — the lens bar is the visible label. */}
+    <h2 className="sr-only">Spending and economy</h2>
+
     <div className="dl-stats-grid">
       <div className="dl-panelbox">
         <h3>MONTHLY SPEND — LAST 6</h3>
@@ -94,17 +98,19 @@ export default function Stats({ summary, currency, distanceUnit, economyUnit }: 
         >
           {months.map(m => (
             <div className="dl-bar" key={m.month}>
-              <div className="dl-col" style={{ height: `${Math.max(2, (m.total / maxMonth) * 100)}%` }}>
-                <div className="f" style={{ height: `${m.total ? (m.fuel / m.total) * 100 : 0}%` }} />
-                <div className="m" style={{ height: `${m.total ? ((m.total - m.fuel) / m.total) * 100 : 0}%` }} />
+              <div className="dl-bar-track">
+                <div className="dl-col" style={{ height: `${Math.max(2, (m.total / maxMonth) * 100)}%` }}>
+                  <div className="f" style={{ height: `${m.total ? (m.fuel / m.total) * 100 : 0}%` }} />
+                  <div className="m" style={{ height: `${m.total ? ((m.total - m.fuel) / m.total) * 100 : 0}%` }} />
+                </div>
               </div>
               <span className="dl-bar-lbl mono">{m.label.split(' ')[0]}</span>
             </div>
           ))}
         </div>
         <div className="dl-legend" style={{ display: 'flex', gap: 18, marginTop: 12 }}>
-          <div><i style={{ background: 'var(--dim)' }} />Fuel</div>
-          <div><i style={{ background: 'var(--faint)', opacity: .55 }} />Everything else</div>
+          <div><i style={{ background: 'var(--series-1)' }} />Fuel</div>
+          <div><i style={{ background: 'var(--series-2)' }} />Everything else</div>
         </div>
       </div>
 
