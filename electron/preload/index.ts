@@ -60,6 +60,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('files:savePhoto', sourcePath, category),
     deleteFile: (filePath: string) => ipcRenderer.invoke('files:deleteFile', filePath),
     getImageData: (filePath: string) => ipcRenderer.invoke('files:getImageData', filePath),
+    getThumbnail: (filePath: string, size?: number) =>
+      ipcRenderer.invoke('files:getThumbnail', filePath, size),
     openFile: (filePath: string) => ipcRenderer.invoke('files:openFile', filePath),
   },
   dashboard: {

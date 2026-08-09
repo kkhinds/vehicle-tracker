@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-/** Reads each file back as a data URL. PDFs stay as a labelled tile. */
+/** Reads a downscaled copy of each file. PDFs stay as a labelled tile. */
 function useThumbs(paths: string[]): Record<string, string | null> {
   const [data, setData] = useState<Record<string, string | null>>({})
   const key = paths.join('|')
 
   useEffect(() => {
     let cancelled = false
-    Promise.all(paths.map(async p => [p, await window.api.files.getImageData(p)] as const))
+    Promise.all(paths.map(async p => [p, await window.api.files.getThumbnail(p)] as const))
       .then(pairs => { if (!cancelled) setData(Object.fromEntries(pairs)) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -21,20 +21,27 @@ function isPdf(path: string): boolean {
   return path.toLowerCase().endsWith('.pdf')
 }
 
-function Tile({ path, src, onRemove }: { path: string; src: string | null; onRemove?: () => void }) {
+function Tile({ path, src, index, total, onRemove }: {
+  path: string; src: string | null; index: number; total: number; onRemove?: () => void
+}) {
+  // The stored name is a timestamp, so position is the only thing worth saying.
+  const label = total > 1 ? `Attachment ${index + 1} of ${total}` : 'Attachment'
   return (
     <div className="dl-thumb">
       <button
         className="dl-thumb-open"
         onClick={() => window.api.files.openFile(path)}
+        aria-label={`${label} — open in the system viewer`}
         title="Open in the system viewer"
       >
         {isPdf(path) || !src
           ? <span className="dl-thumb-doc mono">{isPdf(path) ? 'PDF' : '?'}</span>
-          : <img src={src} alt="" />}
+          : <img src={src} alt={label} />}
       </button>
       {onRemove && (
-        <button className="dl-thumb-x" onClick={onRemove} aria-label="Remove this attachment">×</button>
+        <button className="dl-thumb-x" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`}>
+          <span aria-hidden="true">×</span>
+        </button>
       )}
     </div>
   )
@@ -74,11 +81,13 @@ export function PhotoPicker({ category, paths, onChange, multiple = true, label 
     <div className="dl-field">
       <label>{multiple ? 'Attachments' : 'Receipt'}</label>
       <div className="dl-thumbs">
-        {paths.map(p => (
+        {paths.map((p, i) => (
           <Tile
             key={p}
             path={p}
             src={thumbs[p] ?? null}
+            index={i}
+            total={paths.length}
             onRemove={() => onChange(paths.filter(x => x !== p))}
           />
         ))}
@@ -97,7 +106,7 @@ export function PhotoStrip({ paths }: { paths: string[] }) {
   if (!paths.length) return null
   return (
     <div className="dl-thumbs" style={{ marginTop: 14 }}>
-      {paths.map(p => <Tile key={p} path={p} src={thumbs[p] ?? null} />)}
+      {paths.map((p, i) => <Tile key={p} path={p} src={thumbs[p] ?? null} index={i} total={paths.length} />)}
     </div>
   )
 }

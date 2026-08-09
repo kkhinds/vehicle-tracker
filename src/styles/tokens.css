@@ -9,6 +9,9 @@
 :root {
   --bg:#0A0E14; --panel:#111722; --panel2:#161E2B; --hover:#1A2332;
   --line:#1E2735; --line2:#2A3547;
+  /* Borders that identify a control, not a divider — 3:1 against every surface
+     they sit on, which --line2 (1.6:1) never was. */
+  --ctl-line:#5F6E86;
   --text:#EDF1F7; --dim:#7E8A9C; --faint:#78879E;
   --accent:#FFAA2B; --accent-ink:#131313; --accent-soft:rgba(255,170,43,.12);
   --red:#FF554B; --red-soft:rgba(255,59,48,.06);
@@ -20,7 +23,7 @@
 
 [data-theme="light"] {
   --bg:#F2F4F8; --panel:#FFFFFF; --panel2:#FFFFFF; --hover:#F5F7FB;
-  --line:#E2E7EF; --line2:#CBD4E1;
+  --line:#E2E7EF; --line2:#CBD4E1; --ctl-line:#7D8C9E;
   --text:#16202E; --dim:#5B6878; --faint:#5F6C7D;
   --accent:#A15D00; --accent-ink:#FFFFFF; --accent-soft:rgba(161,93,0,.08);
   --red:#C6281E; --red-soft:rgba(198,40,30,.08);
@@ -63,6 +66,15 @@ button:focus-visible, input:focus-visible {
    right edge, otherwise its pills overflow and paint a scrollbar. */
 .shell { padding-inline:max(32px, calc((100% - 948px) / 2)); }
 
+/* Reduced motion means "don't move things at me", not "stop telling me what
+   changed". Durations collapse to something imperceptible rather than to
+   nothing, so state still lands and nothing depends on an animation running to
+   reach its resting position. */
 @media (prefers-reduced-motion: reduce) {
-  * { animation:none !important; transition:none !important; }
+  *, *::before, *::after {
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
 }

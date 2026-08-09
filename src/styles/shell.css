@@ -96,6 +96,7 @@
 .dl-pill:hover{ color:var(--text); background:var(--hover) }
 .dl-pill[aria-selected="true"]{ color:var(--accent); background:var(--accent-soft) }
 [data-theme="light"] .dl-pill[aria-selected="true"]{ color:var(--accent-ink); background:var(--accent) }
+.dl-tabs{ display:flex; align-items:center; gap:6px; flex:1; min-width:0 }
 .dl-gap{ flex:1; min-width:12px }
 .dl-stats-pill{ border-left:1px solid var(--line2); padding-left:16px; margin-left:4px }
 .dl-search{
@@ -172,7 +173,7 @@
 .dl-entry.overdue .dl-c-val{ color:var(--red) }
 
 .dl-more-row{
-  border:1px dashed var(--line2); border-radius:12px; padding:10px 16px; width:100%;
+  border:1px dashed var(--ctl-line); border-radius:12px; padding:10px 16px; width:100%;
   color:var(--dim); font-size:13px; text-align:center; margin-bottom:12px;
 }
 .dl-more-row:hover{ color:var(--text); background:var(--hover) }
@@ -205,7 +206,7 @@
    services, the fitted set for tires. */
 .dl-lbl-link{
   font-family:'Barlow',sans-serif; font-size:12px; font-weight:500; letter-spacing:0;
-  color:var(--dim); border:1px solid var(--line2); border-radius:7px; padding:5px 10px;
+  color:var(--dim); border:1px solid var(--ctl-line); border-radius:7px; padding:5px 10px;
 }
 .dl-lbl-link:hover{ color:var(--text); background:var(--hover) }
 .dl-empty{
@@ -218,7 +219,7 @@
   font-weight:600; padding:8px 20px; border-radius:8px;
 }
 .dl-empty button.ghost{
-  background:none; color:var(--dim); border:1px solid var(--line2); font-weight:500;
+  background:none; color:var(--dim); border:1px solid var(--ctl-line); font-weight:500;
 }
 .dl-empty button.ghost:hover{ color:var(--text); background:var(--hover) }
 
@@ -235,14 +236,20 @@
   opacity:0; transition:opacity .25s;
 }
 .dl-scrim.open{ opacity:1 }
+/* The resting position is a normal style, not the end of a keyframe — with
+   reduced motion the animation is switched off, and a sheet that only arrives
+   by animating would stay parked below the window with the scrim over
+   everything. Width tracks the viewport so it survives zooming in. */
 .dl-sheet{
-  position:fixed; left:50%; bottom:0; z-index:61; width:580px; max-height:84vh;
-  overflow:auto; transform:translate(-50%,105%);
+  position:fixed; left:50%; bottom:0; z-index:61;
+  width:min(580px, calc(100vw - 24px)); max-height:84vh;
+  overflow:auto; transform:translate(-50%,0);
   background:var(--panel2); border:1px solid var(--line2); border-bottom:none;
   border-radius:16px 16px 0 0; padding:24px 32px 32px; box-shadow:var(--shadow);
-  animation:dl-sheet-in .35s cubic-bezier(.2,.9,.3,1) forwards;
+  animation:dl-sheet-in .35s cubic-bezier(.2,.9,.3,1);
 }
-@keyframes dl-sheet-in{ to{ transform:translate(-50%,0) } }
+@keyframes dl-sheet-in{ from{ transform:translate(-50%,105%) } }
+@media (max-width:560px){ .dl-sheet{ padding:20px 18px 26px } }
 .dl-grab{ width:44px; height:4px; border-radius:3px; background:var(--line2); margin:0 auto 16px }
 .dl-sheet h2{
   font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:25px;
@@ -281,7 +288,8 @@
 .dl-field.error input{ border-color:var(--red) }
 .dl-hint{ font-size:11px; color:var(--faint); margin-top:4px }
 .dl-err{ font-size:11px; color:var(--red); margin-top:4px }
-.dl-frow{ display:flex; gap:12px }
+.dl-frow{ display:flex; gap:12px; flex-wrap:wrap }
+.dl-frow > .dl-field{ min-width:132px }
 .dl-check{ display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--dim) }
 
 .dl-save{
@@ -291,8 +299,8 @@
 .dl-save:disabled{ opacity:.6; cursor:default }
 .dl-btnrow{ display:flex; gap:12px }
 .dl-btnrow .dl-save{ margin-top:20px }
-.dl-ghost{ background:var(--panel); color:var(--text); border:1px solid var(--line2) }
-.dl-danger{ background:var(--panel); color:var(--red); border:1px solid var(--line2) }
+.dl-ghost{ background:var(--panel); color:var(--text); border:1px solid var(--ctl-line) }
+.dl-danger{ background:var(--panel); color:var(--red); border:1px solid var(--ctl-line) }
 .dl-microcopy{ font-size:11px; color:var(--faint); text-align:center; margin-top:12px }
 
 /* ── FAB ──────────────────────────────────────────────── */
@@ -301,7 +309,7 @@
   padding:0 24px; display:flex; align-items:center; gap:10px;
   background:var(--accent); color:var(--accent-ink);
   font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:.06em;
-  box-shadow:0 6px 30px var(--glow); transition:transform .25s cubic-bezier(.2,.9,.3,1.4);
+  box-shadow:0 6px 30px var(--glow); transition:transform .25s cubic-bezier(.2,.9,.3,1);
 }
 .dl-fab:hover{ transform:scale(1.05) }
 .dl-fab .plus{ font-size:21px; font-weight:600 }
@@ -315,7 +323,7 @@
 .dl-lab b{ display:block; font-weight:500; font-size:14px }
 .dl-lab span{ color:var(--dim); font-size:12px }
 .dl-ctl{
-  color:var(--dim); font-size:12px; border:1px solid var(--line2);
+  color:var(--dim); font-size:12px; border:1px solid var(--ctl-line);
   padding:8px 12px; border-radius:7px; flex:none;
 }
 .dl-ctl:hover{ color:var(--text); background:var(--hover) }
@@ -358,7 +366,7 @@
 .dl-irow-iv{ font-size:12px; color:var(--dim); flex:none }
 .dl-irow-done{
   flex:none; width:32px; height:32px; border-radius:8px; color:var(--dim);
-  border:1px solid var(--line2);
+  border:1px solid var(--ctl-line);
 }
 .dl-irow-done:hover{ color:var(--accent-ink); background:var(--accent); border-color:var(--accent) }
 .dl-meter{ display:flex; gap:2px; width:92px; flex:none }
@@ -444,7 +452,7 @@
 .dl-thumbs{ display:flex; flex-wrap:wrap; gap:10px; margin-top:4px }
 .dl-thumb{ position:relative; width:72px; height:72px }
 .dl-thumb-open{
-  width:100%; height:100%; border:1px solid var(--line2); border-radius:10px;
+  width:100%; height:100%; border:1px solid var(--ctl-line); border-radius:10px;
   overflow:hidden; display:flex; align-items:center; justify-content:center;
   background:var(--panel2);
 }
@@ -452,13 +460,13 @@
 .dl-thumb-open img{ width:100%; height:100%; object-fit:cover }
 .dl-thumb-doc{ font-size:12px; color:var(--dim); letter-spacing:.08em }
 .dl-thumb-x{
-  position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%;
-  background:var(--panel); border:1px solid var(--line2); color:var(--dim);
-  font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center;
+  position:absolute; top:-8px; right:-8px; width:24px; height:24px; border-radius:50%;
+  background:var(--panel); border:1px solid var(--ctl-line); color:var(--dim);
+  font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center;
 }
 .dl-thumb-x:hover{ color:var(--red); border-color:var(--red) }
 .dl-thumb-add{
-  width:72px; height:72px; border:1px dashed var(--line2); border-radius:10px;
+  width:72px; height:72px; border:1px dashed var(--ctl-line); border-radius:10px;
   color:var(--dim); font-size:12px;
 }
 .dl-thumb-add:hover{ color:var(--text); border-color:var(--dim) }

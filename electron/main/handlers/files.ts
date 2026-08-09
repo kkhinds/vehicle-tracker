@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, app } from 'electron'
+import { ipcMain, dialog, shell, app, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
@@ -49,6 +49,24 @@ export function registerFilesHandlers(): void {
     }
     const mime = mimeMap[ext] ?? 'application/octet-stream'
     return `data:${mime};base64,${buffer.toString('base64')}`
+  })
+
+  /**
+   * A tile is 72px. Sending the original back as base64 to paint it meant a 5MB
+   * receipt crossing IPC as a ~6.7MB string and sitting in renderer state for as
+   * long as the sheet was open. This hands back a 144px copy (2x for hidpi)
+   * instead. Formats nativeImage can't decode fall back to the original.
+   */
+  ipcMain.handle('files:getThumbnail', (_, filePath: string, size = 144): string | null => {
+    if (!filePath || !fs.existsSync(filePath)) return null
+    const image = nativeImage.createFromPath(filePath)
+    if (image.isEmpty()) return null
+    const { width, height } = image.getSize()
+    const longest = Math.max(width, height)
+    const scaled = longest > size
+      ? image.resize(width >= height ? { width: size } : { height: size })
+      : image
+    return scaled.toDataURL()
   })
 
   ipcMain.handle('files:openFile', async (_, filePath: string) => {

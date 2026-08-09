@@ -236,7 +236,12 @@ export default function LogForm({
   async function save() {
     const e = validate()
     setErrors(e)
-    if (Object.keys(e).length) return
+    const firstBad = Object.keys(e)[0]
+    if (firstBad) {
+      // Land on the field that stopped the save rather than announcing nothing.
+      document.getElementById(`lf-${firstBad}`)?.focus()
+      return
+    }
     setSaving(true)
     const odo = parseFloat(f.odometer ?? '')
     try {
@@ -391,6 +396,11 @@ export default function LogForm({
         inputMode={opts.type === 'text' ? undefined : 'decimal'}
         placeholder={opts.placeholder}
         list={opts.list}
+        // A red border says nothing to a screen reader, and nothing at all to
+        // someone who can't tell red from grey — so the message is wired to the
+        // field it belongs to.
+        aria-invalid={errors[name] ? true : undefined}
+        aria-describedby={errors[name] ? `lf-${name}-err` : opts.hint ? `lf-${name}-hint` : undefined}
         value={opts.value ?? f[name] ?? ''}
         onChange={e => {
           // Remember which side of the pump maths was typed, so the other one follows.
@@ -400,8 +410,8 @@ export default function LogForm({
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
       />
       {errors[name]
-        ? <div className="dl-err">{errors[name]}</div>
-        : opts.hint && <div className="dl-hint">{opts.hint}</div>}
+        ? <div className="dl-err" id={`lf-${name}-err`}>{errors[name]}</div>
+        : opts.hint && <div className="dl-hint" id={`lf-${name}-hint`}>{opts.hint}</div>}
     </div>
   )
 

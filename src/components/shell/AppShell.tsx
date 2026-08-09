@@ -238,7 +238,15 @@ export default function AppShell() {
         onOpenGarage={() => setSheet('garage')}
         onSearch={() => setSheet('search')}
       />
-      <main className="shell" style={{ paddingBlock: 32, paddingBottom: 130 }} ref={spineRef}>
+      <main
+        className="shell"
+        id="dl-lens-panel"
+        role="tabpanel"
+        aria-labelledby={`dl-tab-${lens}`}
+        tabIndex={-1}
+        style={{ paddingBlock: 32, paddingBottom: 130 }}
+        ref={spineRef}
+      >
         {loading ? (
           <p style={{ color: 'var(--dim)', fontSize: 13 }}>Loading…</p>
         ) : lens === 'stats' ? (

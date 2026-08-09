@@ -172,7 +172,14 @@ export function IntervalsSheet({ odometer, distanceUnit, onChanged }: {
                   ))}
                 </span>
               </button>
-              <button className="dl-irow-done" onClick={() => markDone(iv)} title="Mark done now">✓</button>
+              <button
+                className="dl-irow-done"
+                onClick={() => markDone(iv)}
+                aria-label={`Mark ${iv.name} done at ${odometer.toLocaleString()} ${distanceUnit}`}
+                title="Mark done now"
+              >
+                <span aria-hidden="true">✓</span>
+              </button>
             </div>
           )
         })}

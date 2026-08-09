@@ -17,5 +17,9 @@
   },
   // The main process shares the renderer's domain types, so they have to be
   // part of this project too or tsc refuses to follow the import.
-  "include": ["electron/**/*", "electron.vite.config.ts", "src/types/**/*"]
+  "include": ["electron/**/*", "electron.vite.config.ts", "src/types/**/*"],
+  // Self-checks run through `node` directly, which needs the .ts extension on
+  // its imports — the one thing this compiler setup won't accept. Nothing
+  // imports them, so they never reach the bundle either.
+  "exclude": ["electron/**/*.test.ts"]
 }

@@ -79,6 +79,8 @@ interface ElectronAPI {
     savePhoto: (sourcePath: string, category: string) => Promise<string>
     deleteFile: (filePath: string) => Promise<void>
     getImageData: (filePath: string) => Promise<string | null>
+    /** Downscaled copy for tiles — null when the format can't be decoded. */
+    getThumbnail: (filePath: string, size?: number) => Promise<string | null>
     openFile: (filePath: string) => Promise<void>
   }
   dashboard: {
