@@ -175,6 +175,8 @@ export interface TimelineEntry {
   valueSub: string | null
   /** Raw distance-per-litre on fuel rows; the renderer applies the economy unit. */
   consumption?: number | null
+  /** Fuel rows only: the span reads far better than this vehicle ever manages. */
+  suspect?: boolean
   /** Expiry (documents) or renewal (insurance), yyyy-MM-dd. */
   expiresOn?: string | null
   /** Days until that date — negative once it's past. */

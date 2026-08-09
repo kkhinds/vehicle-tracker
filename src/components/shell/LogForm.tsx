@@ -27,8 +27,6 @@ interface LogFormProps {
   lastFuel: { station: string | null; pricePerLitre: number | null } | null
   /** Set to edit an existing record instead of adding a new one. */
   edit?: EditTarget | null
-  /** The vehicle's running economy, used to flag a suspiciously good tank. */
-  avgConsumption?: number | null
   /** Which national price to compare against — the vehicle's fuel. */
   fuelKind?: 'gasoline' | 'diesel' | null
   onSaved: (what: string) => void
@@ -93,7 +91,7 @@ function recordToForm(type: LogType, r: Record<string, unknown>): Record<string,
 }
 
 export default function LogForm({
-  initialType, odometer, distanceUnit, lastFuel, edit, avgConsumption, fuelKind, onSaved, onCancel,
+  initialType, odometer, distanceUnit, lastFuel, edit, fuelKind, onSaved, onCancel,
 }: LogFormProps) {
   const [type, setType] = useState<LogType>(edit?.type ?? initialType)
   const [saving, setSaving] = useState(false)
@@ -257,11 +255,12 @@ export default function LogForm({
           })
           onSaved('Fill-up saved')
           // A tank that reads far better than this vehicle ever manages almost
-          // always means a fill-up went unlogged, not a sudden miracle.
-          if (avgConsumption && saved.consumption && saved.consumption > avgConsumption * 1.75) {
+          // always means a fill-up went unlogged, not a sudden miracle. The
+          // backend judges it against the median of this vehicle's own spans.
+          if (saved.suspect) {
             toast.warning(
-              'That tank came out much better than usual — if you missed logging a fill-up, ' +
-              'open the entry and tick "I missed logging fill-ups before this one".',
+              'That tank came out much better than usual — open the entry and mark it if you ' +
+              'missed logging a fill-up.',
               { duration: 9000 },
             )
           }

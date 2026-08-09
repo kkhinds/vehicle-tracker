@@ -481,3 +481,18 @@
   border:1px solid var(--green); color:var(--green);
   font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:12px; letter-spacing:.14em;
 }
+
+/* ── CALLOUT ──────────────────────────────────────────── */
+/* Chroma is reserved for exceptions, and a figure the app can't stand behind
+   is one — so this is allowed to carry the accent. */
+.dl-callout{
+  margin-top:14px; padding:14px 16px; border-radius:11px;
+  background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.dl-callout b{ display:block; font-size:13px; font-weight:600; color:var(--text) }
+.dl-callout p{ margin:6px 0 0; font-size:12.5px; line-height:1.55; color:var(--dim) }
+.dl-callout-btn{
+  margin-top:12px; width:100%; padding:9px 0; border-radius:8px; font-weight:600; font-size:13px;
+  background:var(--accent); color:var(--accent-ink);
+}
+.dl-callout-btn:hover{ filter:brightness(1.06) }

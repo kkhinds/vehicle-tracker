@@ -177,6 +177,20 @@ export default function AppShell() {
   })()
 
   const [table, id] = detail ? detail.id.split(':') : []
+
+  /** Breaks the span on a fill-up that followed unlogged ones, from the entry itself. */
+  async function markMissedFills() {
+    if (!detail || table !== 'fuel') return
+    try {
+      await window.api.fuel.update(Number(id), { missed_fills: true })
+      setDetail(null)
+      toast.success('Marked — that tank no longer counts toward your economy')
+      reload()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   async function deleteEntry() {
     if (!detail) return
     const api = window.api as unknown as Record<string, { delete?: (id: number) => Promise<unknown> }>
@@ -269,7 +283,6 @@ export default function AppShell() {
           distanceUnit={settings.distance_unit}
           lastFuel={lastFuel}
           edit={edit}
-          avgConsumption={summary?.avgConsumption ?? null}
           fuelKind={currentVehicle?.drivetrain === 'diesel' ? 'diesel'
             : currentVehicle?.drivetrain === 'ev' ? null : 'gasoline'}
           onCancel={() => { setLogOpen(false); setEdit(null) }}
@@ -320,6 +333,20 @@ export default function AppShell() {
                 No expiry date on this one, so it can't be counted down or remind you.
                 Add one with Edit and you'll get warnings at 60, 30 and 7 days.
               </p>
+            )}
+            {detail.suspect && (
+              <div className="dl-callout">
+                <b>This tank reads better than this vehicle manages.</b>
+                <p>
+                  Economy is measured between full tanks. If a fill-up went unlogged, this span
+                  covers fuel that was never recorded, and the figure comes out flattering. Mark it
+                  and the tank is skipped — the average goes back to the truth and measuring starts
+                  again from here.
+                </p>
+                <button className="dl-callout-btn" onClick={markMissedFills}>
+                  I missed logging fill-ups before this one
+                </button>
+              </div>
             )}
             <PhotoStrip paths={detailPhotos} />
             <div className="dl-btnrow">

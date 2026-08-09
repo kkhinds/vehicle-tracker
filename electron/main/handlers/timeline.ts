@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId, getSetting } from '../db'
+import { suspectFuelIds } from './fuel'
 import { daysUntil, addMonthsISO } from '../dates'
 import { format, addDays, parseISO, differenceInDays } from 'date-fns'
 
@@ -24,6 +25,8 @@ export interface TimelineEntry {
   valueSub: string | null   // smaller line under it
   /** Raw distance-per-litre on fuel rows. The renderer owns the economy unit. */
   consumption?: number | null
+  /** Fuel rows only: the span reads far better than this vehicle ever manages. */
+  suspect?: boolean
   /** Expiry (documents) or renewal (insurance), yyyy-MM-dd. */
   expiresOn?: string | null
   /** Days until that date — negative once it's past. */
@@ -88,6 +91,11 @@ export function registerTimelineHandlers(): void {
     const v = getCurrentVehicleId()
     const out: TimelineEntry[] = []
 
+    // Fill-ups whose economy can't be real — almost always a fill-up that never
+    // got logged. Flagged here so an entry already sitting in the log gets
+    // questioned, not just the one being saved right now.
+    const suspect = suspectFuelIds(db, v)
+
     for (const r of db.prepare(
       'SELECT id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, consumption, missed_fills FROM fuel_log WHERE vehicle_id = ?'
     ).all<{ id: number; date: string; odometer: number; litres: number; cost_per_litre: number; total_cost: number; fuel_station: string | null; full_tank: number; consumption: number | null; missed_fills: number }>(v)) {
@@ -95,9 +103,11 @@ export function registerTimelineHandlers(): void {
         id: `fuel:${r.id}`, kind: 'fuel', date: r.date, odometer: r.odometer,
         title: `Fill-up${r.fuel_station ? ` — ${r.fuel_station}` : ''}`,
         subtitle: `${r.litres.toFixed(1)} L @ $${r.cost_per_litre.toFixed(2)}/L · ${r.full_tank ? 'full tank' : 'partial'}`
-          + (r.missed_fills === 1 ? ' · fills missed before this' : ''),
+          + (r.missed_fills === 1 ? ' · fills missed before this' : '')
+          + (suspect.has(r.id) ? ' · economy looks too good — check this one' : ''),
         value: money(r.total_cost), valueSub: null,
         consumption: r.consumption,
+        suspect: suspect.has(r.id),
       })
     }
 

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId, recomputeVehicleOdometer } from '../db'
 import { deletePhotoFiles } from '../photos'
+import { suspectSpans } from '../economy'
 
 interface FuelRow {
   id: number
@@ -19,11 +20,23 @@ interface FuelRow {
   created_at: string
 }
 
-function rowToEntry(row: FuelRow) {
-  return { ...row, full_tank: row.full_tank === 1, missed_fills: row.missed_fills === 1 }
+function rowToEntry(row: FuelRow, suspect = false) {
+  return { ...row, full_tank: row.full_tank === 1, missed_fills: row.missed_fills === 1, suspect }
 }
 
 type Db = ReturnType<typeof getDb>
+
+/**
+ * Which of this vehicle's fill-ups carry an economy figure that can't be real.
+ * Derived on read rather than stored — the answer changes as the history around
+ * an entry changes, and a stored flag would go stale on the next edit.
+ */
+export function suspectFuelIds(db: Db, vehicleId: number): Set<number> {
+  const rows = db.prepare(
+    'SELECT id, consumption, missed_fills FROM fuel_log WHERE vehicle_id = ?'
+  ).all<{ id: number; consumption: number | null; missed_fills: number }>(vehicleId)
+  return suspectSpans(rows)
+}
 
 /**
  * Recompute consumption for every full-tank entry using the fill-to-full method:
@@ -78,7 +91,8 @@ export function registerFuelHandlers(): void {
     const rows = db.prepare(
       'SELECT * FROM fuel_log WHERE vehicle_id = ? ORDER BY date DESC, id DESC'
     ).all(vehicleId) as FuelRow[]
-    return rows.map(rowToEntry)
+    const suspect = suspectFuelIds(db, vehicleId)
+    return rows.map(r => rowToEntry(r, suspect.has(r.id)))
   })
 
   ipcMain.handle('fuel:add', (_, entry: Omit<FuelRow, 'id' | 'created_at' | 'consumption' | 'vehicle_id' | 'full_tank' | 'missed_fills'> & { full_tank: boolean; missed_fills?: boolean }) => {
@@ -100,7 +114,8 @@ export function registerFuelHandlers(): void {
     recomputeConsumption(db, vehicleId)
     recomputeVehicleOdometer(db, vehicleId)
 
-    return rowToEntry(db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(result.lastInsertRowid) as FuelRow)
+    const saved = db.prepare('SELECT * FROM fuel_log WHERE id = ?').get(result.lastInsertRowid) as FuelRow
+    return rowToEntry(saved, suspectFuelIds(db, vehicleId).has(saved.id))
   })
 
   ipcMain.handle('fuel:update', (_, id: number, entry: Partial<Omit<FuelRow, 'full_tank' | 'missed_fills'> & { full_tank: boolean; missed_fills: boolean }>) => {

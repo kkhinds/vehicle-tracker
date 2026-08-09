@@ -49,6 +49,8 @@ export interface FuelEntry {
   consumption: number | null
   /** Fill-ups before this one went unlogged, so its span can't measure economy. */
   missed_fills: boolean
+  /** Set by the backend when this span reads too well to be believable. */
+  suspect?: boolean
   created_at: string
 }
 
