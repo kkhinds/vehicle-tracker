@@ -103,6 +103,12 @@ export default function LogForm({
   const [tireMode, setTireMode] = useState<'inspection' | 'rotation'>('inspection')
   const [fluidPresets, setFluidPresets] = useState<{ key: string; label: string }[]>([])
   const [pump, setPump] = useState<PumpPrices | null>(null)
+  /** Published price for this vehicle's fuel, once it's known. */
+  const publishedPrice = fuelKind && pump
+    ? (fuelKind === 'diesel' ? pump.diesel : pump.gasoline)
+    : null
+  // Set the moment either money field is edited, so nothing overwrites it.
+  const priceTouched = useRef(false)
   // Picking copies the file immediately, so anything picked and then abandoned
   // has to be unlinked or it sits in the photos folder forever.
   const copied = useRef<string[]>([])
@@ -123,20 +129,33 @@ export default function LogForm({
       date: todayISO(),
       odometer: '',
       station: lastFuel?.station ?? '',
-      price: lastFuel?.pricePerLitre != null ? String(lastFuel.pricePerLitre) : '',
+      // Today's published price for this vehicle's fuel, falling back to what
+      // the last fill-up cost. Prices are set nationally here, so the current
+      // one is a better opening guess than a figure from weeks ago.
+      price: publishedPrice != null ? publishedPrice.toFixed(2)
+        : lastFuel?.pricePerLitre != null ? String(lastFuel.pricePerLitre) : '',
     })
     setFullTank(true)
     setPhotos([])
-  }, [type, lastFuel, edit])
+    priceTouched.current = false
+  }, [type, lastFuel, edit, publishedPrice])
 
-  // Cached national price, for comparison only — never prefilled over what you
-  // typed, because the pump you used is the one that counts. The app rechecks
-  // on every launch, so a check that lands while this form is open replaces it.
+  // The launch check can land after the form is already open, and the price
+  // list is cached, so both paths feed the same state.
   useEffect(() => {
     if (type !== 'fuel') return
     if (!pump) window.api.fuelPrices.get().then(setPump)
     return window.api.fuelPrices.onUpdated(setPump)
   }, [type, pump])
+
+  // A price arriving late still fills the field — but never over a figure you
+  // typed, because the pump you used is the one that counts.
+  useEffect(() => {
+    if (type !== 'fuel' || edit || publishedPrice == null || priceTouched.current) return
+    setF(prev => (prev.price === publishedPrice.toFixed(2)
+      ? prev
+      : { ...prev, price: publishedPrice.toFixed(2), lastMoney: 'price' }))
+  }, [type, edit, publishedPrice])
 
   useEffect(() => {
     if (type !== 'fluid' || fluidPresets.length) return
@@ -413,7 +432,10 @@ export default function LogForm({
         value={opts.value ?? f[name] ?? ''}
         onChange={e => {
           // Remember which side of the pump maths was typed, so the other one follows.
-          if (name === 'total' || name === 'price') set('lastMoney', name)
+          if (name === 'total' || name === 'price') {
+            set('lastMoney', name)
+            priceTouched.current = true
+          }
           set(name, e.target.value)
         }}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); save() } }}
@@ -451,7 +473,10 @@ export default function LogForm({
             {field('litres', 'Litres', { placeholder: '0.0' })}
             {field('price', 'Price / L', {
               value: money.price,
-              hint: money.derived === 'price' ? 'worked out from the total' : undefined,
+              hint: money.derived === 'price' ? 'worked out from the total'
+                : !priceTouched.current && publishedPrice != null
+                  && money.price === publishedPrice.toFixed(2) ? "today's published price"
+                : undefined,
             })}
             {field('total', 'Total paid', {
               value: money.total,
