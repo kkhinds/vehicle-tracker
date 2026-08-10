@@ -52,6 +52,22 @@ export function formatEconomy(consumption: number | null | undefined, distanceUn
   return v == null ? null : v.toFixed(economyUnit === 'distance' ? 2 : 1)
 }
 
+/** "just now" / "8 minutes ago" / "yesterday" — for freshness, not precision. */
+export function timeAgo(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const then = Date.parse(iso)
+  if (Number.isNaN(then)) return null
+  const mins = Math.floor((Date.now() - then) / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins === 1) return 'a minute ago'
+  if (mins < 60) return `${mins} minutes ago`
+  const hours = Math.floor(mins / 60)
+  if (hours === 1) return 'an hour ago'
+  if (hours < 24) return `${hours} hours ago`
+  const days = Math.floor(hours / 24)
+  return days === 1 ? 'yesterday' : `${days} days ago`
+}
+
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

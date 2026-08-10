@@ -14,7 +14,7 @@
     "icon": "node scripts/build-icon.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "release:win": "npm run icon && npm run build && electron-builder --win --publish always",
-    "test": "node electron/main/economy.test.ts"
+    "test": "node electron/main/economy.test.ts && node electron/main/fuelPrices.test.ts"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",

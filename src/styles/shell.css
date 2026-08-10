@@ -513,3 +513,14 @@
   background:var(--accent); color:var(--accent-ink);
 }
 .dl-callout-btn:hover{ filter:brightness(1.06) }
+
+/* ── PUMP PRICE CHECK ─────────────────────────────────── */
+.dl-pump{ margin-top:10px }
+.dl-pump-foot{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px;
+}
+.dl-pump-use{
+  flex:none; font-size:12px; font-weight:500; color:var(--text);
+  border:1px solid var(--ctl-line); border-radius:7px; padding:5px 10px;
+}
+.dl-pump-use:hover{ background:var(--hover); border-color:var(--accent); color:var(--accent) }

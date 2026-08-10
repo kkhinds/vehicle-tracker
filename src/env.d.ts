@@ -158,6 +158,10 @@ interface ElectronAPI {
 
 /** National pump prices, cached from globalpetrolprices.com. */
 export interface PumpPrices {
+  /** True when priceDate is the day the price actually changed. */
+  effective?: boolean
+  /** Who published it. */
+  sourceName?: string
   gasoline: number | null
   diesel: number | null
   priceDate: string | null

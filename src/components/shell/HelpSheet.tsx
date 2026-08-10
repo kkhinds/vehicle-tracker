@@ -1,8 +1,13 @@
+import { useEffect, useState } from 'react'
+
 /**
  * In-app help. Written for the Driver's Log layout — lenses, the spine, the log
  * button — not the old sidebar app.
  */
 export default function HelpSheet() {
+  const [version, setVersion] = useState('')
+  useEffect(() => { window.api.app.getVersion().then(setVersion) }, [])
+
   return (
     <div className="dl-help">
       <section>
@@ -105,9 +110,10 @@ export default function HelpSheet() {
         <p>
           Everything sits in one file on this PC, and none of it leaves. The app makes two
           outbound requests and neither one sends anything of yours: it checks GitHub for a
-          new version, and about once a week it reads the national pump price off
-          globalpetrolprices.com. Both are just downloads, and the app works offline without
-          them — <b>Settings</b> has a Check now for the price.
+          new version, and on every launch it reads the current pump price — from the
+          Barbados Government Information Service, which announces prices the day they take
+          effect, falling back to globalpetrolprices.com. Both are just downloads, and the
+          app works offline without them — <b>Settings</b> has a Check now for the price.
         </p>
         <p>
           Backups run on a schedule and keep the last several copies; <b>Settings → Backups</b>
@@ -140,7 +146,9 @@ export default function HelpSheet() {
         </ul>
       </section>
 
-      <p className="dl-microcopy">Built by Kemar Hinds</p>
+      <p className="dl-microcopy">
+        Vehicle Tracker {version || '…'} · Built by Kemar Hinds
+      </p>
     </div>
   )
 }

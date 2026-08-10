@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { todayISO } from '@/lib/utils'
+import { formatDate, timeAgo, todayISO } from '@/lib/utils'
 import { PhotoPicker } from './Photos'
 import type { EntryKind, PumpPrices } from '@/env'
 
@@ -192,21 +192,28 @@ export default function LogForm({
     if (!national) return null
 
     const label = `${pump.country} ${fuelKind}`
-    const when = pump.priceDate ? ` (${pump.priceDate})` : ''
+    // "since 17 May" when the source knows the day the price changed; a bare
+    // date when it only knows when it looked.
+    const when = pump.priceDate
+      ? `${pump.effective ? ' since ' : ' as of '}${formatDate(pump.priceDate)}`
+      : ''
     const mine = parseFloat(money.price)
+    const head = `${label} is $${national.toFixed(2)}/L${when}`
+
     if (!Number.isFinite(mine) || mine <= 0) {
-      return { off: false, text: `${label} is $${national.toFixed(2)}/L${when}` }
+      return { off: false, national, text: head }
     }
 
     const gap = Math.abs(mine - national) / national
     if (gap > 0.2) {
       return {
         off: true,
-        text: `That works out to $${mine.toFixed(2)}/L, against ${label} at $${national.toFixed(2)}${when}`
+        national,
+        text: `That works out to $${mine.toFixed(2)}/L, against ${head}`
           + ' — worth double-checking the litres and the total.',
       }
     }
-    return { off: false, text: `$${mine.toFixed(2)}/L · ${label} is $${national.toFixed(2)}${when}` }
+    return { off: false, national, text: `$${mine.toFixed(2)}/L · ${head}` }
   }, [type, pump, fuelKind, money.price])
 
   function validate(): Errors {
@@ -463,8 +470,22 @@ export default function LogForm({
             </div>
           </div>
           {pumpCheck && (
-            <div className={pumpCheck.off ? 'dl-err' : 'dl-hint'} style={{ marginTop: 10 }}>
-              {pumpCheck.text}
+            <div className="dl-pump">
+              <div className={pumpCheck.off ? 'dl-err' : 'dl-hint'}>{pumpCheck.text}</div>
+              <div className="dl-pump-foot">
+                <span className="dl-hint">
+                  {pump?.sourceName ?? 'published price'}
+                  {timeAgo(pump?.checkedAt) ? ` · checked ${timeAgo(pump?.checkedAt)}` : ''}
+                </span>
+                {money.price !== pumpCheck.national.toFixed(2) && (
+                  <button
+                    className="dl-pump-use"
+                    onClick={() => { set('lastMoney', 'price'); set('price', pumpCheck.national.toFixed(2)) }}
+                  >
+                    Use ${pumpCheck.national.toFixed(2)}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

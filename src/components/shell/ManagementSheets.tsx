@@ -597,7 +597,9 @@ export function SettingsSheet({ onOpenBackups, onOpenOdometer, onOpenHelp, onCha
           <button className="dl-ctl" onClick={() => window.api.notifications.test()}>Send</button>
         </div>
       </div>
-      <p className="dl-microcopy">Built by Kemar Hinds</p>
+      <p className="dl-microcopy">
+        Vehicle Tracker {version || "…"} · Built by Kemar Hinds
+      </p>
     </>
   )
 }
