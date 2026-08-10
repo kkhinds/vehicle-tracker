@@ -122,6 +122,11 @@ contextBridge.exposeInMainWorld('api', {
   fuelPrices: {
     get: () => ipcRenderer.invoke('fuelPrices:get'),
     refresh: () => ipcRenderer.invoke('fuelPrices:refresh'),
+    onUpdated: (callback: (prices: unknown) => void) => {
+      const listener = (_: unknown, prices: unknown) => callback(prices)
+      ipcRenderer.on('fuelPrices:updated', listener)
+      return () => ipcRenderer.removeListener('fuelPrices:updated', listener)
+    },
   },
   timeline: {
     getEntries: () => ipcRenderer.invoke('timeline:getEntries'),

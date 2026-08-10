@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { getSetting, setSetting } from './db'
 
 /**
@@ -15,8 +15,9 @@ import { getSetting, setSetting } from './db'
  *   <td class="value"> 3.21 </td>      ← local currency per litre
  *   <td class="value"> 1.595 </td>     ← USD per litre
  *
- * Prices move every month or so, so a weekly check is plenty; the result is
- * cached in settings and the app works fine when the fetch fails.
+ * Every launch checks for a new price. The result is cached in settings, so a
+ * failed or slow fetch just leaves the last known figure in place and the app
+ * carries on — it works fine offline, only with an older comparison.
  */
 
 export interface PumpPrices {
@@ -33,8 +34,6 @@ export interface PumpPrices {
 
 const CACHE_KEY = 'pump_prices'
 const DEFAULT_COUNTRY = 'Barbados'
-/** Prices change roughly monthly; weekly keeps it current without hammering. */
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 function country(): string {
   return getSetting('pump_price_country') ?? DEFAULT_COUNTRY
@@ -101,19 +100,22 @@ export async function fetchPumpPrices(): Promise<PumpPrices | null> {
       source: url,
     }
     setSetting(CACHE_KEY, JSON.stringify(prices))
+    // The launch fetch can finish after a window is already showing a form, so
+    // the new figure is pushed rather than waiting to be asked for again.
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('fuelPrices:updated', prices)
+    }
     return prices
   } catch {
     return null
   }
 }
 
-/** Refreshes only when the cache is stale or for a different country. */
-export async function refreshPumpPricesIfStale(): Promise<void> {
-  const cached = getCachedPumpPrices()
-  const fresh = cached
-    && cached.country === country()
-    && Date.now() - Date.parse(cached.checkedAt) < MAX_AGE_MS
-  if (fresh) return
+/**
+ * Called once per launch. The old cache stays put if this fails, so the worst
+ * case is the comparison being a few days behind rather than absent.
+ */
+export async function refreshPumpPrices(): Promise<void> {
   await fetchPumpPrices()
 }
 

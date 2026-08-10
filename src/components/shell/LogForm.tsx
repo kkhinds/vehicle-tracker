@@ -130,10 +130,12 @@ export default function LogForm({
   }, [type, lastFuel, edit])
 
   // Cached national price, for comparison only — never prefilled over what you
-  // typed, because the pump you used is the one that counts.
+  // typed, because the pump you used is the one that counts. The app rechecks
+  // on every launch, so a check that lands while this form is open replaces it.
   useEffect(() => {
-    if (type !== 'fuel' || pump) return
-    window.api.fuelPrices.get().then(setPump)
+    if (type !== 'fuel') return
+    if (!pump) window.api.fuelPrices.get().then(setPump)
+    return window.api.fuelPrices.onUpdated(setPump)
   }, [type, pump])
 
   useEffect(() => {

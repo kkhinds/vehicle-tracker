@@ -141,6 +141,8 @@ interface ElectronAPI {
   fuelPrices: {
     get: () => Promise<PumpPrices | null>
     refresh: () => Promise<PumpPrices | null>
+    /** Fires when the launch check lands a newer price. Returns an unsubscribe. */
+    onUpdated: (callback: (prices: PumpPrices) => void) => () => void
   }
   timeline: {
     getEntries: () => Promise<TimelineEntry[]>
