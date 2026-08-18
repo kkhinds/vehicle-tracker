@@ -180,10 +180,10 @@ export default function LogForm({
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
   /**
-   * Price and total each derive from the other, so either can be the one you
-   * type. Pumps give you a total and a litre count; the price per litre is what
-   * the app actually stores, and working it out by hand is how it drifts.
-   * Whichever of the two was edited last wins, and litres feeds both.
+   * Any two of litres, price and total give the third. Prices are set
+   * nationally here and pre-filled, so the common case is typing only the
+   * total paid and letting the litres fall out of it. Typing litres switches
+   * to the old behaviour: whichever money field was edited last wins.
    */
   const money = useMemo(() => {
     const litres = parseFloat(f.litres ?? '')
@@ -192,14 +192,18 @@ export default function LogForm({
     const hasLitres = Number.isFinite(litres) && litres > 0
 
     if (f.lastMoney === 'total' && hasLitres && Number.isFinite(typedTotal)) {
-      return { price: (typedTotal / litres).toFixed(3), total: f.total ?? '', derived: 'price' as const }
+      return { litres: f.litres ?? '', price: (typedTotal / litres).toFixed(3), total: f.total ?? '', derived: 'price' as const }
     }
     if (hasLitres && Number.isFinite(typedPrice)) {
-      return { price: f.price ?? '', total: (litres * typedPrice).toFixed(2), derived: 'total' as const }
+      return { litres: f.litres ?? '', price: f.price ?? '', total: (litres * typedPrice).toFixed(2), derived: 'total' as const }
     }
-    return { price: f.price ?? '', total: f.total ?? '', derived: null }
+    if (!hasLitres && typedTotal > 0 && typedPrice > 0) {
+      return { litres: (typedTotal / typedPrice).toFixed(2), price: f.price ?? '', total: f.total ?? '', derived: 'litres' as const }
+    }
+    return { litres: f.litres ?? '', price: f.price ?? '', total: f.total ?? '', derived: null }
   }, [f.litres, f.price, f.total, f.lastMoney])
   const totalValue = money.total
+  const litresValue = money.litres
 
   /**
    * Cross-check against the national price. It's a nudge, not a rule — station
@@ -248,7 +252,7 @@ export default function LogForm({
     }
     if (!f.date) e.date = 'Pick a date'
     if (type === 'fuel') {
-      if (!(parseFloat(f.litres ?? '') > 0)) e.litres = 'Litres are required'
+      if (!(parseFloat(litresValue) > 0)) e.litres = 'Litres are required'
       if (!(parseFloat(totalValue) > 0)) e.total = 'Total is required'
     }
     if (type === 'service' && !f.description?.trim()) e.description = 'Describe the work'
@@ -276,7 +280,7 @@ export default function LogForm({
       if (edit) { await saveEdit(odo); return }
       switch (type) {
         case 'fuel': {
-          const litres = parseFloat(f.litres), total = parseFloat(totalValue)
+          const litres = parseFloat(litresValue), total = parseFloat(totalValue)
           const saved = await window.api.fuel.add({
             date: f.date, odometer: odo, litres,
             cost_per_litre: parseFloat(f.price) || +(total / litres).toFixed(3),
@@ -366,7 +370,7 @@ export default function LogForm({
     const id = edit.id
     switch (edit.type) {
       case 'fuel': {
-        const litres = parseFloat(f.litres), total = parseFloat(totalValue)
+        const litres = parseFloat(litresValue), total = parseFloat(totalValue)
         await window.api.fuel.update(id, {
           date: f.date, odometer: odo, litres,
           cost_per_litre: parseFloat(money.price) || +(total / litres).toFixed(3),
@@ -470,7 +474,11 @@ export default function LogForm({
       {type === 'fuel' && (
         <>
           <div className="dl-frow">
-            {field('litres', 'Litres', { placeholder: '0.0' })}
+            {field('litres', 'Litres', {
+              placeholder: '0.0',
+              value: money.litres,
+              hint: money.derived === 'litres' ? 'total ÷ price per litre' : undefined,
+            })}
             {field('price', 'Price / L', {
               value: money.price,
               hint: money.derived === 'price' ? 'worked out from the total'
@@ -480,7 +488,7 @@ export default function LogForm({
             })}
             {field('total', 'Total paid', {
               value: money.total,
-              hint: money.derived === 'total' ? 'litres × price' : 'type this and the price per litre follows',
+              hint: money.derived === 'total' ? 'litres × price' : 'type this and the litres follow',
             })}
           </div>
           <div className="dl-frow">
