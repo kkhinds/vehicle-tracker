@@ -12,7 +12,7 @@ interface FileDialogOptions {
   multiple?: boolean
 }
 
-interface IntervalMatch {
+export interface IntervalMatch {
   id: number
   name: string
   category_key: string | null
@@ -46,7 +46,7 @@ interface ElectronAPI {
     add: (entry: Omit<MaintenanceEntry, 'id' | 'created_at' | 'vehicle_id'>) => Promise<MaintenanceEntry>
     update: (id: number, entry: Partial<MaintenanceEntry>) => Promise<void>
     delete: (id: number) => Promise<void>
-    findMatchingInterval: (category: string, description: string) => Promise<IntervalMatch | null>
+    findMatchingIntervals: (category: string, description: string) => Promise<IntervalMatch[]>
   }
   schedule: {
     getAll: () => Promise<ServiceInterval[]>

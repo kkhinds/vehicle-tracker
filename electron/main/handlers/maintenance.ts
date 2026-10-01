@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
-import { detectIntervalKey } from '../presets/serviceIntervals'
+import { matchIntervals } from '../presets/serviceIntervals'
 import { deletePhotoFiles, replaceChildPaths } from '../photos'
 
 interface MaintenanceRow {
@@ -94,21 +94,14 @@ export function registerMaintenanceHandlers(): void {
   })
 
   /**
-   * Auto-link: given a category + description, find a matching service interval
-   * for the current vehicle. Returns null if no match.
-   *
-   * Used by the maintenance form to prompt "Mark X as done at Y km on Z?" right
-   * after the user logs a service. One-click eliminates the double-entry problem.
+   * Auto-link: the service intervals a maintenance entry covers, for the
+   * current vehicle. The log form shows them as ticked boxes, so logging an
+   * oil change resets the oil interval without a second trip to Intervals.
    */
-  ipcMain.handle('maintenance:findMatchingInterval', (_, category: string, description: string) => {
-    const vehicleId = getCurrentVehicleId()
-    const key = detectIntervalKey(category, description)
-    if (!key) return null
-
-    const interval = db.prepare(
-      'SELECT id, name, category_key FROM service_intervals WHERE vehicle_id = ? AND category_key = ? LIMIT 1'
-    ).get(vehicleId, key) as IntervalLite | undefined
-
-    return interval ?? null
+  ipcMain.handle('maintenance:findMatchingIntervals', (_, category: string, description: string) => {
+    const rows = db.prepare(
+      'SELECT id, name, category_key FROM service_intervals WHERE vehicle_id = ? ORDER BY interval_km ASC'
+    ).all(getCurrentVehicleId()) as IntervalLite[]
+    return matchIntervals(category ?? '', description ?? '', rows)
   })
 }

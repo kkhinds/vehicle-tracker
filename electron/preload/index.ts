@@ -23,8 +23,8 @@ contextBridge.exposeInMainWorld('api', {
     add: (entry: unknown) => ipcRenderer.invoke('maintenance:add', entry),
     update: (id: number, entry: unknown) => ipcRenderer.invoke('maintenance:update', id, entry),
     delete: (id: number) => ipcRenderer.invoke('maintenance:delete', id),
-    findMatchingInterval: (category: string, description: string) =>
-      ipcRenderer.invoke('maintenance:findMatchingInterval', category, description),
+    findMatchingIntervals: (category: string, description: string) =>
+      ipcRenderer.invoke('maintenance:findMatchingIntervals', category, description),
   },
   schedule: {
     getAll: () => ipcRenderer.invoke('schedule:getAll'),

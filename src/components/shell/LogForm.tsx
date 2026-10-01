@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { formatDate, timeAgo, todayISO } from '@/lib/utils'
 import { PhotoPicker } from './Photos'
-import type { EntryKind, PumpPrices } from '@/env'
+import type { EntryKind, IntervalMatch, PumpPrices } from '@/env'
+import { MAINTENANCE_CATEGORIES } from '@/types'
 
 export type LogType = 'fuel' | 'service' | 'fluid' | 'tires' | 'insurance' | 'docs'
 
@@ -103,6 +104,9 @@ export default function LogForm({
   const [tireMode, setTireMode] = useState<'inspection' | 'rotation'>('inspection')
   const [fluidPresets, setFluidPresets] = useState<{ key: string; label: string }[]>([])
   const [pump, setPump] = useState<PumpPrices | null>(null)
+  /** Service intervals the description names, and the ones you unticked. */
+  const [matches, setMatches] = useState<IntervalMatch[]>([])
+  const [unticked, setUnticked] = useState<number[]>([])
   /** Published price for this vehicle's fuel, once it's known. */
   const publishedPrice = fuelKind && pump
     ? (fuelKind === 'diesel' ? pump.diesel : pump.gasoline)
@@ -137,6 +141,7 @@ export default function LogForm({
     })
     setFullTank(true)
     setPhotos([])
+    setUnticked([])
     priceTouched.current = false
   }, [type, lastFuel, edit, publishedPrice])
 
@@ -156,6 +161,19 @@ export default function LogForm({
       ? prev
       : { ...prev, price: publishedPrice.toFixed(2), lastMoney: 'price' }))
   }, [type, edit, publishedPrice])
+
+  // Logging a service should reset the interval it covers, so the form finds
+  // them as you type and offers them ticked. Editing an old record leaves the
+  // intervals alone: it may predate the last time the job was done.
+  useEffect(() => {
+    if (type !== 'service' || edit) { setMatches([]); return }
+    let live = true
+    const t = setTimeout(() => {
+      window.api.maintenance.findMatchingIntervals(f.category ?? '', f.description ?? '')
+        .then(m => { if (live) setMatches(m) })
+    }, 250)
+    return () => { live = false; clearTimeout(t) }
+  }, [type, edit, f.category, f.description])
 
   useEffect(() => {
     if (type !== 'fluid' || fluidPresets.length) return
@@ -303,14 +321,23 @@ export default function LogForm({
           }
           break
         }
-        case 'service':
+        case 'service': {
           await window.api.maintenance.add({
             date: f.date, odometer: odo, category: f.category || 'Other',
             description: f.description, cost: parseFloat(f.cost ?? '') || 0,
             shop_name: f.shop || null, parts_replaced: null,
             notes: f.notes || null, photos,
           })
-          onSaved('Service logged'); break
+          // Asked again rather than trusting the list on screen: Enter can land
+          // inside the typing delay, before the last word was matched.
+          const found = await window.api.maintenance.findMatchingIntervals(f.category ?? '', f.description ?? '')
+          const reset = found.filter(m => !unticked.includes(m.id))
+          for (const m of reset) await window.api.schedule.markDone(m.id, odo, f.date)
+          onSaved(reset.length
+            ? `Service logged · ${reset.map(m => m.name).join(', ')} reset`
+            : 'Service logged')
+          break
+        }
         case 'fluid':
           await window.api.fluids.add({
             date: f.date, odometer: odo, fluid_type: f.fluidType || 'engine-oil',
@@ -543,9 +570,32 @@ export default function LogForm({
         <>
           {field('description', 'What was done', { type: 'text', placeholder: 'Oil and filter change' })}
           <div className="dl-frow">
+            {field('category', 'Category', { type: 'text', placeholder: 'Other', list: 'lf-category-list' })}
             {field('cost', 'Cost', { placeholder: '0.00' })}
             {field('shop', 'Shop', { type: 'text', placeholder: 'Optional' })}
           </div>
+          <datalist id="lf-category-list">
+            {MAINTENANCE_CATEGORIES.map(c => <option key={c} value={c} />)}
+          </datalist>
+          {matches.length > 0 && (
+            <div role="group" aria-labelledby="lf-resets">
+              <div className="dl-hint" id="lf-resets" style={{ marginTop: 12 }}>
+                Marks these intervals done at this reading
+              </div>
+              {matches.map(m => (
+                <label className="dl-check" key={m.id}>
+                  <input
+                    type="checkbox"
+                    checked={!unticked.includes(m.id)}
+                    onChange={e => setUnticked(prev => e.target.checked
+                      ? prev.filter(id => id !== m.id)
+                      : [...prev, m.id])}
+                  />
+                  {m.name}
+                </label>
+              ))}
+            </div>
+          )}
         </>
       )}
 

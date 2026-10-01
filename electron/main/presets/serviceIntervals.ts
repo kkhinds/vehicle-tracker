@@ -338,18 +338,22 @@ export function getPresetsForDrivetrain(drivetrain: string): IntervalPreset[] {
 }
 
 // Map maintenance categories / free-text → category_key for auto-linking.
-// Used by the maintenance handler to suggest "mark interval X done?".
+// Order matters: a narrower phrase sits above the broader one it contains
+// ("cabin air filter" before "air filter", "battery coolant" before
+// "coolant"), because matchIntervals consumes the words each pattern takes.
 export const MAINTENANCE_TO_INTERVAL_KEY: Array<{ pattern: RegExp; key: string }> = [
   { pattern: /\boil(\s|-)?change\b|\boil\s+and\s+filter\b/i, key: 'oil-change' },
   { pattern: /\btyre\s+rotation\b|\btire\s+rotation\b/i, key: 'tire-rotation' },
   { pattern: /\bbrake\s+fluid\b/i, key: 'brake-fluid' },
   { pattern: /\bbrake\b/i, key: 'brake-inspect' },
-  { pattern: /\bair\s+filter\b/i, key: 'air-filter' },
   { pattern: /\bcabin\s+(air\s+)?filter\b/i, key: 'cabin-filter' },
-  { pattern: /\bfuel\s+filter\b/i, key: 'fuel-filter' },
+  { pattern: /\bair\s+filter\b/i, key: 'air-filter' },
   { pattern: /\bwater\s+separator\b|\bfuel\s+(water|drain)\b/i, key: 'fuel-water-drain' },
+  { pattern: /\bfuel\s+filter\b/i, key: 'fuel-filter' },
   { pattern: /\bspark\s+plug/i, key: 'spark-plugs' },
   { pattern: /\bglow\s+plug/i, key: 'glow-plugs' },
+  { pattern: /\binverter\b/i, key: 'inverter-coolant' },
+  { pattern: /\bbattery\s+coolant\b/i, key: 'battery-coolant' },
   { pattern: /\bcoolant\b|\bantifreeze\b/i, key: 'coolant' },
   { pattern: /\btransmission\s+fluid\b|\batf\b/i, key: 'transmission-fluid' },
   { pattern: /\btiming\s+belt\b/i, key: 'timing-belt' },
@@ -363,15 +367,39 @@ export const MAINTENANCE_TO_INTERVAL_KEY: Array<{ pattern: RegExp; key: string }
   { pattern: /\bwiper/i, key: 'wipers' },
   { pattern: /\balignment\b/i, key: 'alignment' },
   { pattern: /\b12v\b|\baux(iliary)?\s+battery\b/i, key: '12v-battery' },
-  { pattern: /\binverter\b/i, key: 'inverter-coolant' },
-  { pattern: /\bbattery\s+coolant\b/i, key: 'battery-coolant' },
   { pattern: /\breduction\s+gear\b|\bgearbox\s+fluid\b/i, key: 'gearbox-fluid' },
 ]
 
-export function detectIntervalKey(category: string, description: string): string | null {
-  const haystack = `${category} ${description}`
+/** Every interval key a piece of text names, each pattern eating what it matched. */
+function keysIn(text: string): Set<string> {
+  const keys = new Set<string>()
+  let rest = text
   for (const { pattern, key } of MAINTENANCE_TO_INTERVAL_KEY) {
-    if (pattern.test(haystack)) return key
+    const all = new RegExp(pattern.source, 'gi')
+    if (!all.test(rest)) continue
+    keys.add(key)
+    rest = rest.replace(all, ' ')
   }
-  return null
+  return keys
+}
+
+/**
+ * Every interval a logged service covers. One visit usually does several jobs
+ * ("oil and filter, air filter, wipers"), so this returns all of them. The
+ * description decides; the category only counts when the description names
+ * nothing, so "Brake Service: brake fluid flush" doesn't also tick the brake
+ * inspection. Intervals you added yourself have no key, so any interval also
+ * matches when its name appears in the text.
+ */
+export function matchIntervals<T extends { name: string; category_key: string | null }>(
+  category: string, description: string, intervals: T[],
+): T[] {
+  let keys = keysIn(description)
+  if (!keys.size) keys = keysIn(category)
+  const text = `${category} ${description}`.toLowerCase()
+  return intervals.filter(iv => {
+    if (iv.category_key && keys.has(iv.category_key)) return true
+    const name = iv.name.trim().toLowerCase()
+    return name.length > 2 && text.includes(name)
+  })
 }
