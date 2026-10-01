@@ -4,13 +4,15 @@ interface AppLogoProps {
 }
 
 /**
- * App-wide brand mark. Served from /logo.svg (resources/logo.svg via Vite's
- * publicDir). Source of truth: resources/logo.svg.
+ * App-wide brand mark. Served from logo.svg (resources/logo.svg via Vite's
+ * publicDir). Source of truth: resources/logo.svg. The path must stay
+ * relative: the packaged app loads index.html over file://, where "/logo.svg"
+ * resolves to the drive root.
  */
 export default function AppLogo({ className, size = 36 }: AppLogoProps) {
   return (
     <img
-      src="/logo.svg"
+      src="./logo.svg"
       width={size}
       height={size}
       className={className}

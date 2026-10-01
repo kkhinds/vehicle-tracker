@@ -94,8 +94,8 @@ export default function WelcomeDialog({ open, onDismiss }: WelcomeDialogProps) {
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">Add your other vehicles</p>
               <p className="text-xs text-muted-foreground">
-                Click the vehicle name in the sidebar to switch between cars, or open
-                <strong> My Vehicles</strong> to add a second one — each gets its own service
+                Use the vehicle picker beside the lens bar to switch between cars, or open
+                <strong> Garage</strong> to add a second one. Each gets its own service
                 schedule tuned to its drivetrain.
               </p>
             </div>
