@@ -1,5 +1,6 @@
 import { ipcMain, app } from 'electron'
 import { getDb, getCurrentVehicleId } from '../db'
+import { insurancePaidBetween, type PolicyPayments } from '../insurancePayments'
 import { format, subMonths, startOfMonth, endOfMonth, subQuarters, startOfQuarter, endOfQuarter } from 'date-fns'
 import fs from 'fs'
 import path from 'path'
@@ -23,9 +24,13 @@ export function registerExpensesHandlers(): void {
     const from = startDate ?? format(subMonths(now, 11), 'yyyy-MM-dd')
     const to = endDate ?? format(now, 'yyyy-MM-dd')
 
+    const policies = db.prepare(
+      'SELECT premium_amount, payment_frequency, start_date, renewal_date FROM insurance_policies WHERE vehicle_id = ?'
+    ).all(vehicleId) as PolicyPayments[]
+
     const fuelTotal = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
     const maintTotal = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
-    const insTotal = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date >= ? AND start_date <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
+    const insTotal = insurancePaidBetween(policies, from, to)
     const docTotal = (db.prepare("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ? AND COALESCE(issued_date, expiry_date) >= ? AND COALESCE(issued_date, expiry_date) <= ?").get(vehicleId, from, to) as SumRow).total ?? 0
 
     const byCategory = [
@@ -44,14 +49,17 @@ export function registerExpensesHandlers(): void {
       const me = format(endOfMonth(d), 'yyyy-MM-dd')
       const fuel = (db.prepare("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, ms, me) as SumRow).total ?? 0
       const maint = (db.prepare("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?").get(vehicleId, ms, me) as SumRow).total ?? 0
-      const ins = (db.prepare("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date <= ? AND renewal_date >= ?").get(vehicleId, me, ms) as SumRow).total ?? 0
+      const ins = insurancePaidBetween(policies, ms, me)
+      // Road tax and registration are spend too; the bars left them out, so a
+      // month's bar disagreed with the category totals beside it.
+      const docs = (db.prepare("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ? AND COALESCE(issued_date, expiry_date) >= ? AND COALESCE(issued_date, expiry_date) <= ?").get(vehicleId, ms, me) as SumRow).total ?? 0
       monthlyTrend.push({
         month, label: format(d, 'MMM yy'),
         fuel: Math.round(fuel * 100) / 100,
         maintenance: Math.round(maint * 100) / 100,
         insurance: Math.round(ins * 100) / 100,
-        other: 0,
-        total: Math.round((fuel + maint + ins) * 100) / 100,
+        other: Math.round(docs * 100) / 100,
+        total: Math.round((fuel + maint + ins + docs) * 100) / 100,
       })
     }
 
@@ -64,7 +72,7 @@ export function registerExpensesHandlers(): void {
       const one = (sql: string) => (db.prepare(sql).get(vehicleId, from, to) as SumRow).total ?? 0
       return one("SELECT SUM(total_cost) as total FROM fuel_log WHERE vehicle_id = ? AND date >= ? AND date <= ?")
         + one("SELECT SUM(cost) as total FROM maintenance_log WHERE vehicle_id = ? AND date >= ? AND date <= ?")
-        + one("SELECT SUM(premium_amount) as total FROM insurance_policies WHERE vehicle_id = ? AND start_date >= ? AND start_date <= ?")
+        + insurancePaidBetween(policies, from, to)
         + one("SELECT SUM(cost) as total FROM vehicle_documents WHERE vehicle_id = ? AND COALESCE(issued_date, expiry_date) >= ? AND COALESCE(issued_date, expiry_date) <= ?")
     }
 
