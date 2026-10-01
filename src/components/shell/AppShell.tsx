@@ -336,6 +336,7 @@ export default function AppShell() {
               {detailEconomy && <div><span>Economy</span><b className="mono">{detailEconomy}</b></div>}
             </div>
             <p style={{ color: 'var(--dim)', fontSize: 13, marginTop: 12 }}>{detail.subtitle}</p>
+            {detail.notes && <p className="dl-notes">{detail.notes}</p>}
             {detail.kind === 'docs' && !detail.expiresOn && (
               <p className="dl-hint" style={{ marginTop: 10 }}>
                 No expiry date on this one, so it can't be counted down or remind you.

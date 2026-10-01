@@ -690,6 +690,20 @@ export default function LogForm({
         </>
       )}
 
+      {/* Every record has a notes column. Enter makes a new line here, so
+          Ctrl+Enter is the save shortcut instead. */}
+      <div className="dl-field">
+        <label htmlFor="lf-notes">Notes</label>
+        <textarea
+          id="lf-notes"
+          rows={2}
+          placeholder="Optional"
+          value={f.notes ?? ''}
+          onChange={e => set('notes', e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); save() } }}
+        />
+      </div>
+
       {TAKES_PHOTOS[type] && !(type === 'tires' && tireMode === 'rotation') && (
         <PhotoPicker
           category={PHOTO_CATEGORY[type]}

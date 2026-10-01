@@ -31,6 +31,8 @@ export interface TimelineEntry {
   expiresOn?: string | null
   /** Days until that date — negative once it's past. */
   daysRemaining?: number | null
+  /** Free text written on the record, shown in full on the detail sheet. */
+  notes?: string | null
 }
 
 export interface AheadItem {
@@ -97,8 +99,8 @@ export function registerTimelineHandlers(): void {
     const suspect = suspectFuelIds(db, v)
 
     for (const r of db.prepare(
-      'SELECT id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, consumption, missed_fills FROM fuel_log WHERE vehicle_id = ?'
-    ).all<{ id: number; date: string; odometer: number; litres: number; cost_per_litre: number; total_cost: number; fuel_station: string | null; full_tank: number; consumption: number | null; missed_fills: number }>(v)) {
+      'SELECT id, date, odometer, litres, cost_per_litre, total_cost, fuel_station, full_tank, consumption, missed_fills, notes FROM fuel_log WHERE vehicle_id = ?'
+    ).all<{ id: number; date: string; odometer: number; litres: number; cost_per_litre: number; total_cost: number; fuel_station: string | null; full_tank: number; consumption: number | null; missed_fills: number; notes: string | null }>(v)) {
       out.push({
         id: `fuel:${r.id}`, kind: 'fuel', date: r.date, odometer: r.odometer,
         title: `Fill-up${r.fuel_station ? ` — ${r.fuel_station}` : ''}`,
@@ -108,36 +110,39 @@ export function registerTimelineHandlers(): void {
         value: money(r.total_cost), valueSub: null,
         consumption: r.consumption,
         suspect: suspect.has(r.id),
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(
-      'SELECT id, date, odometer, category, description, cost, shop_name FROM maintenance_log WHERE vehicle_id = ?'
-    ).all<{ id: number; date: string; odometer: number; category: string; description: string; cost: number; shop_name: string | null }>(v)) {
+      'SELECT id, date, odometer, category, description, cost, shop_name, notes FROM maintenance_log WHERE vehicle_id = ?'
+    ).all<{ id: number; date: string; odometer: number; category: string; description: string; cost: number; shop_name: string | null; notes: string | null }>(v)) {
       out.push({
         id: `service:${r.id}`, kind: 'service', date: r.date, odometer: r.odometer,
         title: r.description || r.category,
         subtitle: [r.category, r.shop_name].filter(Boolean).join(' · '),
         value: money(r.cost), valueSub: null,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(
-      'SELECT id, date, odometer, fluid_type, amount, unit FROM fluid_topups WHERE vehicle_id = ?'
-    ).all<{ id: number; date: string; odometer: number; fluid_type: string; amount: number; unit: string }>(v)) {
+      'SELECT id, date, odometer, fluid_type, amount, unit, notes FROM fluid_topups WHERE vehicle_id = ?'
+    ).all<{ id: number; date: string; odometer: number; fluid_type: string; amount: number; unit: string; notes: string | null }>(v)) {
       out.push({
         id: `fluid:${r.id}`, kind: 'fluid', date: r.date, odometer: r.odometer,
         title: `${r.fluid_type.replace(/-/g, ' ')} top-up`,
         subtitle: `${r.amount} ${r.unit}`,
         value: `${r.amount}`, valueSub: r.unit,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(`
-      SELECT ti.id, ti.date, ti.odometer, ti.tread_fl, ti.tread_fr, ti.tread_rl, ti.tread_rr, ts.brand, ts.model
+      SELECT ti.id, ti.date, ti.odometer, ti.tread_fl, ti.tread_fr, ti.tread_rl, ti.tread_rr, ti.notes, ts.brand, ts.model
         FROM tire_inspections ti JOIN tire_sets ts ON ti.tire_set_id = ts.id
        WHERE ts.vehicle_id = ?`
-    ).all<{ id: number; date: string; odometer: number; tread_fl: number | null; tread_fr: number | null; tread_rl: number | null; tread_rr: number | null; brand: string; model: string }>(v)) {
+    ).all<{ id: number; date: string; odometer: number; tread_fl: number | null; tread_fr: number | null; tread_rl: number | null; tread_rr: number | null; brand: string; model: string; notes: string | null }>(v)) {
       const treads = [r.tread_fl, r.tread_fr, r.tread_rl, r.tread_rr].filter((t): t is number => t != null)
       out.push({
         id: `tires:${r.id}`, kind: 'tires', date: r.date, odometer: r.odometer,
@@ -145,33 +150,36 @@ export function registerTimelineHandlers(): void {
         subtitle: `${r.brand} ${r.model}${treads.length ? ` · tread ${treads.join(' / ')} mm` : ''}`,
         value: treads.length ? `${Math.min(...treads)}` : null,
         valueSub: treads.length ? 'mm min' : null,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(`
-      SELECT tr.id, tr.date, tr.odometer, tr.pattern FROM tire_rotations tr
+      SELECT tr.id, tr.date, tr.odometer, tr.pattern, tr.notes FROM tire_rotations tr
         JOIN tire_sets ts ON tr.tire_set_id = ts.id WHERE ts.vehicle_id = ?`
-    ).all<{ id: number; date: string; odometer: number; pattern: string }>(v)) {
+    ).all<{ id: number; date: string; odometer: number; pattern: string; notes: string | null }>(v)) {
       out.push({
         id: `rotation:${r.id}`, kind: 'tires', date: r.date, odometer: r.odometer,
         title: 'Tire rotation', subtitle: r.pattern.replace(/-/g, ' '),
         value: null, valueSub: null,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(
-      'SELECT id, install_date, install_odometer, brand, model, size FROM tire_sets WHERE vehicle_id = ?'
-    ).all<{ id: number; install_date: string; install_odometer: number; brand: string; model: string; size: string }>(v)) {
+      'SELECT id, install_date, install_odometer, brand, model, size, notes FROM tire_sets WHERE vehicle_id = ?'
+    ).all<{ id: number; install_date: string; install_odometer: number; brand: string; model: string; size: string; notes: string | null }>(v)) {
       out.push({
         id: `tireset:${r.id}`, kind: 'tires', date: r.install_date, odometer: r.install_odometer,
         title: `New tires fitted — ${r.brand} ${r.model}`, subtitle: r.size,
         value: null, valueSub: null,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(
-      'SELECT id, provider, policy_number, premium_amount, start_date, renewal_date, is_active FROM insurance_policies WHERE vehicle_id = ?'
-    ).all<{ id: number; provider: string; policy_number: string; premium_amount: number; start_date: string; renewal_date: string | null; is_active: number }>(v)) {
+      'SELECT id, provider, policy_number, premium_amount, start_date, renewal_date, is_active, notes FROM insurance_policies WHERE vehicle_id = ?'
+    ).all<{ id: number; provider: string; policy_number: string; premium_amount: number; start_date: string; renewal_date: string | null; is_active: number; notes: string | null }>(v)) {
       const days = r.renewal_date ? daysUntil(r.renewal_date) : null
       out.push({
         id: `insurance:${r.id}`, kind: 'insurance', date: r.start_date, odometer: null,
@@ -183,12 +191,13 @@ export function registerTimelineHandlers(): void {
         ].filter(Boolean).join(' · '),
         value: money(r.premium_amount), valueSub: null,
         expiresOn: r.renewal_date, daysRemaining: r.is_active === 1 ? days : null,
+        notes: r.notes,
       })
     }
 
     for (const r of db.prepare(
-      'SELECT id, doc_type, title, issued_date, expiry_date, cost FROM vehicle_documents WHERE vehicle_id = ?'
-    ).all<{ id: number; doc_type: string; title: string; issued_date: string | null; expiry_date: string | null; cost: number | null }>(v)) {
+      'SELECT id, doc_type, title, issued_date, expiry_date, cost, notes FROM vehicle_documents WHERE vehicle_id = ?'
+    ).all<{ id: number; doc_type: string; title: string; issued_date: string | null; expiry_date: string | null; cost: number | null; notes: string | null }>(v)) {
       const when = r.issued_date ?? r.expiry_date
       if (!when) continue
       const days = r.expiry_date ? daysUntil(r.expiry_date) : null
@@ -205,6 +214,7 @@ export function registerTimelineHandlers(): void {
         ].join(' · '),
         value: money(r.cost), valueSub: null,
         expiresOn: r.expiry_date, daysRemaining: days,
+        notes: r.notes,
       })
     }
 

@@ -189,6 +189,8 @@ export interface TimelineEntry {
   expiresOn?: string | null
   /** Days until that date — negative once it's past. */
   daysRemaining?: number | null
+  /** Free text written on the record. */
+  notes?: string | null
 }
 
 export interface AheadItem {

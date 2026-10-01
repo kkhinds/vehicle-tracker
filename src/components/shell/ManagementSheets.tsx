@@ -274,6 +274,7 @@ function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRe
     vin: vehicle?.vin ?? '',
     odometer: vehicle ? String(vehicle.current_odometer) : '0',
     purchaseDate: vehicle?.purchase_date ?? '',
+    purchaseOdo: vehicle?.purchase_odometer != null ? String(vehicle.purchase_odometer) : '',
   }))
   const [drivetrain, setDrivetrain] = useState<Drivetrain>(vehicle?.drivetrain ?? 'petrol-na')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -290,6 +291,10 @@ function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRe
     if (!Number.isFinite(year) || year < 1900 || year > 2100) e.year = '1900–2100'
     const odo = parseFloat(f.odometer)
     if (!Number.isFinite(odo) || odo < 0) e.odometer = 'Enter a reading'
+    // Blank is allowed: cost per distance then counts from zero, as before.
+    const boughtAt = f.purchaseOdo.trim() ? parseFloat(f.purchaseOdo) : null
+    if (boughtAt != null && (!Number.isFinite(boughtAt) || boughtAt < 0)) e.purchaseOdo = 'Enter a reading'
+    else if (boughtAt != null && Number.isFinite(odo) && boughtAt > odo) e.purchaseOdo = 'Can\'t be past the odometer'
     setErrors(e)
     if (Object.keys(e).length) return
 
@@ -297,8 +302,8 @@ function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRe
     const payload = {
       nickname: f.nickname.trim(), make: f.make.trim(), model: f.model.trim(), year,
       trim: f.trim.trim() || null, drivetrain, vin: f.vin.trim() || null,
-      license_plate: f.plate.trim() || null, color: f.color.trim() || null, photo: null,
-      purchase_date: f.purchaseDate || null, purchase_odometer: null, current_odometer: odo,
+      license_plate: f.plate.trim() || null, color: f.color.trim() || null, photo: vehicle?.photo ?? null,
+      purchase_date: f.purchaseDate || null, purchase_odometer: boughtAt, current_odometer: odo,
       is_archived: vehicle?.is_archived ?? false,
     }
     try {
@@ -372,7 +377,14 @@ function VehicleForm({ vehicle, distanceUnit, canDelete, onSaved, onCancel, onRe
       <div className="dl-frow">
         <Field id="v-trim" label="Trim" value={f.trim} onChange={set('trim')} placeholder="optional" mono={false} />
         <Field id="v-color" label="Colour" value={f.color} onChange={set('color')} placeholder="optional" mono={false} />
+      </div>
+      <div className="dl-frow">
         <Field id="v-bought" label="Bought" value={f.purchaseDate} onChange={set('purchaseDate')} placeholder="yyyy-mm-dd" />
+        <Field
+          id="v-bought-odo" label={`Odometer when bought (${distanceUnit})`} value={f.purchaseOdo}
+          onChange={set('purchaseOdo')} error={errors.purchaseOdo} placeholder="optional"
+          hint="cost per distance counts from here"
+        />
       </div>
       <Field id="v-vin" label="VIN" value={f.vin} onChange={set('vin')} placeholder="optional" />
 

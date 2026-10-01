@@ -38,7 +38,7 @@ export default function SearchSheet({ entries, distanceUnit, onOpen }: SearchShe
     const words = needle.split(/\s+/)
     return entries.filter(e => {
       const hay = [
-        e.title, e.subtitle, e.value ?? '', e.kind, formatDate(e.date), e.date,
+        e.title, e.subtitle, e.notes ?? '', e.value ?? '', e.kind, formatDate(e.date), e.date,
         e.odometer != null ? String(e.odometer) : '',
       ].join(' ').toLowerCase()
       return words.every(w => hay.includes(w))
